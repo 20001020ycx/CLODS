@@ -94,7 +94,7 @@ verification/comparison.txt          this vs reference symbol-count table
 
 ## References
 
-- CLODS paper (SOSP'26), §2 Motivating Example (HDFS-10453, Figure 1): `/home/ycx/research/papers/sosp26-paper1972 (1).pdf`
+- CLODS paper (SOSP'26), §2 Motivating Example (HDFS-10453, Figure 1)
 - GraalVM LLVM Backend for Native Image: <https://www.graalvm.org/22.0/reference-manual/native-image/LLVMBackend/>
 - Research fork (`android_IR`): <https://github.com/rishikeshdevsot/graal/commits/android_IR/>
 - Pinned commit: <https://github.com/rishikeshdevsot/graal/commit/ec486f0f2bc598d3212b62a8d05a10b6d07dea92>

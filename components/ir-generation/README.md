@@ -37,7 +37,7 @@ less output/f2.ll  # sumOfSquares IR
 
 ## 2) Motivating example (Hadoop HDFS NameNode) → LLVM IR
 
-Targets the paper's motivating example, HDFS-10453 (CLODS, SOSP'26, §2 "Motivating Example"): `chooseRandom`, which selects replication targets and throws `NotEnoughReplicasException`, with callees `isGoodTarget` and `getNumAvailableNodes` and the replica counter `nReplicate`. The monolithic bitcode is comparable in purpose to the historical reference `614good.bc`.
+Targets the paper's motivating example, HDFS-10453 (CLODS, SOSP'26, §2 "Motivating Example"): `chooseRandom`, which selects replication targets and throws `NotEnoughReplicasException`, with callees `isGoodTarget` and `getNumAvailableNodes` and the replica counter `nReplicate`. 
 
 ### Steps
 
@@ -60,7 +60,7 @@ HADOOP_REFERENCE_BC =/home/ycx/research/BlameMaster/StaticAnalyisLLVM/bytecode/6
 
 ### What to check
 
-The IR of `chooseRandom` must contain the functions the paper analyzes, as real LLVM IR symbols/calls with DWARF info tying them to `BlockPlacementPolicyDefault.java`. Paper Figure 1 names → Hadoop 2.7.1 IR tokens:
+The IR of `chooseRandom` must contain the functions the paper analyzes, as real LLVM IR symbols/calls with DWARF info tying them to `BlockPlacementPolicyDefault.java`. The two columns below differ because **the paper uses pseudo names for illustration**, while the IR carries the real Hadoop 2.7.1 method/identifier names from the source. Map each paper name to its real counterpart before grepping:
 
 | Paper (Fig. 1) | IR token |
 |---|---|

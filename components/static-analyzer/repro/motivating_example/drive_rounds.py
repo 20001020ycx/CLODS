@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Drive the five recorded manual-selection rounds of StaticAnalysisLLVM.
+"""Drive the recorded manual-selection rounds of StaticAnalysisLLVM.
+
+The number of rounds is driven by the manifest (recordedSelections). A
+selection entry's "prompt" is one of:
+  - "id"        -> the analyzer's "What is the ID to continue" prompt
+  - "branch"    -> the "What is the branch ID to continue" prompt
+  - "divergence"-> the "Was there a divergence point?" prompt (answer 0
+                   means "no divergence", continuing the data-flow analysis)
 
 Uses only the Python standard library so it also works in the historical
 container image.
@@ -35,6 +42,11 @@ def load_schedule(path: Path) -> list[tuple[str, str, int]]:
 
 def write_result(path: Path, **fields: object) -> None:
     path.write_text(json.dumps(fields, indent=2, sort_keys=True) + "\n")
+
+
+def ordinal(n: int) -> str:
+    suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10 if n % 100 not in (11, 12, 13) else 0, "th")
+    return f"{n}{suffix}"
 
 
 def terminate(process: subprocess.Popen[bytes]) -> None:
@@ -135,12 +147,17 @@ def main() -> int:
 
         try:
             for expected_kind, response, round_number in schedule:
-                expected = BRANCH_PROMPT if expected_kind == "branch" else ID_PROMPT
+                if expected_kind == "divergence":
+                    expected = DIVERGENCE_PROMPT
+                    candidates = [DIVERGENCE_PROMPT, ID_PROMPT, BRANCH_PROMPT]
+                else:
+                    expected = BRANCH_PROMPT if expected_kind == "branch" else ID_PROMPT
+                    candidates = [expected, DIVERGENCE_PROMPT]
                 found, _ = wait_for_prompt(
                     master_fd,
                     process,
                     log,
-                    [expected, DIVERGENCE_PROMPT],
+                    candidates,
                     args.prompt_timeout,
                     args.max_transcript_bytes,
                 )
@@ -160,11 +177,19 @@ def main() -> int:
                         }
                     )
                     continue
-                if found == DIVERGENCE_PROMPT:
+                if found == DIVERGENCE_PROMPT and expected_kind != "divergence":
                     outcome = "incomplete-unrecorded-divergence-input"
                     detail = (
                         f"The analyzer requested divergence input before the recorded "
                         f"{expected_kind} selection for round {round_number}."
+                    )
+                elif expected_kind == "divergence" and found in (ID_PROMPT, BRANCH_PROMPT):
+                    outcome = "missing-divergence-prompt"
+                    next_prompt = "branch" if found == BRANCH_PROMPT else "id"
+                    detail = (
+                        f"The analyzer advanced to the next {next_prompt} prompt for "
+                        f"round {round_number} without requesting the divergence answer "
+                        f"the schedule expected."
                     )
                 elif found == "eof":
                     outcome = "exited-before-required-round"
@@ -186,6 +211,8 @@ def main() -> int:
                     )
                 break
             else:
+                last_round = max(r for _, _, r in schedule)
+                next_round = last_round + 1
                 found, _ = wait_for_prompt(
                     master_fd,
                     process,
@@ -196,7 +223,7 @@ def main() -> int:
                 )
                 if found in (BRANCH_PROMPT, ID_PROMPT):
                     next_prompt = "branch" if found == BRANCH_PROMPT else "id"
-                    outcome = "stopped-before-unspecified-round-6-selection"
+                    outcome = f"stopped-before-unspecified-round-{next_round}-selection"
                     detail = f"Captured the next plan and stopped at its {next_prompt} prompt."
                 elif found == DIVERGENCE_PROMPT:
                     outcome = "incomplete-unrecorded-divergence-input"
@@ -204,25 +231,28 @@ def main() -> int:
                 elif found == "eof":
                     return_code = process.poll()
                     if return_code in (None, 0):
-                        outcome = "exited-after-round-5"
-                        detail = "The analyzer exited after the fifth supplied selection."
+                        outcome = f"exited-after-round-{last_round}"
+                        detail = (
+                            f"The analyzer exited after the {ordinal(last_round)} supplied "
+                            "selection."
+                        )
                     else:
-                        outcome = "analyzer-error-after-round-5"
+                        outcome = f"analyzer-error-after-round-{last_round}"
                         detail = (
                             "The analyzer exited with status "
-                            f"{return_code} after the fifth supplied selection."
+                            f"{return_code} after the {ordinal(last_round)} supplied selection."
                         )
                 elif found == "transcript-limit":
                     outcome = "transcript-size-limit"
                     detail = (
                         f"Analyzer output exceeded {args.max_transcript_bytes} bytes "
-                        "after Round 5."
+                        f"after round {last_round}."
                     )
                 else:
                     outcome = "watchdog-timeout"
                     detail = (
                         f"No next prompt appeared within {args.prompt_timeout} seconds "
-                        "after Round 5."
+                        f"after round {last_round}."
                     )
         except Exception as exc:
             outcome = "driver-error"
@@ -242,11 +272,15 @@ def main() -> int:
         elapsedSeconds=round(time.monotonic() - started, 3),
         childReturnCode=return_code,
     )
-    return 0 if outcome in {
-        "stopped-before-unspecified-round-6-selection",
-        "incomplete-unrecorded-divergence-input",
-        "exited-after-round-5",
-    } and len(completed) == len(schedule) else 2
+    success = (
+        len(completed) == len(schedule)
+        and (
+            outcome.startswith("stopped-before-unspecified-round-")
+            or outcome.startswith("exited-after-round-")
+            or outcome == "incomplete-unrecorded-divergence-input"
+        )
+    )
+    return 0 if success else 2
 
 
 if __name__ == "__main__":

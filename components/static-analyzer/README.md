@@ -1,77 +1,38 @@
 # CLODS - Static Analyzer
 
-Backward static analysis: given the IR and a failure-relevant Java source location, emit an instrumentation plan that localizes the root cause. Reproduces the paper's motivating example, HDFS-10453 (CLODS, SOSP'26, §2 "Motivating Example").
+Backward control/data-flow + call-site analysis over a monolithic LLVM IR module: given the IR and a failure-relevant Java source location, emit an instrumentation plan that localizes the root cause. Reproduces the paper's motivating example, HDFS-10453 (CLODS, SOSP'26, §2 "Motivating Example").
 
-Everything runs in Docker. No host LLVM, Z3, or protobuf is required. Requirements: Linux x86-64, Docker Engine, Git LFS, internet during image build, ~2 GB disk for the bitcode.
+Everything runs in Docker. No host LLVM, Z3, or protobuf is required. Requirements: Linux x86-64, Docker Engine, Git LFS, internet during image build.
 
-> **Determinism note.** LLVM IR generation (the `ir-generation` component) may reorder functions across runs/versions, which would change the analyzer's plan numbering. The static analyzer therefore consumes a **pinned pre-compiled module**, `bytecode/motivating_example_full.bc` (316 MB, Git LFS), so the plan is reproducible. Pull it with `git lfs pull --include='components/static-analyzer/bytecode/motivating_example_full.bc'`. To inspect the IR, disassemble on demand (do not commit the ~1.6 GB output):
->
-> ```bash
-> llvm-dis bytecode/motivating_example_full.bc -o motivating_example_full.ll   # ~1 min, ~1.6 GB
-> ```
+Two interchangeable IR modules produce **byte-identical** analyzer output — use either:
+- `bytecode/motivating_example_full.bc` (316 MB) — the full module (default).
+- `bytecode/motivating_example_fast.bc` (33 MB) — abridged, ~10× faster to parse, same output.
 
-## 1) Reproduce the motivating example (HDFS-10453)
+> **Determinism note.** LLVM IR generation (the `ir-generation` component) may reorder functions across runs/versions, which would change the analyzer's plan numbering. The static analyzer therefore consumes pinned pre-compiled modules (Git LFS) so the plan is reproducible. Pull with `git lfs pull --include='components/static-analyzer/bytecode/*.bc'`. To inspect the IR, disassemble on demand (do not commit the ~1.6 GB output): `llvm-dis bytecode/motivating_example_full.bc -o motivating_example_full.ll`.
 
-The analyzer is config-driven: `CLODS.conf` selects the IR module and the seed location (`BlockPlacementPolicyDefault.java:551`). The harness exports the tracked `StaticAnalysis/` source from `HEAD`, compiles it in a pinned toolchain image, drives the historically recorded manual-selection rounds, and checks the plan against the reference. Steps (run from this directory):
+## 1) Reproduce and what to check
+
+Steps (run from this directory):
 
 ```bash
 out="$HOME/clods-static-analyzer-$(date +%Y%m%d-%H%M%S)"
-bash repro/motivating_example/reproduce.sh --build-image --output "$out"
+bash repro/motivating_example/reproduce.sh --build-image --output "$out"          # full 316 MB module
+# or:  bash repro/motivating_example/reproduce.sh --fast --build-image --output "$out"   # 33 MB, same output
 ```
 
-`--build-image` builds the pinned toolchain image (`repro/motivating_example/Dockerfile`: LLVM 14.0.0, Z3, gRPC + `protoc` + `grpc_cpp_plugin`) once; omit it on later runs. Runtime networking is disabled. ~3–4 min after the image is built (the 316 MB IR is parsed once).
+**What the analyzer finds.** Starting from the symptom location (`BlockPlacementPolicyDefault.java:551`), the analysis walks seven rounds backward and reaches the root cause — the delete thread's write of `b.size`. The final round traces the callers of `Block.setNumBytes` (the `b.size` writer) and finds the call site that passes `Long.MAX_VALUE` as the argument, identifying it as a constant:
 
-### What to check
-
-The output event is `$out/current/driver-result.json`. A successful bounded reproduction exits `0`; check the JSON directly:
-
-```bash
-d="$out/current"
-cat "$d/driver-result.json"
+```text
+Caller inst is:   %10 = call { i64 } @Block_setNumBytes_...(i64 %0, i8 addrspace(1)* %2, i64 9223372036854775807)
+Caller argument is: i64 9223372036854775807
+...
+ID: 1
+Constant value: i64 9223372036854775807
 ```
 
-- `completedSelectionCount == expectedSelectionCount == 6` — all six recorded selections replayed (listed in `completedSelections`: r1 id 1, r2 id 0, r3 id 3, r4 branch 0 + id 3, r5 id 0).
-- `childReturnCode` is negative (e.g. `-2` = killed by SIGINT) — the driver stopped the analyzer at the next prompt once the recorded input ran out; it did **not** crash and did **not** invent a Round 6. `outcome: "incomplete-unrecorded-divergence-input"` is just the driver's label for this; the negative return code is the real signal.
-- the plan matches the reference and the transcript is byte-identical:
+`9223372036854775807` is `Long.MAX_VALUE` (`0x7FFFFFFFFFFFFFFF`) — the value the deletion thread stores into `b.size` via `setBlockSize(Long.MAX_VALUE)`. Reaching a constant is the data-flow **stopping condition**: a constant has no further definition to trace, so the analysis terminates there. That constant is the root cause of HDFS-10453: with `b.size = Long.MAX_VALUE`, `isGoodTarget` always returns false and replication never succeeds.
 
-```bash
-cat "$d/reference-comparison.json" # {"match": true, "matchedRounds": [1,2,3,4,5], "mismatches": []}
-diff "$d/session.log" repro/motivating_example/reference/transcript-motivating-example-ref.log  # byte-identical
-```
 
-The wrapper exits non-zero on any build failure, timeout, normalization failure, or semantic mismatch; exit `0` plus `match: true` is the reproduction criterion.
-
-## 2) The five rounds, mapped to the paper
-
-The tool emits five concrete rounds on the real 316 MB IR (real source lines + bytecode indexes, captured in `reference/manifest.json`); the paper presents the same example on abridged pseudocode. Building blocks (paper §5): **CDA** (control dependency → CBIs), **DDA** (data dependency → definitions), **CSA** (call sites → callers); deviation types: **location** vs **branch**.
-
-| Round | Tool selection | Paper step | Building block |
-|---|---|---|---|
-| 1 | `chooseRandom` ID 1 (line 528) | symptom (line 18) is a location deviation → CDA returns `if nReplicate>0` (line 17) | Location + CDA |
-| 2 | `addIfIsGoodTarget` ID 0 (line 571) | branch deviation at line 17 → DDA on `nReplicate` → def line 14 + CBIs 13/11/9; logs pin line 13 | Branch + DDA |
-| 3 | `isGoodTarget` ID 3 (line 642) | branch deviation at line 13 → DDA into `isGoodTarget` predicates (lines 22/23) | Branch + DDA |
-| 4 | branch 0, ID 3 (`chooseTarget`, line 305) | line-23 predicate forks: `blockSize` (arg) → CSA → callers (branch 0); `node.getRemaining()` (shared) → field writers (branches 1/2) | Branch + DDA + CSA |
-| 5 | `BlockManager.chooseTargets` ID 0 (line 3518) | CSA up the caller chain toward `chooseRandom(b.numReplicas, b.size)` (line 4) → `b.size` | CSA → termination |
-
-After Round 5 the analyzer asks `Was there a divergence point?`. The historical note records Rounds 1–5 only, so the driver stops here. The destination it traces toward is the root cause: a **data race on `b.size`** — the deletion thread's `b.setBlockSize(Long.MAX_VALUE)` vs the block constructor's `INIT_SIZE` — which makes `isGoodTarget` always return false at line 23, so replication never succeeds (HDFS-10453).
-
-## 3) Fast unit test (same example, 33 MB IR)
-
-For a quicker smoke-test of the same pipeline, run the abridged module:
-
-```bash
-bash repro/motivating_example/reproduce.sh --fast --build-image --output "$out-fast"
-```
-
-`--fast` swaps in `bytecode/motivating_example_fast.bc` (33 MB) and `reference/manifest-fast.json`. A successful bounded reproduction exits `0`; check `$out-fast/current/driver-result.json` — `completedSelectionCount == 6`, `childReturnCode` negative (clean stop at the round-6 id prompt; `outcome: "stopped-before-unspecified-round-6-selection"` is the driver's label for it), and:
-
-```bash
-d="$out-fast/current"
-cat "$d/reference-comparison.json" # {"match": true, "matchedRounds": [1,2,3,4,5,6], "mismatches": []}
-diff "$d/session.log" repro/motivating_example/reference/transcript-fast-ref.log  # byte-identical
-```
-
-Why it serves the same purpose as the full module: same analyzer, same seed (`BlockPlacementPolicyDefault.java:551`), same target method (`chooseRandom`), same CDA/DDA/CSA building blocks. The two references are **byte-identical through Round 3** (`chooseRandom` → `addIfIsGoodTarget` → `isGoodTarget`) and present the **same Round-4 fork** (the 3-branch `blockSize` / `node.getRemaining()` split that is the crux of the motivating example). They diverge only at the Round-4 id pick: the full module picks ID 3 → `chooseTarget` → Round 5 `chooseTargets` (then stops at the divergence prompt); the fast module picks ID 0 → `chooseLocalRack` → Round 6 `chooseLocalStorage` (then stops at the Round-6 id prompt). So the fast path is a faithful, ~10×-faster-parse exercise of the same analysis on the same bug, not a byte-copy of the full 5-round reference.
 
 ## References
 

@@ -21,8 +21,9 @@ Why it is not used for reproduction:
   copy of `output_ref.txt`).
 
 The reproducible path for this artifact uses the hydrated `bytecode/614good.bc`
-with the interactive driver in `../../repro/614good/` (see
-[`../../README.md`](../../README.md)). The selections in `input.txt`
+with the interactive driver in `../../../repro/614good/` (see
+[`../../../README.md`](../../../README.md)). The selections in `input.txt`
 (`1 0 3 0 0 0 0 -520`) target the fast IR; the verified selections for
-`614good.bc` are recorded in `../../repro/614good/reference/manifest.json`
+`614good.bc` are recorded in
+`../../../repro/614good/reference/manifest.json`
 (`1 0 3 0 3 0` — round 4 is branch `0` then id `3`).

@@ -1,0 +1,54 @@
+[
+  {
+    "name": "com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl",
+    "methods": [
+      {"name": "<init>", "parameterTypes": []}
+    ]
+  },
+  {
+    "name": "org.apache.commons.logging.impl.Log4JLogger",
+    "methods": [
+      {"name": "<init>", "parameterTypes": ["java.lang.String"]}
+    ]
+  },
+  {
+    "name": "org.apache.commons.logging.impl.LogFactoryImpl",
+    "methods": [
+      {"name": "<init>", "parameterTypes": []}
+    ]
+  },
+  {
+    "name": "org.apache.commons.logging.impl.WeakHashtable",
+    "methods": [
+      {"name": "<init>", "parameterTypes": []}
+    ]
+  },
+  {
+    "name": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "org.apache.hadoop.net.NetworkTopology",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "org.apache.hadoop.metrics2.impl.MetricsSystemImpl",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "org.apache.hadoop.security.ShellBasedUnixGroupsMapping",
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "org.apache.hadoop.security.JniBasedUnixGroupsMappingWithFallback",
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "org.apache.hadoop.hdfs.server.namenode.FSNamesystem$DefaultAuditLogger",
+    "allDeclaredConstructors": true
+  }
+]

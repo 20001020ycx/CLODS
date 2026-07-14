@@ -1,0 +1,4 @@
+# Build outputs and per-run generated artifacts are not part of the source tree.
+output/
+hdfs/output/
+*.log

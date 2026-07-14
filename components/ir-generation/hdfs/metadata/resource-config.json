@@ -1,0 +1,13 @@
+{
+  "resources": {
+    "includes": [
+      {"pattern": ".*core-default\\.xml$"},
+      {"pattern": ".*hdfs-default\\.xml$"},
+      {"pattern": ".*-version-info\\.properties$"},
+      {"pattern": "META-INF/services/.*"},
+      {"pattern": ".*log4j\\.properties$"},
+      {"pattern": ".*webapps/.*"},
+      {"pattern": ".*application-classloader\\.properties$"}
+    ]
+  }
+}

@@ -1,0 +1,77 @@
+diff --git a/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/code/CompileQueue.java b/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/code/CompileQueue.java
+index 42a9a3d2f6..6a72624ce6 100644
+--- a/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/code/CompileQueue.java
++++ b/substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/code/CompileQueue.java
+@@ -713,66 +713,12 @@ public class CompileQueue {
+     }
+ 
+     public static boolean isBypass(HostedMethod method) {
+-        String[] bypassFunctions = {
+-            "ArraySet.allocArrays", 
+-            "SimpleArrayMap.allocArrays", 
+-            "ArraySet.freeArrays", 
+-            "SimpleArrayMap.freeArrays",
+-            "ArchTaskExecutor.getInstance",
+-            "validateSpaceRelationship",
+-            "getEventId",
+-            "getHideInvites",
+-            "getType",
+-            "getCurrentValue",
+-            "orNull",
+-            "getRoomId",
+-            "getRealmConfiguration",
+-            "getCanUseThreadReadReceiptsAndNotifications",
+-            "getHomeServerCapabilities",
+-            "getRoot",
+-            "getSender",
+-            "findFirst",
+-            "createObject",
+-            "setLocalId",
+-            "setRoot",
+-            "setEventId",
+-            "setRoomId",
+-            "setAnnotations",
+-            "setDisplayIndex",
+-            "setReadReceipts",
+-            "setOwnedByThreadChunk",
+-            "getAvatarUrl",
+-            "getDisplayName",
+-            "setSenderAvatar",
+-            "setSenderName",
+-            "setUniqueDisplayName",
+-            "RealmList.add",
+-            "Event.hashCode",
+-            "Event.getContent",
+-            "Event.resolvedPrevContent",
+-            "Event.getStateKey",
+-            "getOriginServerTs",
+-            "getRedacts",
+-            "getUnsignedData",
+-            "getAge",
+-            "getMxDecryptionResult",
+-            "getVerificationStateIsDirty",
+-            "getMCryptoErrorReason",
+-            "isRootThread",
+-            "getThreadDetails",
+-            "getMCryptoError",
+-            "getNumberOfThreads",
+-            "getThreadNotificationState",
+-            "isBeforeLatestReadReceipt",
+-            "isMoreRecentThan"
+-
+-        };
+-        
+-        for (String bypassFunction : bypassFunctions) {
+-            if (method.toString().contains(bypassFunction)) {
+-                return true;
+-            }
+-        }
++        /*
++         * android_IR carries an application-specific substring list here. Generic entries such as
++         * "getAge" also match required SubstrateVM runtime methods, leaving null compilation
++         * results and an incomplete native image. This artifact compiles general Java programs, so
++         * no reachable method is bypassed.
++         */
+         return false;
+     }
+ 

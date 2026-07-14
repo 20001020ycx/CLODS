@@ -1,0 +1,13 @@
+add_subdirectory(HelloworldPass)
+add_subdirectory(ControlDependencyPass)
+add_subdirectory(DeleteNullPtrExceptionPass)
+add_subdirectory(DataDependency)
+add_subdirectory(EventGraph)
+add_subdirectory(CallerMapGenPass)
+add_subdirectory(Utility)
+add_subdirectory(Optimization)
+add_subdirectory(Compare)
+add_subdirectory(ProtocBuf)
+
+add_dependencies(Utility ProtocBuf)
+add_dependencies(Utility DeleteNullPtrException)

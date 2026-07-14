@@ -1,0 +1,9 @@
+# Python harness caches
+__pycache__/
+*.pyc
+
+# Analyzer run artifacts (written into its working dir during local runs)
+*_cleaned.ll
+
+# CMake/Ninja build trees under StaticAnalysis/ are ignored by
+# StaticAnalysis/.gitignore ("/build*"); this file only adds the harness noise.

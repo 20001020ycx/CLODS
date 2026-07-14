@@ -1,0 +1,448 @@
+{
+  "formatVersion": 2,
+  "referenceType": "captured-from-container-analyzer",
+  "referenceFile": "motivating-example-rounds-1-5.txt",
+  "bitcode": {
+    "path": "bytecode/614good.bc",
+    "bytes": 316482648,
+    "sha256": "a0ca09ca4d4919ceffa29567ff723d2f941210d9de39503b9ac2741da5c1c2b6"
+  },
+  "analysisSeed": {
+    "sourceFile": "BlockPlacementPolicyDefault.java",
+    "line": 551
+  },
+  "recordedSelections": [
+    {
+      "round": 1,
+      "prompt": "id",
+      "response": 1
+    },
+    {
+      "round": 2,
+      "prompt": "id",
+      "response": 0
+    },
+    {
+      "round": 3,
+      "prompt": "id",
+      "response": 3
+    },
+    {
+      "round": 4,
+      "prompt": "branch",
+      "response": 0
+    },
+    {
+      "round": 4,
+      "prompt": "id",
+      "response": 3
+    },
+    {
+      "round": 5,
+      "prompt": "id",
+      "response": 0
+    }
+  ],
+  "expectedRounds": [
+    {
+      "round": 1,
+      "branches": [
+        {
+          "branch": 0,
+          "rules": [
+            {
+              "id": 0,
+              "location": "entry",
+              "methodName": "chooseRandom"
+            },
+            {
+              "byteCodeIndex": 185,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 1,
+              "lineNumber": 528,
+              "loopId": 1,
+              "methodName": "chooseRandom"
+            },
+            {
+              "byteCodeIndex": 154,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 2,
+              "lineNumber": 524,
+              "loopId": 1,
+              "methodName": "chooseRandom"
+            },
+            {
+              "byteCodeIndex": 127,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 3,
+              "lineNumber": 518,
+              "loopId": 1,
+              "methodName": "chooseRandom"
+            },
+            {
+              "byteCodeIndex": 103,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 4,
+              "lineNumber": 515,
+              "loopId": 1,
+              "methodName": "chooseRandom"
+            },
+            {
+              "byteCodeIndex": 98,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 5,
+              "lineNumber": 515,
+              "loopId": 1,
+              "methodName": "chooseRandom"
+            },
+            {
+              "byteCodeIndex": 188,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 6,
+              "lineNumber": 533,
+              "loopId": 1,
+              "methodName": "chooseRandom"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "branches": [
+        {
+          "branch": 0,
+          "rules": [
+            {
+              "byteCodeIndex": 16,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 0,
+              "lineNumber": 571,
+              "methodName": "addIfIsGoodTarget"
+            },
+            {
+              "byteCodeIndex": 39,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 1,
+              "lineNumber": 577,
+              "methodName": "addIfIsGoodTarget"
+            },
+            {
+              "byteCodeIndex": 37,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 2,
+              "lineNumber": 575,
+              "methodName": "addIfIsGoodTarget"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "branches": [
+        {
+          "branch": 0,
+          "rules": [
+            {
+              "byteCodeIndex": 42,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 0,
+              "lineNumber": 622,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 6,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 1,
+              "lineNumber": 616,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 52,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 2,
+              "lineNumber": 624,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 136,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 3,
+              "lineNumber": 642,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 85,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 4,
+              "lineNumber": 633,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 97,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 5,
+              "lineNumber": 634,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 72,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 6,
+              "lineNumber": 628,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 64,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 7,
+              "lineNumber": 628,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 146,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 8,
+              "lineNumber": 644,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 180,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 9,
+              "lineNumber": 651,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 149,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 10,
+              "lineNumber": 648,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 223,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 11,
+              "lineNumber": 654,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 291,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 12,
+              "lineNumber": 667,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 301,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 13,
+              "lineNumber": 669,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 303,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 14,
+              "lineNumber": 671,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 107,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 15,
+              "lineNumber": 636,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 82,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 16,
+              "lineNumber": 630,
+              "methodName": "isGoodTarget"
+            },
+            {
+              "byteCodeIndex": 34,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
+              "id": 17,
+              "lineNumber": 620,
+              "methodName": "isGoodTarget"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "round": 4,
+      "branches": [
+        {
+          "branch": 0,
+          "rules": [
+            {
+              "id": 0,
+              "location": "entry",
+              "methodName": "chooseRandom"
+            },
+            {
+              "id": 1,
+              "lineNumber": 462,
+              "location": "entry",
+              "methodName": "chooseRemoteRack"
+            },
+            {
+              "id": 2,
+              "lineNumber": 466,
+              "location": "entry",
+              "methodName": "chooseRemoteRack"
+            },
+            {
+              "id": 3,
+              "lineNumber": 305,
+              "location": "entry",
+              "methodName": "chooseTarget",
+              "strategy": "STACK_TRACE"
+            }
+          ]
+        },
+        {
+          "branch": 1,
+          "rules": [
+            {
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
+              "id": 0,
+              "lineNumber": 0,
+              "methodName": "DatanodeDescriptor"
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
+              "id": 1,
+              "lineNumber": 208,
+              "methodName": "DatanodeDescriptor"
+            },
+            {
+              "byteCodeIndex": 10,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
+              "id": 2,
+              "lineNumber": 528,
+              "methodName": "rollBlocksScheduled"
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
+              "id": 3,
+              "lineNumber": 0,
+              "methodName": "rollBlocksScheduled"
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
+              "fieldAccess": true,
+              "id": 4,
+              "lineNumber": 529,
+              "methodName": "rollBlocksScheduled"
+            }
+          ]
+        },
+        {
+          "branch": 2,
+          "rules": [
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
+              "id": 0,
+              "lineNumber": 0,
+              "methodName": "DatanodeInfo"
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
+              "id": 1,
+              "lineNumber": 103,
+              "methodName": "DatanodeInfo"
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
+              "id": 2,
+              "lineNumber": 0,
+              "methodName": "DatanodeInfo"
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
+              "id": 3,
+              "lineNumber": 140,
+              "methodName": "DatanodeInfo"
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
+              "id": 4,
+              "lineNumber": 0,
+              "methodName": "setRemaining"
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
+              "fieldAccess": true,
+              "id": 5,
+              "lineNumber": 243,
+              "methodName": "setRemaining"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "round": 5,
+      "branches": [
+        {
+          "branch": 0,
+          "rules": [
+            {
+              "byteCodeIndex": 29,
+              "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager",
+              "id": 0,
+              "lineNumber": 3518,
+              "methodName": "chooseTargets"
+            },
+            {
+              "id": 1,
+              "lineNumber": 137,
+              "location": "entry",
+              "methodName": "chooseTarget"
+            },
+            {
+              "id": 2,
+              "lineNumber": 169,
+              "location": "entry",
+              "methodName": "chooseTarget"
+            },
+            {
+              "id": 3,
+              "location": "entry",
+              "methodName": "chooseTarget",
+              "strategy": "STACK_TRACE"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "round6": {
+    "status": "not-supplied",
+    "policy": "stop-before-any-input-not-present-in-the-reference"
+  },
+  "analyzerProvenance": {
+    "sourceRevision": "222b486b3850b7a9d098a26a93760e6cee72db68",
+    "sourceOrigin": "container 06865b433bbb:/home/ridevsot/StaticAnalysis (HEAD); ported into components/static-analyzer/StaticAnalysis",
+    "binarySha256": "b63ea1e5fdf5bbe64afd8334aebc458c0550d54b500ae749bd510c9bd29d76f3",
+    "containerImageId": "sha256:6722cc0c1aed4aa60e267be3882bc603d259c04dd0896b1510139c6032aec66a",
+    "llvm": "14.0.0",
+    "z3": "/usr/local/lib/cmake/z3",
+    "grpc": "/usr/lib/cmake/grpc",
+    "protobuf": "23.1",
+    "note": "Reference captured by driving the container's prebuilt static-analysis (built at HEAD 222b486b with the pinned toolchain) on 614good.bc with the recorded selections, stopping at the 'Was there a divergence point?' prompt. Output is byte-identical across independent runs (determinism verified). The committed repro/614good/Dockerfile builds the same source with the same toolchain versions (LLVM 14.0.0, Z3, gRPC 1.56.0, protobuf 23.1)."
+  },
+  "legacyCachedImageReference": {
+    "tag": "bm_static_analysis:latest",
+    "imageId": "sha256:2b3dc795ff39ba6b91ce25068dafbff91ef63d4e7b7d1fa773fb887751a9a3c9",
+    "sourceRevision": "a25fe4ad071483c2bd7c03fb185a5f3ab3c4894b",
+    "binarySha256": "37b131f826134117aac9de90ac2859390aec77b6a8b9b90ef8357a8af3a12af5",
+    "note": "The earlier bm_static_analysis:latest image (source a25fe4ad) was the previous reference. It matches rounds 1,2,3,5 and round 4 branch 0 exactly; its round 4 branches 1/2 list fewer field writers than the adopted 222b486b analyzer. Retained for provenance only; the canonical reference is analyzerProvenance above."
+  }
+}

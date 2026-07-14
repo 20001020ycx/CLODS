@@ -1,0 +1,4 @@
+temp.txt
+*.bc
+*Out.bc
+*Out.ll

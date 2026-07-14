@@ -1,0 +1,16 @@
+README for gRPC, protobuf installation 
+
+as grpc.pb.cc and grpc.pb.h relies on pb.cc and pb.h)
+1. Clone the grpc repo: 
+  git clone --recurse-submodules -b v1.56.0 --depth 1 --shallow-submodules https://github.com/grpc/grpc
+2. Build grpc, protobuf, and other required dependencies from scratch:
+  cd grpc
+  mkdir -p cmake/build
+  pushd cmake/build
+  cmake -DgRPC_INSTALL=ON -DgRPC_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$MY_INSTALL_DIR ../..
+  make -j 4
+  make install (or make DESTDIR=/your/install/path install)
+  popd
+3. Compile instrumentation.proto:
+  This is automated in the CMakeLists, once you have installed binary and provided
+  corresponding library, it shall generate the required .h and .cc file.

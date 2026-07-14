@@ -1,0 +1,85 @@
+Historical motivating-example transcript supplied by the artifact author.
+
+This is a reference for the static analyzer's instrumentation plans, not one of
+the dynamic [BM] logs under StaticAnalysis/logs. The historical note did not
+include a Round 6 plan or selection, so the reproduction harness deliberately
+stops before the first input absent from the reference rather than fabricating
+one.
+
+### Round 1
+
+Selected ID: 1
+
+- seed: BlockPlacementPolicyDefault.chooseRandom(...) at function entry
+- ID 1: chooseRandom line 528, BCI 185
+- ID 2: chooseRandom line 524, BCI 154
+- ID 3: chooseRandom line 518, BCI 127
+- ID 4: chooseRandom line 515, BCI 103
+- ID 5: chooseRandom line 515, BCI 98
+- ID 6: chooseRandom line 533, BCI 188, loop ID 1
+
+### Round 2
+
+Selected ID: 0
+
+- seed: addIfIsGoodTarget line 571, BCI 16
+- ID 1: addIfIsGoodTarget line 577, BCI 39
+- ID 2: addIfIsGoodTarget line 575, BCI 37
+
+### Round 3
+
+Selected ID: 3
+
+- seed: isGoodTarget line 622, BCI 42
+- ID 1: line 616, BCI 6
+- ID 2: line 624, BCI 52
+- ID 3: line 642, BCI 136
+- ID 4: line 633, BCI 85
+- ID 5: line 634, BCI 97
+- ID 6: line 628, BCI 72
+- ID 7: line 628, BCI 64
+- ID 8: line 644, BCI 146
+- ID 9: line 651, BCI 180
+- ID 10: line 648, BCI 149
+- ID 11: line 654, BCI 223
+- ID 12: line 667, BCI 291
+- ID 13: line 669, BCI 301
+- ID 14: line 671, BCI 303
+- ID 15: line 636, BCI 107
+- ID 16: line 630, BCI 82
+- ID 17: line 620, BCI 34
+
+### Round 4
+
+Selected branch: 0
+Selected ID: 3
+
+Branch 0:
+- chooseRandom(String, Set, long, int, List, boolean) at entry
+- chooseRemoteRack(...), caller line 462
+- chooseRemoteRack(...), caller line 466
+- chooseTarget(...), caller line 305
+- STACK_TRACE for BlockPlacementPolicyDefault.java / chooseRandom / line 502
+
+Branch 1:
+- DatanodeDescriptor.rollBlocksScheduled line 528, BCI 10
+- DatanodeDescriptor.rollBlocksScheduled method rule
+- DatanodeDescriptor.rollBlocksScheduled line 529, BCI 15
+
+Branch 2:
+- DatanodeInfo constructor entry
+- DatanodeInfo.setRemaining entry
+
+### Round 5
+
+Selected ID: 0
+
+- seed: BlockManager.chooseTargets line 3518, BCI 29
+- ID 1: BlockPlacementPolicyDefault.chooseTarget entry, caller line 137
+- ID 2: BlockPlacementPolicyDefault.chooseTarget entry, caller line 169
+- ID 3: BlockPlacementPolicyDefault.chooseTarget entry
+- STACK_TRACE for BlockPlacementPolicyDefault.java / chooseTarget / line 122
+
+### Round 6
+
+Not present in the supplied historical note.

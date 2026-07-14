@@ -1,0 +1,25 @@
+To compile the library:
+ mkdir build
+ cd build
+ cmake -DCMAKE_PREFIX_PATH="your path to LLVM and Z3 cmake config" \
+       -DCMAKE_INCLUDE_PATH="your path to grpc, protobuf include dir" ..
+ make
+
+Note that the reason why we need to use the above flags are:
+ 1. -DCMAKE_PREFIX_PATH is to facilitate our cmake to locate package 
+    for LLVM and Z3. 
+ 2. -DCMAKE_INCLUDE_PATH is to locate the include file for grpc and protobuf.
+    It seems that there's no instrinsic macro defined in their cmake config for
+    include file so that we have to manually define.
+
+Dependent library: LLVM and Z3 SAT Solver
+Please add cmake -DCMAKE_PREFIX_PATH="your path to LLVM and Z3" ..
+
+Doing so will generate a binary called
+static-analysis
+
+We can also compile using Ninja by setting compile generator to Ninja during cmake
+  cmake -DCMAKE_PREFIX_PATH="your path to LLVM and Z3" -G Ninja ..
+Then to compile the project, simply run Ninja (Note, please install Ninja by
+apt install ninja-build)
+  ninja

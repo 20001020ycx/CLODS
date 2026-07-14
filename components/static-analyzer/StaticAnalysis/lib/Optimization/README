@@ -1,0 +1,18 @@
+How to install Z3 SAT Solver as a library?
+
+find a place where you want to store the third party library (Preferrablly not
+in STATICANALYSISLLVM repo, if so, please add it to gitignore)
+git clone https://github.com/Z3Prover/z3.git
+mkdir build
+cmake -G "Unix Makefiles" ../
+make -j4
+make DESTDIR=/your/install/path install
+
+The above commands shall give you the installation of Z3 library. Now we need to
+tell STATICANALYSISLLVM repo where to find this library using:
+
+cmake -DCMAKE_PREFIX_PATH=/your/install/path ..
+make
+
+at the your build directory for this repo (i.e, the target of the cmake should
+be the CMakeLists.txt in StaticAnalysis folder - the main cmake file). 

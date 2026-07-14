@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package ca.uoft.drsg.bminstrument.communication;
+option java_multiple_files = true;
+
+enum Strategy {
+    NORMAL = 0;
+    FUNCTION_START = 1;
+    STACK_TRACE = 2;
+    LOG_CUTTING = 3;
+}
+message InstrumentationRule {
+    int32 id = 1;
+    Strategy strategy = 2;
+    string className = 3;
+    string methodName = 4;
+    repeated string parameterTypes = 5;
+    string location = 6;
+    int32 lineNumber = 7;
+    int32 byteCodeIndex = 8;
+    repeated string variableNames = 9;
+    int32 loopId = 10;
+}
+
+message InstrumentationPlan {
+    repeated InstrumentationRule instrumentationRules = 1;
+}
+
+message PlanReply {
+    string msg = 1;
+}
+
+service InstrumentationManager {
+    rpc AddPlan(InstrumentationPlan) returns (PlanReply) {};
+}

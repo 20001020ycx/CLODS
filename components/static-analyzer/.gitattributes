@@ -1,0 +1,2 @@
+# Track the (large) LLVM bitcode inputs via Git LFS.
+bytecode/*.bc filter=lfs diff=binary merge=binary -text

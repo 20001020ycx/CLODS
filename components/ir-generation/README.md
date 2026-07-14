@@ -1,4 +1,4 @@
-# LLVM IR Generation
+# CLODS - LLVM IR Generation
 
 Compile interpreted (Java/Kotlin) programs to LLVM bitcode and readable LLVM IR using the LLVM backend of a pinned research fork of GraalVM Native Image (`rishikeshdevsot/graal`, branch lineage `android_IR`, commit `ec486f0f`). The fork's `-H:DumpLLVMStackMap` emits a `Java method -> fNNN` mapping, so individual methods can be located in the per-function `fNNN.bc` bitcode and disassembled to `.ll`.
 

@@ -97,6 +97,16 @@ Both modules share the same Graal symbol family for `chooseRandom` (method + `_e
 - **Base image identity.** Docker image IDs are not bit-identical across hosts, so `hdfs/build.sh` only checks the base image *exists* by default. Set `BASE_IMAGE_ID` in `hdfs/shared_vars.sh` to enforce a specific verified base.
 - **Reproducibility of the comparison.** Both bitcode modules are measured with the same pinned Graal `llvm-nm`, so the counts in `comparison.txt` are directly comparable. `614good.bc` itself is not regenerated here; it is treated as an external reference and is only needed for the comparison table.
 
+## Review checklist
+
+A successful review confirms, without editing the scripts:
+
+**Hello-world (section 1):** `generate-ir.sh` exits 0; JVM and native output match exactly (`sumOfSquares(10) = 385`, `fibonacci(10) = 55`); `output/function2IRmapping.txt` lists `SimpleMath_fibonacci`/`main`/`sumOfSquares` and the mapped `output/fNNN.ll` files are non-empty.
+
+**Motivating example (section 2):** `generate-hdfs-ir.sh` exits 0; `hdfs/output/hadoop-2.7.1-a4c88298/` contains `manifest.txt`, `namenode/namenode.monolithic.bc`, `namenode/chooseRandom.bc`, `namenode/chooseRandom.ll`, and `verification/comparison.txt`; `manifest.txt` records `source_commit=a4c88298...` and `native_image_mode=compat`; `chooseRandom.ll` contains `countNumOfAvailableNodes`, `NotEnoughReplicasException`, `numOfReplicas`, and `addIfIsGoodTarget` with DWARF info pointing to `BlockPlacementPolicyDefault.java`.
+
+The bitcode is not expected to be byte-identical to `614good.bc` (different Hadoop version); the comparison table shows the same `chooseRandom` symbol family and comparable symbol counts, both measured with the same pinned `llvm-nm`. See "Notes / caveats" above for the strict/compat and runnable-executable caveats.
+
 ## Container management
 
 ```bash

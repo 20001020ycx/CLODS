@@ -1,6 +1,6 @@
 # CLODS — Artifact Review Index
 
-CLODS is a multi-component artifact. Each subdirectory under `components/` is an independently reproducible piece of the pipeline. This top-level README is only an index; the review and reproduction guidance for each component lives in that component's own README.
+CLODS is a multi-component artifact. Each subdirectory under `components/` is an independently reproducible piece of the artifact. This top-level README is only an index; the review and reproduction guidance for each component lives in that component's own README.
 
 | Component | What it produces |
 |---|---|

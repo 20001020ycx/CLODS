@@ -34,9 +34,48 @@ grep -q "${choose_symbol}" "${namenode_root}/chooseRandom.ll"
 gdis "${namenode_root}/namenode.monolithic.bc" -o /dev/null
 gdis "${namenode_root}/chooseRandom.bc" -o /dev/null
 
-# The JVM NameNode --help is the safe behavioural surface check. The native executable
-# is produced for its LLVM bitcode/IR; under --allow-incomplete-classpath it may not run
-# end to end, so its --help output is recorded but not required to match the JVM.
+# Motivating-example presence check (CLODS paper, SOSP'26, §2 "Motivating Example",
+# HDFS-10453, Figure 1): confirm the functions the paper analyzes actually appear as
+# real LLVM IR in the disassembled chooseRandom. The paper's Figure 1 pseudocode names
+# (chooseRandom, isGoodTarget, getNumAvailableNodes, nReplicate, NotEnoughReplicasException)
+# map to the actual Hadoop 2.7.1 method/identifier names used in the IR.
+motivating_file="${output_root}/verification/motivating-example.txt"
+declare -a motivating_entities=(
+    "chooseRandom|chooseRandom|method under analysis (Fig.1 line 6)"
+    "addIfIsGoodTarget|isGoodTarget|good-target check (Fig.1 line 13/20)"
+    "countNumOfAvailableNodes|getNumAvailableNodes|available-node count (Fig.1 line 8)"
+    "NotEnoughReplicasException|NotEnoughReplicasException|thrown exception (Fig.1 line 18)"
+    "numOfReplicas|nReplicate|replica counter (Fig.1 line 6)"
+    "BlockPlacementPolicyDefault.java|source file|DWARF debug source location"
+)
+{
+    echo "# Motivating-example entity presence in chooseRandom.ll"
+    echo "# Paper: CLODS (SOSP'26) §2 Motivating Example, HDFS-10453, Figure 1"
+    echo "# columns: ir_token | paper_name(Fig.1) | description | match_count | first_matching_line"
+} > "${motivating_file}"
+motivating_missing=0
+for entry in "${motivating_entities[@]}"; do
+    IFS='|' read -r token paper_name desc <<< "${entry}"
+    count="$(grep -cF -- "${token}" "${namenode_root}/chooseRandom.ll" 2>/dev/null || true)"
+    sample="$(grep -nF -- "${token}" "${namenode_root}/chooseRandom.ll" 2>/dev/null | head -n 1 || true)"
+    printf '%s\t%s\t%s\t%s\t%s\n' "${token}" "${paper_name}" "${desc}" "${count}" "${sample}" >> "${motivating_file}"
+    if [[ "${count}" -eq 0 ]]; then
+        echo "Motivating-example entity missing from chooseRandom.ll: ${token} (paper: ${paper_name})" >&2
+        motivating_missing=1
+    fi
+done
+if [[ "${motivating_missing}" -ne 0 ]]; then
+    exit 1
+fi
+{
+    echo "motivating_example_entities_checked=${#motivating_entities[@]}"
+    echo "motivating_example_all_present=1"
+} >> "${output_root}/manifest.txt"
+
+# The JVM NameNode --help is a classpath sanity check (the staged classpath loads
+# NameNode and prints usage). It is not a native-binary run; the native executable is
+# a side effect of the LLVM backend pipeline and is not part of the motivating-example
+# check, which is the grep-on-IR presence check above.
 grep '^Usage:' "${output_root}/verification/jvm-namenode-help.txt" \
     > "${output_root}/verification/jvm-usage.txt"
 if grep -q '^Usage:' "${output_root}/verification/native-namenode-help.txt"; then
@@ -102,5 +141,6 @@ comparison_file="${output_root}/verification/comparison.txt"
     stat -c 'mapping=%s' "${namenode_root}/function2IRmapping.txt"
 } > "${output_root}/verification/sizes.txt"
 
-echo "Verified NameNode executable, mapping, monolithic bitcode, and chooseRandom IR."
+echo "Verified monolithic bitcode, chooseRandom IR, and the motivating-example presence check."
+echo "Motivating-example report: ${output_root}/verification/motivating-example.txt"
 echo "Comparison table: ${comparison_file}"

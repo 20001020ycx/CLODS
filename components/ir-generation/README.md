@@ -1,8 +1,6 @@
-# ir-generation
+# LLVM IR Generation
 
-Compile Java programs to LLVM bitcode and readable LLVM IR using the LLVM backend of a pinned research fork of GraalVM Native Image (`rishikeshdevsot/graal`, branch lineage `android_IR`, commit `ec486f0f`). The fork's `-H:DumpLLVMStackMap` emits a `Java method -> fNNN` mapping, so individual methods can be located in the per-function `fNNN.bc` bitcode and disassembled to `.ll`.
-
-This component is self-contained and does not touch the sibling `static-analyzer`, `instrumenter`, or `log-analyzer` components.
+Compile interpreted (Java/Kotlin) programs to LLVM bitcode and readable LLVM IR using the LLVM backend of a pinned research fork of GraalVM Native Image (`rishikeshdevsot/graal`, branch lineage `android_IR`, commit `ec486f0f`). The fork's `-H:DumpLLVMStackMap` emits a `Java method -> fNNN` mapping, so individual methods can be located in the per-function `fNNN.bc` bitcode and disassembled to `.ll`.
 
 Everything runs in Docker. No host JDK, GraalVM, LLVM, Maven, or Python is required. Requirements: Linux x86-64, Docker Engine, internet during image build, ~15 GB disk, ~8 GB RAM.
 
@@ -32,15 +30,51 @@ Inspect:
 
 ```bash
 cat output/simple-math-functions.txt        # e.g. SimpleMath_fibonacci -> f0
-less output/f0.ll                            # fibonacci IR
-./output/simple-math 10                     # sumOfSquares(10) = 385, fibonacci(10) = 55
+less output/f0.ll  # fibonacci IR
+less output/f1.ll  # main IR
+less output/f2.ll  # sumOfSquares IR
 ```
-
-Reference run (2026-07-13): JVM and native output matched exactly; `f0.bc`=fibonacci, `f1.bc`=main, `f2.bc`=sumOfSquares; warm repeat ~71 s, native-image peak ~3.9 GB.
 
 ## 2) Motivating example (Hadoop HDFS NameNode) → LLVM IR
 
-Compiles `org.apache.hadoop.hdfs.server.namenode.NameNode` from the paper's Hadoop 2.7.1 source and extracts `BlockPlacementPolicyDefault.chooseRandom` (the `int numOfReplicas` overload at `BlockPlacementPolicyDefault.java:613`). The resulting monolithic bitcode is comparable in purpose to the historical reference `614good.bc`.
+This targets the paper's motivating example — **HDFS-10453**, analyzed in CLODS (SOSP'26) §2 "Motivating Example", Figure 1 (`/home/ycx/research/papers/sosp26-paper1972 (1).pdf`). The paper analyzes `chooseRandom`, which selects replication targets and throws `NotEnoughReplicasException`, together with its callees `isGoodTarget` and `getNumAvailableNodes` and the replica counter `nReplicate`.
+
+**What we check:** that the generated LLVM IR of `chooseRandom` contains the functions the paper discusses — i.e. they compiled through to real LLVM IR symbols/calls, with DWARF debug info tying them back to `BlockPlacementPolicyDefault.java`. No native binary run is needed; the deliverable is the IR, and the check is a grep over it.
+
+The paper's Figure 1 pseudocode names map to the actual Hadoop 2.7.1 names that appear in the IR:
+
+| Paper (Fig. 1) | Hadoop 2.7.1 / IR token |
+|---|---|
+| `chooseRandom` | `chooseRandom` |
+| `isGoodTarget` | `addIfIsGoodTarget` |
+| `getNumAvailableNodes` | `countNumOfAvailableNodes` |
+| `nReplicate` | `numOfReplicas` |
+| `NotEnoughReplicasException` | `NotEnoughReplicasException` |
+
+After running the workflow, confirm the entities are present in the disassembled IR:
+
+```bash
+cd hdfs/output/hadoop-2.7.1-a4c88298/namenode
+for e in chooseRandom addIfIsGoodTarget countNumOfAvailableNodes NotEnoughReplicasException numOfReplicas BlockPlacementPolicyDefault.java; do
+  printf '%-32s %s\n' "$e" "$(grep -cF "$e" chooseRandom.ll)"
+done
+# expected (all > 0):
+#   chooseRandom                     45
+#   addIfIsGoodTarget                3
+#   countNumOfAvailableNodes         3
+#   NotEnoughReplicasException       3
+#   numOfReplicas                    3
+#   BlockPlacementPolicyDefault.java 1
+grep -nF 'addIfIsGoodTarget' chooseRandom.ll | head -1            # the good-target call
+grep -nF 'NotEnoughReplicasException' chooseRandom.ll | head -1   # the thrown exception
+grep -nF 'BlockPlacementPolicyDefault.java' chooseRandom.ll | head -1  # DWARF source location
+```
+
+`verify-artifacts.sh` runs this presence check automatically and writes `verification/motivating-example.txt` (one line per entity: IR token, paper name, description, match count, first matching line); it fails if any entity is missing.
+
+### Reproducing it
+
+Compiles `org.apache.hadoop.hdfs.server.namenode.NameNode` from the paper's Hadoop 2.7.1 source and extracts `BlockPlacementPolicyDefault.chooseRandom` (the `int numOfReplicas` overload at `BlockPlacementPolicyDefault.java:613`). The monolithic bitcode is comparable in purpose to the historical reference `614good.bc`.
 
 Defaults (overridable via environment, defined in `hdfs/shared_vars.sh`):
 
@@ -62,63 +96,26 @@ cd hdfs
 ```
 
 `generate-hdfs-ir.sh` does three things:
-1. `container/build-hadoop.sh` — revision gate (commit, clean tree, version 2.7.1, required source files), copy source to a writable volume, `mvn install`, stage the compile-scope classpath, `javap` + JVM `NameNode --help` as a safe surface check.
+1. `container/build-hadoop.sh` — revision gate (commit, clean tree, version 2.7.1, required source files), copy source to a writable volume, `mvn install`, stage the compile-scope classpath, `javap` + JVM `NameNode --help` as a classpath sanity check.
 2. `container/generate-native-image.sh` — `mx native-image -H:Class=NameNode -H:CompilerBackend=llvm -H:LLVMMaxFunctionsPerBatch=0 ...` with inlining disabled, `-O0 -g`; preserves the batch bitcode as `namenode.monolithic.bc`, locates `chooseRandom` via the mapping (largest compiled overload), disassembles it to `chooseRandom.ll`, and parses native-image's timing summary into the manifest.
-3. `container/verify-artifacts.sh` — validates artifacts, decodes bitcode, compares symbol counts against `614good.bc` (if mounted), writes checksums.
+3. `container/verify-artifacts.sh` — runs the motivating-example presence check, decodes the bitcode, compares symbol counts against `614good.bc` (if mounted), and writes checksums.
 
 Outputs land in `hdfs/output/hadoop-2.7.1-a4c88298/`:
 
 ```text
 manifest.txt                         provenance, mode, timing, symbol counts
 classpath.txt / classpath.sha256     staged compile-scope classpath
-namenode/namenode                    native executable (produced; not required to run)
 namenode/namenode.monolithic.bc      broad LLVM bitcode — comparable to 614good.bc
 namenode/function2IRmapping.txt      Java method -> fNNN mapping
-namenode/chooseRandom.bc / .ll       the paper's target method
+namenode/chooseRandom.bc / .ll       the paper's target method (the check runs on the .ll)
+verification/motivating-example.txt  paper-entity presence report (the core check)
 verification/comparison.txt          this vs reference symbol-count table
-verification/jvm-namenode-help.txt   JVM NameNode usage (safe surface check)
 ```
 
-Reference run (2026-07-13, compat mode):
-
-| Metric | `614good.bc` (Hadoop 2.5.2) | `namenode.monolithic.bc` (Hadoop 2.7.1) |
-|---|---|---|
-| Type | LLVM IR bitcode | LLVM IR bitcode |
-| Size | 316,482,648 B | 364,702,616 B |
-| Defined symbols (`llvm-nm`) | 63,605 | 66,853 |
-| `chooseRandom` symbols | 10 | 10 |
-
-Both modules share the same Graal symbol family for `chooseRandom` (method + `_equals_`/`_hashCode_`/`_invoke_` accessors); per-method hashes differ only because the Hadoop version differs (2.5.2 → 2.7.1). `chooseRandom.ll` contains the paper's analysis targets (`countNumOfAvailableNodes`, `NotEnoughReplicasException`, `numOfReplicas`, `addIfIsGoodTarget`) with DWARF debug info pointing to `BlockPlacementPolicyDefault.java`.
-
-### Notes / caveats
-
-- **Mode.** The default is `compat` (`--allow-incomplete-classpath --report-unsupported-elements-at-runtime`), the mode that produces the bitcode. Strict mode (`HDFS_NATIVE_IMAGE_MODE=strict ./generate-hdfs-ir.sh`, `--no-fallback`) fails for this target because the pinned fork cannot represent two JDK internals (`ClassLoader.resolveClass0`, `URLClassPath.getLookupCacheForClassLoader`) reached via Jetty/SSL — the same situation the original recipe solved with the compat flags. `manifest.txt` records `native_image_mode`.
-- **Deliverable is the bitcode/IR, not a runnable daemon.** The native `namenode` is produced (~295 MB) but `--help` throws `NoClassDefFoundError` under incomplete-classpath. The `.bc`/`.ll` are generated regardless; JVM `NameNode --help` remains the safe behavioural check.
-- **Base image identity.** Docker image IDs are not bit-identical across hosts, so `hdfs/build.sh` only checks the base image *exists* by default. Set `BASE_IMAGE_ID` in `hdfs/shared_vars.sh` to enforce a specific verified base.
-- **Reproducibility of the comparison.** Both bitcode modules are measured with the same pinned Graal `llvm-nm`, so the counts in `comparison.txt` are directly comparable. `614good.bc` itself is not regenerated here; it is treated as an external reference and is only needed for the comparison table.
-
-## Review checklist
-
-A successful review confirms, without editing the scripts:
-
-**Hello-world (section 1):** `generate-ir.sh` exits 0; JVM and native output match exactly (`sumOfSquares(10) = 385`, `fibonacci(10) = 55`); `output/function2IRmapping.txt` lists `SimpleMath_fibonacci`/`main`/`sumOfSquares` and the mapped `output/fNNN.ll` files are non-empty.
-
-**Motivating example (section 2):** `generate-hdfs-ir.sh` exits 0; `hdfs/output/hadoop-2.7.1-a4c88298/` contains `manifest.txt`, `namenode/namenode.monolithic.bc`, `namenode/chooseRandom.bc`, `namenode/chooseRandom.ll`, and `verification/comparison.txt`; `manifest.txt` records `source_commit=a4c88298...` and `native_image_mode=compat`; `chooseRandom.ll` contains `countNumOfAvailableNodes`, `NotEnoughReplicasException`, `numOfReplicas`, and `addIfIsGoodTarget` with DWARF info pointing to `BlockPlacementPolicyDefault.java`.
-
-The bitcode is not expected to be byte-identical to `614good.bc` (different Hadoop version); the comparison table shows the same `chooseRandom` symbol family and comparable symbol counts, both measured with the same pinned `llvm-nm`. See "Notes / caveats" above for the strict/compat and runnable-executable caveats.
-
-## Container management
-
-```bash
-./attach.sh   # interactive shell in the running container
-./delete.sh   # stop and remove the container
-# hdfs only:
-cd hdfs && ./delete.sh
-DELETE_HDFS_WORK_VOLUME=1 ./delete.sh   # also remove the Maven work volume
-```
 
 ## References
 
+- CLODS paper (SOSP'26), §2 Motivating Example (HDFS-10453, Figure 1): `/home/ycx/research/papers/sosp26-paper1972 (1).pdf`
 - GraalVM LLVM Backend for Native Image: <https://www.graalvm.org/22.0/reference-manual/native-image/LLVMBackend/>
 - Research fork (`android_IR`): <https://github.com/rishikeshdevsot/graal/commits/android_IR/>
 - Pinned commit: <https://github.com/rishikeshdevsot/graal/commit/ec486f0f2bc598d3212b62a8d05a10b6d07dea92>

@@ -1,51 +1,33 @@
 {
-  "formatVersion": 2,
-  "referenceType": "captured-from-container-analyzer",
-  "referenceFile": "motivating-example-rounds-1-5.txt",
+  "analysisSeed": {
+    "line": 551,
+    "sourceFile": "BlockPlacementPolicyDefault.java"
+  },
+  "analyzerProvenance": {
+    "capturedTranscript": {
+      "childReturnCode": -2,
+      "completedSelectionCount": 9,
+      "driverOutcome": "stopped-before-unspecified-round-7-selection",
+      "transcriptBytes": 111421,
+      "transcriptSha256": "1d4ca2105f0bbd8cf77606fb75b35d0b209ab7ac8e398c965190675cd7eb62aa"
+    },
+    "containerImageId": "sha256:6722cc0c1aed4aa60e267be3882bc603d259c04dd0896b1510139c6032aec66a",
+    "grpc": "/usr/lib/cmake/grpc",
+    "llvm": "14.0.0",
+    "note": "Reference captured by driving the container's prebuilt static-analysis (zk_1900_clods, source HEAD 222b486b, pinned LLVM 14.0.0 toolchain) on motivating_example_full.bc with the recorded selections, continuing through both 'Was there a divergence point?' prompts (answer 0 = no divergence, which continues the data-flow analysis) until the analysis reaches a ConstantInt and stops. The committed repro/motivating_example/Dockerfile builds the same source with the same toolchain versions; the from-source build's analyzer output is byte-identical to this prebuilt reference (verified for the rounds captured here).",
+    "prebuiltBinarySha256": "b63ea1e5fdf5bbe64afd8334aebc458c0550d54b500ae749bd510c9bd29d76f3",
+    "protobuf": "23.1",
+    "sourceOrigin": "container 06865b433bbb:/home/ridevsot/StaticAnalysis (HEAD); ported into components/static-analyzer/StaticAnalysis",
+    "sourceRevision": "222b486b3850b7a9d098a26a93760e6cee72db68",
+    "z3": "/usr/local/lib/cmake/z3"
+  },
   "bitcode": {
-    "path": "bytecode/motivating_example_full.bc",
     "bytes": 316482648,
+    "path": "bytecode/motivating_example_full.bc",
     "sha256": "a0ca09ca4d4919ceffa29567ff723d2f941210d9de39503b9ac2741da5c1c2b6"
   },
-  "analysisSeed": {
-    "sourceFile": "BlockPlacementPolicyDefault.java",
-    "line": 551
-  },
-  "recordedSelections": [
-    {
-      "round": 1,
-      "prompt": "id",
-      "response": 1
-    },
-    {
-      "round": 2,
-      "prompt": "id",
-      "response": 0
-    },
-    {
-      "round": 3,
-      "prompt": "id",
-      "response": 3
-    },
-    {
-      "round": 4,
-      "prompt": "branch",
-      "response": 0
-    },
-    {
-      "round": 4,
-      "prompt": "id",
-      "response": 3
-    },
-    {
-      "round": 5,
-      "prompt": "id",
-      "response": 0
-    }
-  ],
   "expectedRounds": [
     {
-      "round": 1,
       "branches": [
         {
           "branch": 0,
@@ -53,7 +35,16 @@
             {
               "id": 0,
               "location": "entry",
-              "methodName": "chooseRandom"
+              "methodName": "chooseRandom",
+              "parameterTypes": [
+                "int",
+                "java.lang.String",
+                "java.util.Set",
+                "long",
+                "int",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 185,
@@ -61,7 +52,16 @@
               "id": 1,
               "lineNumber": 528,
               "loopId": 1,
-              "methodName": "chooseRandom"
+              "methodName": "chooseRandom",
+              "parameterTypes": [
+                "int",
+                "java.lang.String",
+                "java.util.Set",
+                "long",
+                "int",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 154,
@@ -69,7 +69,16 @@
               "id": 2,
               "lineNumber": 524,
               "loopId": 1,
-              "methodName": "chooseRandom"
+              "methodName": "chooseRandom",
+              "parameterTypes": [
+                "int",
+                "java.lang.String",
+                "java.util.Set",
+                "long",
+                "int",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 127,
@@ -77,7 +86,16 @@
               "id": 3,
               "lineNumber": 518,
               "loopId": 1,
-              "methodName": "chooseRandom"
+              "methodName": "chooseRandom",
+              "parameterTypes": [
+                "int",
+                "java.lang.String",
+                "java.util.Set",
+                "long",
+                "int",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 103,
@@ -85,7 +103,16 @@
               "id": 4,
               "lineNumber": 515,
               "loopId": 1,
-              "methodName": "chooseRandom"
+              "methodName": "chooseRandom",
+              "parameterTypes": [
+                "int",
+                "java.lang.String",
+                "java.util.Set",
+                "long",
+                "int",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 98,
@@ -93,7 +120,16 @@
               "id": 5,
               "lineNumber": 515,
               "loopId": 1,
-              "methodName": "chooseRandom"
+              "methodName": "chooseRandom",
+              "parameterTypes": [
+                "int",
+                "java.lang.String",
+                "java.util.Set",
+                "long",
+                "int",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 188,
@@ -101,14 +137,23 @@
               "id": 6,
               "lineNumber": 533,
               "loopId": 1,
-              "methodName": "chooseRandom"
+              "methodName": "chooseRandom",
+              "parameterTypes": [
+                "int",
+                "java.lang.String",
+                "java.util.Set",
+                "long",
+                "int",
+                "java.util.List",
+                "boolean"
+              ]
             }
           ]
         }
-      ]
+      ],
+      "round": 1
     },
     {
-      "round": 2,
       "branches": [
         {
           "branch": 0,
@@ -118,28 +163,55 @@
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 0,
               "lineNumber": 571,
-              "methodName": "addIfIsGoodTarget"
+              "methodName": "addIfIsGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "java.util.Set",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 39,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 1,
               "lineNumber": 577,
-              "methodName": "addIfIsGoodTarget"
+              "methodName": "addIfIsGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "java.util.Set",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 37,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 2,
               "lineNumber": 575,
-              "methodName": "addIfIsGoodTarget"
+              "methodName": "addIfIsGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "java.util.Set",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             }
           ]
         }
-      ]
+      ],
+      "round": 2
     },
     {
-      "round": 3,
       "branches": [
         {
           "branch": 0,
@@ -149,133 +221,277 @@
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 0,
               "lineNumber": 622,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 6,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 1,
               "lineNumber": 616,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 52,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 2,
               "lineNumber": 624,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 136,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 3,
               "lineNumber": 642,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 85,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 4,
               "lineNumber": 633,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 97,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 5,
               "lineNumber": 634,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 72,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 6,
               "lineNumber": 628,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 64,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 7,
               "lineNumber": 628,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 146,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 8,
               "lineNumber": 644,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 180,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 9,
               "lineNumber": 651,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 149,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 10,
               "lineNumber": 648,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 223,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 11,
               "lineNumber": 654,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 291,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 12,
               "lineNumber": 667,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 301,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 13,
               "lineNumber": 669,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 303,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 14,
               "lineNumber": 671,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 107,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 15,
               "lineNumber": 636,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 82,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 16,
               "lineNumber": 630,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "byteCodeIndex": 34,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicyDefault",
               "id": 17,
               "lineNumber": 620,
-              "methodName": "isGoodTarget"
+              "methodName": "isGoodTarget",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo",
+                "long",
+                "int",
+                "boolean",
+                "java.util.List",
+                "boolean"
+              ]
             }
           ]
         }
-      ]
+      ],
+      "round": 3
     },
     {
-      "round": 4,
       "branches": [
         {
           "branch": 0,
@@ -283,25 +499,60 @@
             {
               "id": 0,
               "location": "entry",
-              "methodName": "chooseRandom"
+              "methodName": "chooseRandom",
+              "parameterTypes": [
+                "java.lang.String",
+                "java.util.Set",
+                "long",
+                "int",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "id": 1,
               "lineNumber": 462,
               "location": "entry",
-              "methodName": "chooseRemoteRack"
+              "methodName": "chooseRemoteRack",
+              "parameterTypes": [
+                "int",
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
+                "java.util.Set",
+                "long",
+                "int",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "id": 2,
               "lineNumber": 466,
               "location": "entry",
-              "methodName": "chooseRemoteRack"
+              "methodName": "chooseRemoteRack",
+              "parameterTypes": [
+                "int",
+                "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
+                "java.util.Set",
+                "long",
+                "int",
+                "java.util.List",
+                "boolean"
+              ]
             },
             {
               "id": 3,
               "lineNumber": 305,
               "location": "entry",
               "methodName": "chooseTarget",
+              "parameterTypes": [
+                "int",
+                "org.apache.hadoop.net.Node",
+                "java.util.Set",
+                "long",
+                "int",
+                "java.util.List",
+                "boolean"
+              ],
               "strategy": "STACK_TRACE"
             }
           ]
@@ -313,33 +564,38 @@
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
               "id": 0,
               "lineNumber": 0,
-              "methodName": "DatanodeDescriptor"
+              "methodName": "DatanodeDescriptor",
+              "parameterTypes": []
             },
             {
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
               "id": 1,
               "lineNumber": 208,
-              "methodName": "DatanodeDescriptor"
+              "methodName": "DatanodeDescriptor",
+              "parameterTypes": []
             },
             {
               "byteCodeIndex": 10,
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
               "id": 2,
               "lineNumber": 528,
-              "methodName": "rollBlocksScheduled"
+              "methodName": "rollBlocksScheduled",
+              "parameterTypes": []
             },
             {
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
               "id": 3,
               "lineNumber": 0,
-              "methodName": "rollBlocksScheduled"
+              "methodName": "rollBlocksScheduled",
+              "parameterTypes": []
             },
             {
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor",
               "fieldAccess": true,
               "id": 4,
               "lineNumber": 529,
-              "methodName": "rollBlocksScheduled"
+              "methodName": "rollBlocksScheduled",
+              "parameterTypes": []
             }
           ]
         },
@@ -350,45 +606,85 @@
               "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
               "id": 0,
               "lineNumber": 0,
-              "methodName": "DatanodeInfo"
+              "methodName": "DatanodeInfo",
+              "parameterTypes": []
             },
             {
               "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
               "id": 1,
               "lineNumber": 103,
-              "methodName": "DatanodeInfo"
+              "methodName": "DatanodeInfo",
+              "parameterTypes": []
             },
             {
               "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
               "id": 2,
               "lineNumber": 0,
-              "methodName": "DatanodeInfo"
+              "methodName": "DatanodeInfo",
+              "parameterTypes": [
+                "java.lang.String",
+                "java.lang.String",
+                "java.lang.String",
+                "int",
+                "int",
+                "int",
+                "int",
+                "long",
+                "long",
+                "long",
+                "long",
+                "long",
+                "long",
+                "long",
+                "int",
+                "java.lang.String"
+              ]
             },
             {
               "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
               "id": 3,
               "lineNumber": 140,
-              "methodName": "DatanodeInfo"
+              "methodName": "DatanodeInfo",
+              "parameterTypes": [
+                "java.lang.String",
+                "java.lang.String",
+                "java.lang.String",
+                "int",
+                "int",
+                "int",
+                "int",
+                "long",
+                "long",
+                "long",
+                "long",
+                "long",
+                "long",
+                "long",
+                "int",
+                "java.lang.String"
+              ]
             },
             {
               "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
               "id": 4,
               "lineNumber": 0,
-              "methodName": "setRemaining"
+              "methodName": "setRemaining",
+              "parameterTypes": []
             },
             {
               "className": "org.apache.hadoop.hdfs.protocol.DatanodeInfo",
               "fieldAccess": true,
               "id": 5,
               "lineNumber": 243,
-              "methodName": "setRemaining"
+              "methodName": "setRemaining",
+              "parameterTypes": []
             }
           ]
         }
-      ]
+      ],
+      "round": 4
     },
     {
-      "round": 5,
       "branches": [
         {
           "branch": 0,
@@ -398,69 +694,423 @@
               "className": "org.apache.hadoop.hdfs.server.blockmanagement.BlockManager",
               "id": 0,
               "lineNumber": 3518,
-              "methodName": "chooseTargets"
+              "methodName": "chooseTargets",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.blockmanagement.BlockPlacementPolicy"
+              ]
             },
             {
               "id": 1,
               "lineNumber": 137,
               "location": "entry",
-              "methodName": "chooseTarget"
+              "methodName": "chooseTarget",
+              "parameterTypes": [
+                "java.lang.String",
+                "int",
+                "org.apache.hadoop.net.Node",
+                "java.util.Set",
+                "long",
+                "java.util.List"
+              ]
             },
             {
               "id": 2,
               "lineNumber": 169,
               "location": "entry",
-              "methodName": "chooseTarget"
+              "methodName": "chooseTarget",
+              "parameterTypes": [
+                "java.lang.String",
+                "int",
+                "org.apache.hadoop.net.Node",
+                "java.util.Set",
+                "long",
+                "java.util.List"
+              ]
             },
             {
               "id": 3,
               "location": "entry",
               "methodName": "chooseTarget",
+              "parameterTypes": [
+                "java.lang.String",
+                "int",
+                "org.apache.hadoop.net.Node",
+                "java.util.Set",
+                "long",
+                "java.util.List"
+              ],
               "strategy": "STACK_TRACE"
             }
           ]
         }
-      ]
+      ],
+      "round": 5
+    },
+    {
+      "branches": [
+        {
+          "branch": 0,
+          "rules": [
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.Block",
+              "id": 0,
+              "lineNumber": 0,
+              "methodName": "set",
+              "parameterTypes": [
+                "long",
+                "long"
+              ]
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.Block",
+              "id": 1,
+              "lineNumber": 112,
+              "methodName": "set",
+              "parameterTypes": [
+                "long",
+                "long"
+              ]
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.Block",
+              "id": 2,
+              "lineNumber": 0,
+              "methodName": "setNumBytes",
+              "parameterTypes": []
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.Block",
+              "fieldAccess": true,
+              "id": 3,
+              "lineNumber": 137,
+              "methodName": "setNumBytes",
+              "parameterTypes": []
+            }
+          ]
+        }
+      ],
+      "round": 6
+    },
+    {
+      "branches": [
+        {
+          "branch": 0,
+          "rules": [
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.Block",
+              "id": 0,
+              "lineNumber": 0,
+              "methodName": "set",
+              "parameterTypes": [
+                "long",
+                "long"
+              ]
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.Block",
+              "id": 1,
+              "lineNumber": 112,
+              "methodName": "set",
+              "parameterTypes": [
+                "long",
+                "long"
+              ]
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.Block",
+              "id": 2,
+              "lineNumber": 0,
+              "methodName": "setNumBytes",
+              "parameterTypes": []
+            },
+            {
+              "className": "org.apache.hadoop.hdfs.protocol.Block",
+              "fieldAccess": true,
+              "id": 3,
+              "lineNumber": 137,
+              "methodName": "setNumBytes",
+              "parameterTypes": []
+            }
+          ]
+        },
+        {
+          "branch": 1,
+          "rules": [
+            {
+              "id": 0,
+              "location": "entry",
+              "methodName": "setNumBytes",
+              "parameterTypes": []
+            },
+            {
+              "id": 1
+            },
+            {
+              "byteCodeIndex": 77,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 2,
+              "lineNumber": 871,
+              "methodName": "addNewBlock",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 63,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 3,
+              "lineNumber": 870,
+              "methodName": "addNewBlock",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 20,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 4,
+              "lineNumber": 866,
+              "methodName": "addNewBlock",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 137,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 5,
+              "lineNumber": 878,
+              "methodName": "addNewBlock",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 113,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 6,
+              "lineNumber": 916,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 123,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 7,
+              "lineNumber": 916,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 99,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 8,
+              "lineNumber": 915,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 54,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 9,
+              "lineNumber": 910,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 46,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 10,
+              "lineNumber": 910,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 118,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 11,
+              "lineNumber": 916,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 203,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 12,
+              "lineNumber": 924,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 113,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 13,
+              "lineNumber": 916,
+              "loopId": 1,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 123,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 14,
+              "lineNumber": 916,
+              "loopId": 1,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 99,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 15,
+              "lineNumber": 915,
+              "loopId": 1,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 54,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 16,
+              "lineNumber": 910,
+              "loopId": 1,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 46,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 17,
+              "lineNumber": 910,
+              "loopId": 1,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 118,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 18,
+              "lineNumber": 916,
+              "loopId": 1,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ]
+            },
+            {
+              "byteCodeIndex": 203,
+              "className": "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader",
+              "id": 19,
+              "lineNumber": 924,
+              "loopId": 1,
+              "methodName": "updateBlocks",
+              "parameterTypes": [
+                "org.apache.hadoop.hdfs.server.namenode.FSDirectory",
+                "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+              ],
+              "strategy": "STACK_TRACE"
+            }
+          ]
+        }
+      ],
+      "round": 7
     }
   ],
-  "round6": {
-    "status": "not-supplied",
-    "policy": "stop-before-any-input-not-present-in-the-reference"
-  },
-  "analyzerProvenance": {
-    "sourceRevision": "222b486b3850b7a9d098a26a93760e6cee72db68",
-    "sourceOrigin": "container 06865b433bbb:/home/ridevsot/StaticAnalysis (HEAD); ported into components/static-analyzer/StaticAnalysis",
-    "binarySha256": "b63ea1e5fdf5bbe64afd8334aebc458c0550d54b500ae749bd510c9bd29d76f3",
-    "containerImageId": "sha256:6722cc0c1aed4aa60e267be3882bc603d259c04dd0896b1510139c6032aec66a",
-    "llvm": "14.0.0",
-    "z3": "/usr/local/lib/cmake/z3",
-    "grpc": "/usr/lib/cmake/grpc",
-    "protobuf": "23.1",
-    "note": "Reference captured by driving the container's prebuilt static-analysis (built at HEAD 222b486b with the pinned toolchain) on motivating_example_full.bc (originally 614good.bc) with the recorded selections, stopping at the 'Was there a divergence point?' prompt. Output is byte-identical across independent runs (determinism verified). The committed repro/motivating_example/Dockerfile builds the same source with the same toolchain versions (LLVM 14.0.0, Z3, gRPC 1.56.0, protobuf 23.1).",
-    "fromSourceBuildVerified": {
-      "method": "Fresh cmake+build of the ported source from a clean build dir (container toolchain: LLVM 14.0.0, Z3, gRPC 1.56.0, protobuf 23.1; CMAKE_INCLUDE_PATH pointing at the protobuf well-known-types include dir), then driven through the five recorded rounds with drive_rounds.py.",
-      "freshBuildBinarySha256": "902778d2c7cde1b43b9741106d77ff3f17f1ec960b9629de7eaac4067de4429d",
-      "transcriptSha256": "75f3dd50ed73fd111e2415490f30fed12d138bfd4ce5c135fd6bdfee47fd5439",
-      "transcriptBytes": 78649,
-      "comparison": {
-        "match": true,
-        "matchedRounds": [
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "mismatches": []
-      },
-      "interpretation": "The freshly-built binary's sha differs from the prebuilt reference binary (different build directory / Debug build), but its analyzer output is byte-identical to the canonical reference transcript and matches all five rounds, so the from-source build is functionally equivalent and deterministic. The committed repro/motivating_example/Dockerfile builds the same source with the same toolchain versions into /opt (protoc + grpc_cpp_plugin on /opt/grpc/bin; well-known protos and protobuf headers under /opt/grpc/include, the analog of this build's /include)."
+  "formatVersion": 3,
+  "recordedSelections": [
+    {
+      "prompt": "id",
+      "response": 1,
+      "round": 1
+    },
+    {
+      "prompt": "id",
+      "response": 0,
+      "round": 2
+    },
+    {
+      "prompt": "id",
+      "response": 3,
+      "round": 3
+    },
+    {
+      "prompt": "branch",
+      "response": 0,
+      "round": 4
+    },
+    {
+      "prompt": "id",
+      "response": 3,
+      "round": 4
+    },
+    {
+      "prompt": "id",
+      "response": 0,
+      "round": 5
+    },
+    {
+      "prompt": "divergence",
+      "response": 0,
+      "round": 5
+    },
+    {
+      "prompt": "id",
+      "response": 3,
+      "round": 6
+    },
+    {
+      "prompt": "divergence",
+      "response": 0,
+      "round": 6
     }
-  },
-  "legacyCachedImageReference": {
-    "tag": "bm_static_analysis:latest",
-    "imageId": "sha256:2b3dc795ff39ba6b91ce25068dafbff91ef63d4e7b7d1fa773fb887751a9a3c9",
-    "sourceRevision": "a25fe4ad071483c2bd7c03fb185a5f3ab3c4894b",
-    "binarySha256": "37b131f826134117aac9de90ac2859390aec77b6a8b9b90ef8357a8af3a12af5",
-    "note": "The earlier bm_static_analysis:latest image (source a25fe4ad) was the previous reference. It matches rounds 1,2,3,5 and round 4 branch 0 exactly; its round 4 branches 1/2 list fewer field writers than the adopted 222b486b analyzer. Retained for provenance only; the canonical reference is analyzerProvenance above."
+  ],
+  "referenceFile": "transcript-motivating-example-ref.log",
+  "referenceType": "captured-from-container-analyzer",
+  "stoppingCondition": {
+    "constantHex": "0x7FFFFFFFFFFFFFFF",
+    "constantValue": "9223372036854775807",
+    "description": "The data-flow analysis terminates when the traced value is a ConstantInt with no further definition. On this trajectory the final round traces the callers of Block.setNumBytes (the b.size writer) and reaches a call site that passes i64 9223372036854775807 (Long.MAX_VALUE) as the argument, which the analyzer identifies as a constant ('Constant value: i64 9223372036854775807'). This is the root cause of HDFS-10453: the edit-log replay path (FSEditLogLoader) writes Long.MAX_VALUE into b.size, so isGoodTarget always returns false and replication never succeeds.",
+    "transcriptMarker": "Constant value: i64 9223372036854775807"
   }
 }

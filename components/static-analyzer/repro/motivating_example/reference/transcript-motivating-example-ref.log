@@ -1728,3 +1728,776 @@ What is the ID to continue
 [HARNESS] round=5 prompt=id response=0
 0
 Was there a divergence point? 
+
+[HARNESS] round=5 prompt=divergence response=0
+0
+Continuing Data flow analysis
+
+-------------------------------
+
+Running the data dependency pass 
+value to analyze is:   %32 = extractvalue { i64, i64 } %30, 1, !dbg !3260660, !bci !3260658, !line !3260659
+Selected condition event is: Location event node:   %32 = extractvalue { i64, i64 } %30, 1, !dbg !3260660, !bci !3260658, !line !3260659
+
+Running control depenency pass on instr:   %32 = extractvalue { i64, i64 } %30, 1, !dbg !3260660, !bci !3260658, !line !3260659
+
+The start point of this iteration is:   %32 = extractvalue { i64, i64 } %30, 1, !dbg !3260660, !bci !3260658, !line !3260659
+Instruction :  %30 = call { i64, i64 } @Block_getNumBytes_ac7a4b05531160346daf8cef7344036084e51f76(i64 %15, i8 addrspace(1)* %19) #10, !dbg !3260472
+
+The start point of this iteration is:   %30 = call { i64, i64 } @Block_getNumBytes_ac7a4b05531160346daf8cef7344036084e51f76(i64 %15, i8 addrspace(1)* %19) #10, !dbg !3260472
+Function being called Block_getNumBytes_ac7a4b05531160346daf8cef7344036084e51f76
+
+ Function cleaned:Block_getNumBytes_ac7a4b05531160346daf8cef7344036084e51f76
+
+
+The start point of this iteration is:   ret { i64, i64 } %19, !dbg !3260519, !bci !3260520, !line !3260518
+Instruction :  %19 = insertvalue { i64, i64 } %18, i64 %10, 1, !dbg !3260519
+
+The start point of this iteration is:   %19 = insertvalue { i64, i64 } %18, i64 %10, 1, !dbg !3260519
+Instruction :  %18 = insertvalue { i64, i64 } zeroinitializer, i64 %0, 0, !dbg !3260519
+Instruction :  %10 = load i64, i64 addrspace(1)* %9, align 4, !dbg !3260516, !bci !3260517, !line !3260518
+
+The start point of this iteration is:   %10 = load i64, i64 addrspace(1)* %9, align 4, !dbg !3260516, !bci !3260517, !line !3260518
+  %18 = insertvalue { i64, i64 } zeroinitializer, i64 %0, 0, !dbg !3260519
+Instruction :  %9 = bitcast i8 addrspace(1)* %8 to i64 addrspace(1)*, !dbg !3260516
+
+The start point of this iteration is:   %9 = bitcast i8 addrspace(1)* %8 to i64 addrspace(1)*, !dbg !3260516
+  %18 = insertvalue { i64, i64 } zeroinitializer, i64 %0, 0, !dbg !3260519
+Instruction :  %8 = getelementptr i8, i8 addrspace(1)* %1, i64 24, !dbg !3260516
+
+The start point of this iteration is:   %8 = getelementptr i8, i8 addrspace(1)* %1, i64 24, !dbg !3260516
+  %18 = insertvalue { i64, i64 } zeroinitializer, i64 %0, 0, !dbg !3260519
+Argument : i8 addrspace(1)* %1
+
+The start point of this iteration is: i8 addrspace(1)* %1
+  %18 = insertvalue { i64, i64 } zeroinitializer, i64 %0, 0, !dbg !3260519
+Analyzing argument: i8 addrspace(1)* %1 which is in function: Block_getNumBytes_ac7a4b05531160346daf8cef7344036084e51f76 
+This argument is actually an object 
+GEP instruction is:   %8 = getelementptr i8, i8 addrspace(1)* %1, i64 24, !dbg !3260516
+Field offset is: i64 24
+Got the offset val: 24
+Finding methods of this class 
+Method is Block_constructor_c607619094c0854131eb97a306ea7c7d0622df74
+Method is Block_constructor_592f033888efadaab199610b5dc206b8861be3b6
+Method is Block_constructor_ea4a6c3051f395c12ca605492d2192e18bff5adb
+Method is Block_constructor_fb51cb15c0c70115f8609b073e3588afc9c858ce
+Method is Block_appendStringTo_1b2c63b6322a48d09e272a3c5709f6261dd82455
+Method is Block_compareTo_aa5932466e6e8d9c0cb18485b9b3f83cb9f7d61c
+Method is Block_compareTo_0d05a55cb0be34af3623cae571ea158c0592cbd9
+Method is Block_equals_b656f7022acf3a32e35b881db8ebca5f6ca246c0
+Method is Block_getBlockId_6516d6e4aca26a823ef35c04dbc08e2edfb5083d
+Method is Block_getBlockName_01aaf495ad16b8fe6eaef68f78c74bbbd28469d8
+Method is Block_getGenerationStamp_affc119580dd043d509d1152aae55f58766376c4
+Method is Block_getNumBytes_ac7a4b05531160346daf8cef7344036084e51f76
+Same offset GEP found 
+Not a writer to this field 
+Method is Block_hashCode_1ae9e5226684c749c7e44e3f68131624280f8044
+Method is Block_readFields_6b772795c75163d029c6b3aa0f0c39a21ecb4e0e
+Method is Block_readHelper_88e907c006e4731e4e1e890959f659ecdb0bfcce
+Same offset GEP found 
+Not a writer to this field 
+Method is Block_set_3bb5f0813ba86b5139335bdd6a593f69bda0e2b3
+Same offset GEP found 
+Is a writer to this field:   store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+Method writes to field:  store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+Method is Block_setGenerationStamp_2770e810ac37be58514ccac412fe8997b9037e59
+Method is Block_setNumBytes_b383d0b9f5c38fb0bd829c4d4fdb5f20a0240943
+Same offset GEP found 
+Is a writer to this field:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+Method writes to field:  store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+Method is Block_toString_fe72dbaef179abd0557e587842ea970a727bdc90
+Method is Block_write_7da2f3cd3754d45a10016a3bdf8b2a130c970d70
+Method is Block_writeHelper_30acc18a061f8e8fe13474035be3e537f6b2f66f
+Same offset GEP found 
+Not a writer to this field 
+Insert the following fork values for instrumentation: 
+fork value inserted:   store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+fork value inserted:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+
+The start point of this iteration is:   %18 = insertvalue { i64, i64 } zeroinitializer, i64 %0, 0, !dbg !3260519
+Argument : i64 %0
+
+The start point of this iteration is: i64 %0
+Multiple variable definitions, instrumentation required 
+
+-------------------------------
+Branch ID: 0
+For: i8 addrspace(1)* %1
+
+Running control depenency pass on instr:   store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+Running control depenency pass on instr:   store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+
+
+
+
+ Condition Instrumentations 
+
+
+
+
+ID: 0
+Block number is B0
+Instruction is   br i1 %10, label %B1, label %B4, !dbg !3260468, !prof !3260522
+Print before the following source location 
+org/apache/hadoop/hdfs/protocol/Block.java set:0
+The parameters are: long, long, 
+
+
+ID: 1
+Instruction is   store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+Print after the following source location 
+org/apache/hadoop/hdfs/protocol/Block.java set:112
+The parameters are: long, long, 
+Running control depenency pass on instr:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+Running control depenency pass on instr:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+
+
+
+
+ Condition Instrumentations 
+
+
+
+
+ID: 2
+Block number is B0
+Instruction is   br i1 %8, label %B1, label %B4, !dbg !3260467, !prof !3260520
+Print before the following source location 
+org/apache/hadoop/hdfs/protocol/Block.java setNumBytes:0
+The parameters are: 
+
+
+ID: 3
+Instruction is   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+Print after the following source location 
+org/apache/hadoop/hdfs/protocol/Block.java setNumBytes:137
+The parameters are: 
+Accessing field member of a class org.apache.hadoop.hdfs.protocol.Block. So print variable
+current event is: Location event node:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+
+
+Enter protoc buffer serialization stage:
+
+
+Deserialized message: instrumentationRules {
+  className: "org.apache.hadoop.hdfs.protocol.Block"
+  methodName: "set"
+  parameterTypes: "long"
+  parameterTypes: "long"
+}
+instrumentationRules {
+  id: 1
+  className: "org.apache.hadoop.hdfs.protocol.Block"
+  methodName: "set"
+  parameterTypes: "long"
+  parameterTypes: "long"
+  lineNumber: 112
+}
+instrumentationRules {
+  id: 2
+  className: "org.apache.hadoop.hdfs.protocol.Block"
+  methodName: "setNumBytes"
+}
+instrumentationRules {
+  id: 3
+  className: "org.apache.hadoop.hdfs.protocol.Block"
+  methodName: "setNumBytes"
+  lineNumber: 137
+}
+
+What is the ID to continue 
+
+[HARNESS] round=6 prompt=id response=3
+3
+Was there a divergence point? 
+
+[HARNESS] round=6 prompt=divergence response=0
+0
+Continuing Data flow analysis
+
+-------------------------------
+
+Running the data dependency pass 
+value to analyze is:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+Selected condition event is: Location event node:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+
+Running control depenency pass on instr:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+
+The start point of this iteration is:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+Argument : i64 %2
+Instruction :  %10 = bitcast i8 addrspace(1)* %9 to i64 addrspace(1)*, !dbg !3260521
+
+The start point of this iteration is:   %10 = bitcast i8 addrspace(1)* %9 to i64 addrspace(1)*, !dbg !3260521
+i64 %2
+Instruction :  %9 = getelementptr i8, i8 addrspace(1)* %1, i64 24, !dbg !3260521
+
+The start point of this iteration is:   %9 = getelementptr i8, i8 addrspace(1)* %1, i64 24, !dbg !3260521
+i64 %2
+Argument : i8 addrspace(1)* %1
+
+The start point of this iteration is: i8 addrspace(1)* %1
+i64 %2
+Analyzing argument: i8 addrspace(1)* %1 which is in function: Block_setNumBytes_b383d0b9f5c38fb0bd829c4d4fdb5f20a0240943 
+This argument is actually an object 
+GEP instruction is:   %9 = getelementptr i8, i8 addrspace(1)* %1, i64 24, !dbg !3260521
+Field offset is: i64 24
+Got the offset val: 24
+Finding methods of this class 
+Method is Block_constructor_c607619094c0854131eb97a306ea7c7d0622df74
+Method is Block_constructor_592f033888efadaab199610b5dc206b8861be3b6
+Method is Block_constructor_ea4a6c3051f395c12ca605492d2192e18bff5adb
+Method is Block_constructor_fb51cb15c0c70115f8609b073e3588afc9c858ce
+Method is Block_appendStringTo_1b2c63b6322a48d09e272a3c5709f6261dd82455
+Method is Block_compareTo_aa5932466e6e8d9c0cb18485b9b3f83cb9f7d61c
+Method is Block_compareTo_0d05a55cb0be34af3623cae571ea158c0592cbd9
+Method is Block_equals_b656f7022acf3a32e35b881db8ebca5f6ca246c0
+Method is Block_getBlockId_6516d6e4aca26a823ef35c04dbc08e2edfb5083d
+Method is Block_getBlockName_01aaf495ad16b8fe6eaef68f78c74bbbd28469d8
+Method is Block_getGenerationStamp_affc119580dd043d509d1152aae55f58766376c4
+Method is Block_getNumBytes_ac7a4b05531160346daf8cef7344036084e51f76
+Same offset GEP found 
+Not a writer to this field 
+Method is Block_hashCode_1ae9e5226684c749c7e44e3f68131624280f8044
+Method is Block_readFields_6b772795c75163d029c6b3aa0f0c39a21ecb4e0e
+Method is Block_readHelper_88e907c006e4731e4e1e890959f659ecdb0bfcce
+Same offset GEP found 
+Not a writer to this field 
+Method is Block_set_3bb5f0813ba86b5139335bdd6a593f69bda0e2b3
+Same offset GEP found 
+Is a writer to this field:   store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+Method writes to field:  store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+Method is Block_setGenerationStamp_2770e810ac37be58514ccac412fe8997b9037e59
+Method is Block_setNumBytes_b383d0b9f5c38fb0bd829c4d4fdb5f20a0240943
+Same offset GEP found 
+Is a writer to this field:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+Method writes to field:  store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+Method is Block_toString_fe72dbaef179abd0557e587842ea970a727bdc90
+Method is Block_write_7da2f3cd3754d45a10016a3bdf8b2a130c970d70
+Method is Block_writeHelper_30acc18a061f8e8fe13474035be3e537f6b2f66f
+Same offset GEP found 
+Not a writer to this field 
+Insert the following fork values for instrumentation: 
+fork value inserted:   store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+fork value inserted:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+
+The start point of this iteration is: i64 %2
+Analyzing argument: i64 %2 which is in function: Block_setNumBytes_b383d0b9f5c38fb0bd829c4d4fdb5f20a0240943 
+Callee inst is: Block_setNumBytes_b383d0b9f5c38fb0bd829c4d4fdb5f20a0240943
+Finding caller in the caller map
+Caller exists: ExtendedBlock_setNumBytes_db125bdc6367ee273af92055bfb179b7f86276fa
+
+ Function cleaned:ExtendedBlock_setNumBytes_db125bdc6367ee273af92055bfb179b7f86276fa
+
+Caller exists: BlockManager_removeBlock_29b9e8d4264afb84e0e790f00f98034dafdefb68
+
+ Function cleaned:BlockManager_removeBlock_29b9e8d4264afb84e0e790f00f98034dafdefb68
+
+Caller exists: FSEditLogLoader_addNewBlock_4e72a76a13a1db2bcb48cfabae946d09a8fa5586
+
+ Function cleaned:FSEditLogLoader_addNewBlock_4e72a76a13a1db2bcb48cfabae946d09a8fa5586
+
+Caller exists: FSEditLogLoader_updateBlocks_07d48c12b8d524af8d76cf5b45782b5be4dcf6d8
+
+ Function cleaned:FSEditLogLoader_updateBlocks_07d48c12b8d524af8d76cf5b45782b5be4dcf6d8
+
+Caller exists: FSEditLogLoader_updateBlocks_07d48c12b8d524af8d76cf5b45782b5be4dcf6d8
+
+ Function cleaned:FSEditLogLoader_updateBlocks_07d48c12b8d524af8d76cf5b45782b5be4dcf6d8
+
+Caller inst is:   %13 = call { i64 } @Block_setNumBytes_b383d0b9f5c38fb0bd829c4d4fdb5f20a0240943(i64 %0, i8 addrspace(1)* %11, i64 %2) #9, !dbg !3260467
+Caller argument is: i64 %2
+Caller inst is:   %10 = call { i64 } @Block_setNumBytes_b383d0b9f5c38fb0bd829c4d4fdb5f20a0240943(i64 %0, i8 addrspace(1)* %2, i64 9223372036854775807) #9, !dbg !3260467
+Caller argument is: i64 9223372036854775807
+Caller inst is:   %77 = call { i64 } @Block_setNumBytes_b383d0b9f5c38fb0bd829c4d4fdb5f20a0240943(i64 %75, i8 addrspace(1)* %58, i64 %76) #19, !dbg !3262197
+Caller argument is:   %76 = extractvalue { i64, i64 } %74, 1, !dbg !3262286, !bci !3262287, !line !3262288
+Caller inst is:   %88 = call { i64 } @Block_setNumBytes_b383d0b9f5c38fb0bd829c4d4fdb5f20a0240943(i64 %86, i8 addrspace(1)* %63, i64 %87) #17, !dbg !3262130
+Caller argument is:   %87 = extractvalue { i64, i64 } %85, 1, !dbg !3262232, !bci !3262233, !line !3262230
+Caller inst is:   %182 = call { i64 } @Block_setNumBytes_b383d0b9f5c38fb0bd829c4d4fdb5f20a0240943(i64 %180, i8 addrspace(1)* %149, i64 %181) #32, !dbg !3262130
+Caller argument is:   %181 = extractvalue { i64, i64 } %179, 1, !dbg !3262232, !bci !3262233, !line !3262230
+Insert the following fork values for instrumentation: 
+fork value inserted: i64 %2
+fork value inserted: i64 9223372036854775807
+fork value inserted:   %76 = extractvalue { i64, i64 } %74, 1, !dbg !3262286, !bci !3262287, !line !3262288
+fork value inserted:   %87 = extractvalue { i64, i64 } %85, 1, !dbg !3262232, !bci !3262233, !line !3262230
+fork value inserted:   %181 = extractvalue { i64, i64 } %179, 1, !dbg !3262232, !bci !3262233, !line !3262230
+Multiple variable definitions, instrumentation required 
+
+-------------------------------
+Branch ID: 0
+For: i8 addrspace(1)* %1
+
+Running control depenency pass on instr:   store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+Running control depenency pass on instr:   store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+
+
+
+
+ Condition Instrumentations 
+
+
+
+
+ID: 0
+Block number is B0
+Instruction is   br i1 %10, label %B1, label %B4, !dbg !3260468, !prof !3260522
+Print before the following source location 
+org/apache/hadoop/hdfs/protocol/Block.java set:0
+The parameters are: long, long, 
+
+
+ID: 1
+Instruction is   store i64 %3, i64 addrspace(1)* %14, align 4, !dbg !3260524
+Print after the following source location 
+org/apache/hadoop/hdfs/protocol/Block.java set:112
+The parameters are: long, long, 
+Running control depenency pass on instr:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+Running control depenency pass on instr:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+
+
+
+
+ Condition Instrumentations 
+
+
+
+
+ID: 2
+Block number is B0
+Instruction is   br i1 %8, label %B1, label %B4, !dbg !3260467, !prof !3260520
+Print before the following source location 
+org/apache/hadoop/hdfs/protocol/Block.java setNumBytes:0
+The parameters are: 
+
+
+ID: 3
+Instruction is   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+Print after the following source location 
+org/apache/hadoop/hdfs/protocol/Block.java setNumBytes:137
+The parameters are: 
+Accessing field member of a class org.apache.hadoop.hdfs.protocol.Block. So print variable
+current event is: Location event node:   store i64 %2, i64 addrspace(1)* %10, align 4, !dbg !3260521
+
+
+-------------------------------
+Branch ID: 1
+For: i64 %2
+
+
+
+ID: 0
+len
+Print argument: 1
+At function entry setNumBytes()
+
+
+ID: 1
+Constant value: i64 9223372036854775807
+Running control depenency pass on instr:   %76 = extractvalue { i64, i64 } %74, 1, !dbg !3262286, !bci !3262287, !line !3262288
+Running control depenency pass on instr:   %76 = extractvalue { i64, i64 } %74, 1, !dbg !3262286, !bci !3262287, !line !3262288
+
+
+
+
+ Condition Instrumentations 
+
+
+
+
+ID: 2
+Block number is B29
+Instruction is   br i1 %73, label %B30, label %B75, !dbg !3262285, !prof !3262248, !bci !3262284, !line !3262281
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java addNewBlock:871
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp, 
+The bci for the source location is: 77
+
+
+ID: 3
+Block number is B26
+Instruction is   br i1 %66, label %B27, label %B76, !dbg !3262278, !prof !3262248, !bci !3262277, !line !3262273
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java addNewBlock:870
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp, 
+The bci for the source location is: 63
+
+
+ID: 4
+Block number is B8
+Instruction is   br i1 %29, label %B9, label %B14, !dbg !3262247, !prof !3262248, !bci !3262245, !line !3262246
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java addNewBlock:866
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp, 
+The bci for the source location is: 20
+
+
+ID: 5
+Instruction is   %76 = extractvalue { i64, i64 } %74, 1, !dbg !3262286, !bci !3262287, !line !3262288
+Print after the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java addNewBlock:878
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp, 
+The bci for the source location is: 137
+Running control depenency pass on instr:   %87 = extractvalue { i64, i64 } %85, 1, !dbg !3262232, !bci !3262233, !line !3262230
+Running control depenency pass on instr:   %87 = extractvalue { i64, i64 } %85, 1, !dbg !3262232, !bci !3262233, !line !3262230
+
+
+
+
+ Condition Instrumentations 
+
+
+
+
+ID: 6
+Block number is B25
+Instruction is   br i1 %81, label %B26, label %B27, !dbg !3262224, !prof !3262198, !bci !3262223, !line !3262220
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:916
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 113
+
+
+ID: 7
+Block number is B28
+Instruction is   br i1 %83, label %B29, label %B232, !dbg !3262227, !prof !3262198, !bci !3262228, !line !3262220
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:916
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 123
+
+
+ID: 8
+Block number is B22
+Instruction is   br i1 %74, label %B23, label %B234, !dbg !3262217, !prof !3262198, !bci !3262216, !line !3262212
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:915
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 99
+
+
+ID: 9
+Block number is B14
+Instruction is   br i1 %57, label %B15, label %B16, !dbg !3262203, !prof !3262198, !bci !3262204, !line !3262200
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:910
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 54
+
+
+ID: 10
+Block number is B12
+Instruction is   br i1 %56, label %B13, label %B14, !dbg !3262197, !prof !3262198, !bci !3262199, !line !3262200
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:910
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 46
+
+
+ID: 11
+Block number is B27
+Instruction is   br i1 %82, label %B28, label %B233, !dbg !3262225, !prof !3262198, !bci !3262226, !line !3262220
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:916
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 118
+
+
+ID: 12
+Instruction is   %87 = extractvalue { i64, i64 } %85, 1, !dbg !3262232, !bci !3262233, !line !3262230
+Print after the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:924
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 203
+Running control depenency pass on instr:   %181 = extractvalue { i64, i64 } %179, 1, !dbg !3262232, !bci !3262233, !line !3262230
+Running control depenency pass on instr:   %181 = extractvalue { i64, i64 } %179, 1, !dbg !3262232, !bci !3262233, !line !3262230
+
+
+
+
+ Condition Instrumentations 
+
+
+
+
+ID: 13
+Block number is B74
+Instruction is   br i1 %175, label %B75, label %B76, !dbg !3262224, !prof !3262198, !bci !3262223, !line !3262220
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:916
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 113
+Instruction is in a loop
+
+
+ID: 14
+Block number is B77
+Instruction is   br i1 %177, label %B78, label %B109, !dbg !3262227, !prof !3262198, !bci !3262228, !line !3262220
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:916
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 123
+Instruction is in a loop
+
+
+ID: 15
+Block number is B71
+Instruction is   br i1 %168, label %B72, label %B111, !dbg !3262217, !prof !3262198, !bci !3262216, !line !3262212
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:915
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 99
+Instruction is in a loop
+
+
+ID: 16
+Block number is B62
+Instruction is   br i1 %142, label %B63, label %B114, !dbg !3262203, !prof !3262198, !bci !3262204, !line !3262200
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:910
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 54
+Instruction is in a loop
+
+
+ID: 17
+Block number is B61
+Instruction is   br i1 %141, label %B62, label %B115, !dbg !3262197, !prof !3262198, !bci !3262199, !line !3262200
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:910
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 46
+Instruction is in a loop
+
+
+ID: 18
+Block number is B76
+Instruction is   br i1 %176, label %B77, label %B110, !dbg !3262225, !prof !3262198, !bci !3262226, !line !3262220
+Print before the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:916
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 118
+Instruction is in a loop
+
+
+ID: 19
+Instruction is   %181 = extractvalue { i64, i64 } %179, 1, !dbg !3262232, !bci !3262233, !line !3262230
+Instruction is in a loop
+Print after the following source location 
+org/apache/hadoop/hdfs/server/namenode/FSEditLogLoader.java updateBlocks:924
+The parameters are: org.apache.hadoop.hdfs.server.namenode.FSDirectory, org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp, 
+The bci for the source location is: 203
+Print or use an existing stacktrace to point to the correct caller function ofBlock_setNumBytes_b383d0b9f5c38fb0bd829c4d4fdb5f20a0240943
+Subprogram -> 
+name: setNumBytes
+line: 137
+<- Subprogram
+method_name setNumBytes
+class_name Block.java
+
+Enter protoc buffer serialization stage:
+
+
+Deserialized message: instrumentationRules {
+  className: "org.apache.hadoop.hdfs.protocol.Block"
+  methodName: "set"
+  parameterTypes: "long"
+  parameterTypes: "long"
+}
+instrumentationRules {
+  id: 1
+  className: "org.apache.hadoop.hdfs.protocol.Block"
+  methodName: "set"
+  parameterTypes: "long"
+  parameterTypes: "long"
+  lineNumber: 112
+}
+instrumentationRules {
+  id: 2
+  className: "org.apache.hadoop.hdfs.protocol.Block"
+  methodName: "setNumBytes"
+}
+instrumentationRules {
+  id: 3
+  className: "org.apache.hadoop.hdfs.protocol.Block"
+  methodName: "setNumBytes"
+  lineNumber: 137
+}
+instrumentationRules {
+  className: "org.apache.hadoop.hdfs.protocol.ExtendedBlock"
+  methodName: "setNumBytes"
+  location: "entry"
+}
+instrumentationRules {
+  id: 1
+}
+instrumentationRules {
+  id: 2
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "addNewBlock"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp"
+  lineNumber: 871
+  byteCodeIndex: 77
+}
+instrumentationRules {
+  id: 3
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "addNewBlock"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp"
+  lineNumber: 870
+  byteCodeIndex: 63
+}
+instrumentationRules {
+  id: 4
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "addNewBlock"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp"
+  lineNumber: 866
+  byteCodeIndex: 20
+}
+instrumentationRules {
+  id: 5
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "addNewBlock"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$AddBlockOp"
+  lineNumber: 878
+  byteCodeIndex: 137
+}
+instrumentationRules {
+  id: 6
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 916
+  byteCodeIndex: 113
+}
+instrumentationRules {
+  id: 7
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 916
+  byteCodeIndex: 123
+}
+instrumentationRules {
+  id: 8
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 915
+  byteCodeIndex: 99
+}
+instrumentationRules {
+  id: 9
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 910
+  byteCodeIndex: 54
+}
+instrumentationRules {
+  id: 10
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 910
+  byteCodeIndex: 46
+}
+instrumentationRules {
+  id: 11
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 916
+  byteCodeIndex: 118
+}
+instrumentationRules {
+  id: 12
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 924
+  byteCodeIndex: 203
+}
+instrumentationRules {
+  id: 13
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 916
+  byteCodeIndex: 113
+}
+instrumentationRules {
+  id: 14
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 916
+  byteCodeIndex: 123
+}
+instrumentationRules {
+  id: 15
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 915
+  byteCodeIndex: 99
+}
+instrumentationRules {
+  id: 16
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 910
+  byteCodeIndex: 54
+}
+instrumentationRules {
+  id: 17
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 910
+  byteCodeIndex: 46
+}
+instrumentationRules {
+  id: 18
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 916
+  byteCodeIndex: 118
+}
+instrumentationRules {
+  id: 19
+  className: "org.apache.hadoop.hdfs.server.namenode.FSEditLogLoader"
+  methodName: "updateBlocks"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSDirectory"
+  parameterTypes: "org.apache.hadoop.hdfs.server.namenode.FSEditLogOp$BlockListUpdatingOp"
+  lineNumber: 924
+  byteCodeIndex: 203
+  loopId: 1
+}
+instrumentationRules {
+  id: 20
+  strategy: STACK_TRACE
+  className: "Block.java"
+  methodName: "setNumBytes"
+  lineNumber: 137
+}
+
+What is the branch ID to continue 

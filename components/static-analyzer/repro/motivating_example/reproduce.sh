@@ -3,12 +3,14 @@ set -euo pipefail
 
 # Reproduce the CLODS static-analyzer motivating example (HDFS-10453).
 #
-# Default (full): drive the historically recorded manual-selection rounds on the
-# 316 MB monolithic LLVM module bytecode/motivating_example_full.bc and check
-# the captured plan against reference/manifest.json.
-# --fast: same analyzer and seed on the 33 MB abridged module
-# bytecode/motivating_example_fast.bc, checked against reference/manifest-fast.json
-# (a quicker smoke-test of the same CDA/DDA/CSA pipeline; see the component README).
+# Drives the recorded manual-selection rounds on the 316 MB monolithic LLVM
+# module bytecode/motivating_example_full.bc and checks the captured plan
+# against reference/manifest.json. The trajectory continues through both
+# "Was there a divergence point?" prompts (answer 0 = no divergence, which
+# continues the data-flow analysis) until the analysis reaches a ConstantInt:
+# the call site that passes Long.MAX_VALUE (9223372036854775807) to
+# Block.setNumBytes -- the delete thread's write of b.size and the root cause
+# of HDFS-10453. Reaching a constant is the data-flow stopping condition.
 #
 # This harness builds the ported config-driven StaticAnalysis source (from
 # components/static-analyzer/StaticAnalysis, originally
@@ -18,28 +20,24 @@ set -euo pipefail
 # The analyzer is config-driven: instead of patching a hard-coded bitcode path,
 # the harness writes a CLODS.conf that points IRFilePath at the mounted bitcode.
 #
-# The driver stops before the first prompt not covered by the reference (full
-# mode: the undocumented divergence prompt after Round 5; fast mode: the Round 6
-# id prompt). It does not invent selections beyond the recorded input.
+# The driver stops at the first prompt past the recorded input (the selection
+# prompt after the constant is reached). It does not invent selections beyond
+# the recorded input.
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 DEFAULT_REPO=$(cd -- "$SCRIPT_DIR/../.." && pwd)
 REFERENCE_MANIFEST=$SCRIPT_DIR/reference/manifest.json
 REPRO_IMAGE=${REPRO_IMAGE:-clods-static-analyzer:local}
 MAX_TRANSCRIPT_BYTES=67108864
-mode=full
 
 usage() {
   cat <<'USAGE'
 Usage: reproduce.sh --output DIR [options]
 
 Reproduce the CLODS static-analyzer motivating example (HDFS-10453) on the
-monolithic LLVM module bytecode/motivating_example_full.bc (default), or on the
-33 MB abridged module bytecode/motivating_example_fast.bc with --fast.
+monolithic LLVM module bytecode/motivating_example_full.bc.
 
 Options:
-  --fast                  Use the abridged 33 MB module + the fast reference
-                          (a quicker smoke-test of the same pipeline; see README)
   --repo DIR              Component root (default: detected from this script)
   --output DIR            New directory for captured evidence (required)
   --build-image           Build repro/motivating_example/Dockerfile before running
@@ -48,13 +46,10 @@ Options:
   --overwrite-output      Remove and recreate an existing output directory
   -h, --help              Show this help
 
-The recorded input ends after the last recorded selection. The driver stops
-before the first prompt that is not covered by the reference, so a successful
-bounded reproduction exits 0:
-  - full mode: outcome "incomplete-unrecorded-divergence-input" (stops at the
-    undocumented divergence prompt after Round 5)
-  - fast mode: outcome "stopped-before-unspecified-round-6-selection" (stops at
-    the Round 6 id prompt; the abridged module continues one CSA hop further)
+The recorded input ends after the last recorded selection. The driver stops at
+the first prompt past the recorded input (the selection prompt after the
+constant is reached), so a successful bounded reproduction exits 0 with outcome
+"stopped-before-unspecified-round-7-selection".
 USAGE
 }
 
@@ -67,7 +62,6 @@ original_command=("$0" "$@")
 
 while (($#)); do
   case "$1" in
-    --fast) mode=fast; shift ;;
     --repo|--output|--image|--prompt-timeout)
       (($# >= 2)) || { printf 'Missing value for %s\n' "$1" >&2; exit 2; }
       option=$1
@@ -86,11 +80,6 @@ while (($#)); do
     *) printf 'Unknown argument: %s\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
 done
-
-case "$mode" in
-  fast) REFERENCE_MANIFEST=$SCRIPT_DIR/reference/manifest-fast.json ;;
-  full) REFERENCE_MANIFEST=$SCRIPT_DIR/reference/manifest.json ;;
-esac
 
 read -r EXPECTED_BC_PATH EXPECTED_BC_BYTES EXPECTED_BC_SHA256 < <(
   python3 - "$REFERENCE_MANIFEST" <<'PY'
@@ -233,6 +222,7 @@ docker run --rm --network none \
       -Dprotobuf_DIR="$protobuf_dir" \
       -DgRPC_DIR="$grpc_dir" \
       -DCMAKE_INCLUDE_PATH="$include_path" \
+      -DCMAKE_EXE_LINKER_FLAGS="-L/opt/grpc/lib -L/opt/z3/lib" \
       > /results/configure.log 2>&1
     cmake --build "$source_dir/StaticAnalysis/build" --parallel > /results/build.log 2>&1
     status=0

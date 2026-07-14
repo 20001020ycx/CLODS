@@ -4,16 +4,22 @@ Backward control/data-flow + call-site analysis over a monolithic LLVM IR module
 
 Everything runs in Docker. No host LLVM, Z3, or protobuf is required. Requirements: Linux x86-64, Docker Engine, Git LFS, internet during image build, ~2 GB disk for the bitcode.
 
+> **Determinism note.** LLVM IR generation (the `ir-generation` component) may reorder functions across runs/versions, which would change the analyzer's plan numbering. The static analyzer therefore consumes a **pinned pre-compiled module**, `bytecode/motivating_example_full.bc` (316 MB, Git LFS), so the plan is reproducible. Hydrate it with `git lfs pull --include='components/static-analyzer/bytecode/motivating_example_full.bc'`. To inspect the IR, disassemble on demand (do not commit the ~1.6 GB output):
+>
+> ```bash
+> llvm-dis bytecode/motivating_example_full.bc -o motivating_example_full.ll   # ~1 min, ~1.6 GB
+> ```
+
 ## 1) Reproduce the motivating example (HDFS-10453)
 
-The analyzer is config-driven: `CLODS.conf` selects the IR module and the seed location (`BlockPlacementPolicyDefault.java:551`). The harness drives the five historically recorded manual-selection rounds and checks the captured plan against the reference. Steps (run from this directory):
+The analyzer is config-driven: `CLODS.conf` selects the IR module and the seed location (`BlockPlacementPolicyDefault.java:551`). The harness exports the tracked `StaticAnalysis/` source from `HEAD`, compiles it in a pinned toolchain image, drives the historically recorded manual-selection rounds, and checks the plan against the reference. Steps (run from this directory):
 
 ```bash
 out="$HOME/clods-static-analyzer-$(date +%Y%m%d-%H%M%S)"
-bash repro/614good/reproduce-614good.sh --build-image --output "$out"
+bash repro/motivating_example/reproduce.sh --build-image --output "$out"
 ```
 
-`--build-image` builds the pinned toolchain image (`repro/614good/Dockerfile`: LLVM 14.0.0, Z3, gRPC + `protoc` + `grpc_cpp_plugin`) once; omit it on later runs. The harness exports the tracked `StaticAnalysis/` source from `HEAD`, writes `CLODS.conf` pointing `IRFilePath` at the mounted `614good.bc`, compiles the analyzer, drives the rounds with `repro/614good/drive_rounds.py`, and compares against `reference/manifest.json`. The analyzer source in the checkout is never edited; evidence is written outside the repo. Runtime networking is disabled. ~3–4 min after the image is built (the 316 MB IR is parsed once).
+`--build-image` builds the pinned toolchain image (`repro/motivating_example/Dockerfile`: LLVM 14.0.0, Z3, gRPC + `protoc` + `grpc_cpp_plugin`) once; omit it on later runs. Runtime networking is disabled. ~3–4 min after the image is built (the 316 MB IR is parsed once).
 
 ### What to check
 
@@ -30,22 +36,10 @@ Detail: The next required input was an undocumented divergence answer.
 d="$out/current"
 cat "$d/driver-result.json"        # completedSelectionCount == expectedSelectionCount == 6
 cat "$d/reference-comparison.json" # {"match": true, "matchedRounds": [1,2,3,4,5], "mismatches": []}
-diff "$d/session.log" repro/614good/reference/transcript-614good-ref.log  # byte-identical (deterministic)
+diff "$d/session.log" repro/motivating_example/reference/transcript-motivating-example-ref.log  # byte-identical
 ```
 
 The wrapper exits non-zero on any build failure, timeout, normalization failure, or semantic mismatch; exit `0` plus `match: true` is the reproduction criterion.
-
-### Outputs
-
-`$out/current/`:
-
-```text
-session.log                  full analyzer transcript (5 rounds)
-driver-result.json           selections driven + outcome
-reference-comparison.json    match result vs reference manifest
-normalized-rules.json        per-round instrumentation rules
-configure.log / build.log    from-source build logs
-```
 
 ## 2) The five rounds, mapped to the paper
 
@@ -61,15 +55,37 @@ The tool emits five concrete rounds on the real 316 MB IR (real source lines + b
 
 After Round 5 the analyzer asks `Was there a divergence point?`. The historical note records Rounds 1–5 only, so the driver stops here. The destination it traces toward is the root cause: a **data race on `b.size`** — the deletion thread's `b.setBlockSize(Long.MAX_VALUE)` vs the block constructor's `INIT_SIZE` — which makes `isGoodTarget` always return false at line 23, so replication never succeeds (HDFS-10453).
 
+## 3) Fast unit test (same example, 33 MB IR)
+
+For a quicker smoke-test of the same pipeline, run the abridged module:
+
+```bash
+bash repro/motivating_example/reproduce.sh --fast --build-image --output "$out-fast"
+```
+
+`--fast` swaps in `bytecode/motivating_example_fast.bc` (33 MB) and `reference/manifest-fast.json`. Expected outcome (exit `0`):
+
+```text
+Outcome: stopped-before-unspecified-round-6-selection
+Detail: Captured the next plan and stopped at its id prompt.
+```
+
+Why it serves the same purpose as the full module: same analyzer, same seed (`BlockPlacementPolicyDefault.java:551`), same target method (`chooseRandom`), same CDA/DDA/CSA building blocks. The two references are **byte-identical through Round 3** (`chooseRandom` → `addIfIsGoodTarget` → `isGoodTarget`) and present the **same Round-4 fork** (the 3-branch `blockSize` / `node.getRemaining()` split that is the crux of the motivating example). They diverge only at the Round-4 id pick: the full module picks ID 3 → `chooseTarget` → Round 5 `chooseTargets` (then stops at the divergence prompt); the fast module picks ID 0 → `chooseLocalRack` → Round 6 `chooseLocalStorage` (then stops at the Round-6 id prompt). So the fast path is a faithful, ~10×-faster-parse exercise of the same analysis on the same bug, not a byte-copy of the full 5-round reference.
+
+```bash
+d="$out-fast/current"
+cat "$d/reference-comparison.json" # {"match": true, "matchedRounds": [1,2,3,4,5,6], "mismatches": []}
+diff "$d/session.log" repro/motivating_example/reference/transcript-fast-ref.log  # byte-identical
+```
+
 ## Inputs & provenance
 
-- **Bitcode** — `bytecode/614good.bc` (316,482,648 bytes; sha-256 `a0ca09ca4d4919ceffa29567ff723d2f941210d9de39503b9ac2741da5c1c2b6`), Git LFS (`.gitattributes`). Hydrate with `git lfs pull --include='components/static-analyzer/bytecode/614good.bc'` if your clone has a pointer.
+- **Bitcode** — `bytecode/motivating_example_full.bc` (316,482,648 bytes; sha-256 `a0ca09ca4d4919ceffa29567ff723d2f941210d9de39503b9ac2741da5c1c2b6`) and `bytecode/motivating_example_fast.bc` (33,773,756 bytes; sha-256 `82fc7bb695fef9654cab68a12d521875963e37a154c1609c6f679afc309576a4`), both Git LFS (`.gitattributes`).
 - **Analyzer source** — `StaticAnalysis/`, ported from container `06865b433bbb:/home/ridevsot/StaticAnalysis` @ `222b486b`; protobuf schema vendored at `lib/ProtocBuf/bm_protobuf/instrumentation.proto` (no submodule).
-- **Reference** — `repro/614good/reference/manifest.json` (recorded selections, expected rules, provenance) and `transcript-614good-ref.log` (canonical byte-identical transcript).
-- **Toolchain** — LLVM 14.0.0, Z3, gRPC 1.56.0, protobuf 23.1; pinned in `repro/614good/Dockerfile`. A clean from-source build was verified to reproduce the reference byte-identically (see `manifest.json` → `analyzerProvenance.fromSourceBuildVerified`).
+- **Reference** — `repro/motivating_example/reference/manifest.json` + `transcript-motivating-example-ref.log` (full); `manifest-fast.json` + `transcript-fast-ref.log` (fast). A clean from-source build was verified to reproduce the full reference byte-identically (see `manifest.json` → `analyzerProvenance.fromSourceBuildVerified`); the fast reference was captured with that same clean build and is deterministic across independent runs.
+- **Toolchain** — LLVM 14.0.0, Z3, gRPC 1.56.0, protobuf 23.1; pinned in `repro/motivating_example/Dockerfile`.
 - The dynamic half of CLODS (runtime instrumentation agent + archived `[BM]` logs that select each round's deviation point) is not part of this component; the harness drives the recorded selections directly (`manualOverride: 1`). The IR-generation component (`components/ir-generation`) documents how the bitcode is produced.
 
 ## References
 
-- CLODS paper (SOSP'26), §2 Motivating Example (HDFS-10453, Figure 1); §5 building blocks (CDA/DDA/CSA) + deviation types; Figures 5 & 7 algorithms
-- Analyzer source origin: container `zk_1900_clods` (`06865b433bbb:/home/ridevsot/StaticAnalysis`), revision `222b486b3850b7a9d098a26a93760e6cee72db68`
+- CLODS paper (SOSP'26), §2 Motivating Example (HDFS-10453, Figure 1); §5 building blocks (CDA/DDA/CSA) + deviation types; Figures 5 & 7 algorithms.

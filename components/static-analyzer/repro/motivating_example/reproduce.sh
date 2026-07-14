@@ -1,36 +1,62 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Reproduce the CLODS static-analyzer motivating example (HDFS-10453) on the
-# monolithic LLVM module bytecode/614good.bc.
+# Reproduce the CLODS static-analyzer motivating example (HDFS-10453).
+#
+# Default (full): drive the historically recorded manual-selection rounds on the
+# 316 MB monolithic LLVM module bytecode/motivating_example_full.bc and check
+# the captured plan against reference/manifest.json.
+# --fast: same analyzer and seed on the 33 MB abridged module
+# bytecode/motivating_example_fast.bc, checked against reference/manifest-fast.json
+# (a quicker smoke-test of the same CDA/DDA/CSA pipeline; see the component README).
 #
 # This harness builds the ported config-driven StaticAnalysis source (from
 # components/static-analyzer/StaticAnalysis, originally
 # 06865b433bbb:/home/ridevsot/StaticAnalysis @ 222b486b) inside a pinned
-# toolchain image, drives the five historically recorded manual-selection
-# rounds with drive_rounds.py, and checks the captured plan against the
-# reference manifest. The analyzer is config-driven: instead of patching a
-# hard-coded bitcode path, the harness writes a CLODS.conf that points
-# IRFilePath at the mounted 614good.bc.
+# toolchain image, drives the recorded manual-selection rounds with
+# drive_rounds.py, and checks the captured plan against the reference manifest.
+# The analyzer is config-driven: instead of patching a hard-coded bitcode path,
+# the harness writes a CLODS.conf that points IRFilePath at the mounted bitcode.
 #
-# The recorded input ends after Round 5. The driver stops at the next prompt
-# ("Was there a divergence point?") that the historical note never answers; it
-# does not invent a Round 6.
+# The driver stops before the first prompt not covered by the reference (full
+# mode: the undocumented divergence prompt after Round 5; fast mode: the Round 6
+# id prompt). It does not invent selections beyond the recorded input.
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 DEFAULT_REPO=$(cd -- "$SCRIPT_DIR/../.." && pwd)
 REFERENCE_MANIFEST=$SCRIPT_DIR/reference/manifest.json
 REPRO_IMAGE=${REPRO_IMAGE:-clods-static-analyzer:local}
 MAX_TRANSCRIPT_BYTES=67108864
+mode=full
 
-read -r EXPECTED_BC_PATH EXPECTED_BC_BYTES EXPECTED_BC_SHA256 < <(
-  python3 - "$REFERENCE_MANIFEST" <<'PY'
-import json, sys
-manifest = json.load(open(sys.argv[1]))
-bitcode = manifest["bitcode"]
-print(bitcode["path"], bitcode["bytes"], bitcode["sha256"])
-PY
-)
+usage() {
+  cat <<'USAGE'
+Usage: reproduce.sh --output DIR [options]
+
+Reproduce the CLODS static-analyzer motivating example (HDFS-10453) on the
+monolithic LLVM module bytecode/motivating_example_full.bc (default), or on the
+33 MB abridged module bytecode/motivating_example_fast.bc with --fast.
+
+Options:
+  --fast                  Use the abridged 33 MB module + the fast reference
+                          (a quicker smoke-test of the same pipeline; see README)
+  --repo DIR              Component root (default: detected from this script)
+  --output DIR            New directory for captured evidence (required)
+  --build-image           Build repro/motivating_example/Dockerfile before running
+  --image NAME            Reproduction image tag (default: clods-static-analyzer:local)
+  --prompt-timeout SEC    Timeout for each analysis decision point (default: 900)
+  --overwrite-output      Remove and recreate an existing output directory
+  -h, --help              Show this help
+
+The recorded input ends after the last recorded selection. The driver stops
+before the first prompt that is not covered by the reference, so a successful
+bounded reproduction exits 0:
+  - full mode: outcome "incomplete-unrecorded-divergence-input" (stops at the
+    undocumented divergence prompt after Round 5)
+  - fast mode: outcome "stopped-before-unspecified-round-6-selection" (stops at
+    the Round 6 id prompt; the abridged module continues one CSA hop further)
+USAGE
+}
 
 repo=$DEFAULT_REPO
 output=
@@ -39,28 +65,9 @@ overwrite=0
 prompt_timeout=900
 original_command=("$0" "$@")
 
-usage() {
-  cat <<'USAGE'
-Usage: reproduce-614good.sh --output DIR [options]
-
-Options:
-  --repo DIR              Component root (default: detected from this script)
-  --output DIR            New directory for captured evidence (required)
-  --build-image           Build repro/614good/Dockerfile before running
-  --image NAME            Reproduction image tag (default: clods-static-analyzer:local)
-  --prompt-timeout SEC    Timeout for each analysis decision point (default: 900)
-  --overwrite-output      Remove and recreate an existing output directory
-  -h, --help              Show this help
-
-The recorded input ends after Round 5. The driver stops before the first input
-that is not present in the reference manifest (the undocumented divergence
-prompt), so a successful bounded reproduction exits 0 with outcome
-"incomplete-unrecorded-divergence-input".
-USAGE
-}
-
 while (($#)); do
   case "$1" in
+    --fast) mode=fast; shift ;;
     --repo|--output|--image|--prompt-timeout)
       (($# >= 2)) || { printf 'Missing value for %s\n' "$1" >&2; exit 2; }
       option=$1
@@ -79,6 +86,21 @@ while (($#)); do
     *) printf 'Unknown argument: %s\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
 done
+
+case "$mode" in
+  fast) REFERENCE_MANIFEST=$SCRIPT_DIR/reference/manifest-fast.json ;;
+  full) REFERENCE_MANIFEST=$SCRIPT_DIR/reference/manifest.json ;;
+esac
+
+read -r EXPECTED_BC_PATH EXPECTED_BC_BYTES EXPECTED_BC_SHA256 < <(
+  python3 - "$REFERENCE_MANIFEST" <<'PY'
+import json, sys
+manifest = json.load(open(sys.argv[1]))
+bitcode = manifest["bitcode"]
+print(bitcode["path"], bitcode["bytes"], bitcode["sha256"])
+PY
+)
+BC_BASENAME=$(basename "$EXPECTED_BC_PATH")
 
 [[ "$prompt_timeout" =~ ^[1-9][0-9]*$ ]] || {
   printf 'Invalid --prompt-timeout: %s (expected a positive integer)\n' "$prompt_timeout" >&2
@@ -101,7 +123,8 @@ case "$repo/" in
     ;;
 esac
 
-[[ -e "$repo/.git" ]] || { printf 'Not a Git checkout: %s\n' "$repo" >&2; exit 2; }
+git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+  || { printf 'Not a Git checkout: %s\n' "$repo" >&2; exit 2; }
 [[ -f "$repo/$EXPECTED_BC_PATH" ]] || { printf 'Missing %s\n' "$repo/$EXPECTED_BC_PATH" >&2; exit 2; }
 [[ -f "$repo/StaticAnalysis/lib/ProtocBuf/bm_protobuf/instrumentation.proto" ]] || {
   printf '%s\n' 'Missing vendored protobuf: StaticAnalysis/lib/ProtocBuf/bm_protobuf/instrumentation.proto' >&2
@@ -111,11 +134,11 @@ esac
 actual_sha=$(sha256sum "$repo/$EXPECTED_BC_PATH" | cut -d' ' -f1)
 actual_bytes=$(stat -c '%s' "$repo/$EXPECTED_BC_PATH")
 [[ "$actual_sha" == "$EXPECTED_BC_SHA256" ]] || {
-  printf 'Unexpected 614good.bc SHA-256: %s\n' "$actual_sha" >&2
+  printf 'Unexpected %s SHA-256: %s\n' "$BC_BASENAME" "$actual_sha" >&2
   exit 2
 }
 [[ "$actual_bytes" == "$EXPECTED_BC_BYTES" ]] || {
-  printf 'Unexpected 614good.bc size: %s\n' "$actual_bytes" >&2
+  printf 'Unexpected %s size: %s\n' "$BC_BASENAME" "$actual_bytes" >&2
   exit 2
 }
 
@@ -139,7 +162,7 @@ mkdir -p "$output"
 } > "$output/run-metadata.txt"
 git -C "$repo" status --short > "$output/git-status.txt"
 file "$repo/$EXPECTED_BC_PATH" > "$output/bitcode-file.txt"
-cp "$SCRIPT_DIR/reference/manifest.json" "$output/reference-manifest.json"
+cp "$REFERENCE_MANIFEST" "$output/reference-manifest.json"
 
 if ((build_image)); then
   docker build --file "$SCRIPT_DIR/Dockerfile" --tag "$REPRO_IMAGE" "$SCRIPT_DIR" \
@@ -172,15 +195,15 @@ enableNetwork: 0
 debugLevel: 3
 manualOverride: 1
 debug: DataDependencyPass, ProtocBuf
-IRFilePath: /results/source/bytecode/614good.bc
+IRFilePath: /results/source/bytecode/$BC_BASENAME
 FileName: BlockPlacementPolicyDefault.java
 LineNumber: 551
 EOF
   printf 'DataNode.registerDatanode:NameNode.registerDatanode\n' \
     > "$source_dir/StaticAnalysis/jumpTable.conf"
 
-  ln "$repo/$EXPECTED_BC_PATH" "$source_dir/bytecode/614good.bc" 2>/dev/null \
-    || cp "$repo/$EXPECTED_BC_PATH" "$source_dir/bytecode/614good.bc"
+  ln "$repo/$EXPECTED_BC_PATH" "$source_dir/bytecode/$BC_BASENAME" 2>/dev/null \
+    || cp "$repo/$EXPECTED_BC_PATH" "$source_dir/bytecode/$BC_BASENAME"
 }
 
 result_dir="$output/current"

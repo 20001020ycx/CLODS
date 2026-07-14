@@ -3,7 +3,7 @@
   "referenceType": "captured-from-container-analyzer",
   "referenceFile": "motivating-example-rounds-1-5.txt",
   "bitcode": {
-    "path": "bytecode/614good.bc",
+    "path": "bytecode/motivating_example_full.bc",
     "bytes": 316482648,
     "sha256": "a0ca09ca4d4919ceffa29567ff723d2f941210d9de39503b9ac2741da5c1c2b6"
   },
@@ -436,7 +436,7 @@
     "z3": "/usr/local/lib/cmake/z3",
     "grpc": "/usr/lib/cmake/grpc",
     "protobuf": "23.1",
-    "note": "Reference captured by driving the container's prebuilt static-analysis (built at HEAD 222b486b with the pinned toolchain) on 614good.bc with the recorded selections, stopping at the 'Was there a divergence point?' prompt. Output is byte-identical across independent runs (determinism verified). The committed repro/614good/Dockerfile builds the same source with the same toolchain versions (LLVM 14.0.0, Z3, gRPC 1.56.0, protobuf 23.1).",
+    "note": "Reference captured by driving the container's prebuilt static-analysis (built at HEAD 222b486b with the pinned toolchain) on motivating_example_full.bc (originally 614good.bc) with the recorded selections, stopping at the 'Was there a divergence point?' prompt. Output is byte-identical across independent runs (determinism verified). The committed repro/motivating_example/Dockerfile builds the same source with the same toolchain versions (LLVM 14.0.0, Z3, gRPC 1.56.0, protobuf 23.1).",
     "fromSourceBuildVerified": {
       "method": "Fresh cmake+build of the ported source from a clean build dir (container toolchain: LLVM 14.0.0, Z3, gRPC 1.56.0, protobuf 23.1; CMAKE_INCLUDE_PATH pointing at the protobuf well-known-types include dir), then driven through the five recorded rounds with drive_rounds.py.",
       "freshBuildBinarySha256": "902778d2c7cde1b43b9741106d77ff3f17f1ec960b9629de7eaac4067de4429d",
@@ -453,7 +453,7 @@
         ],
         "mismatches": []
       },
-      "interpretation": "The freshly-built binary's sha differs from the prebuilt reference binary (different build directory / Debug build), but its analyzer output is byte-identical to the canonical reference transcript and matches all five rounds, so the from-source build is functionally equivalent and deterministic. The committed repro/614good/Dockerfile builds the same source with the same toolchain versions into /opt (protoc + grpc_cpp_plugin on /opt/grpc/bin; well-known protos and protobuf headers under /opt/grpc/include, the analog of this build's /include)."
+      "interpretation": "The freshly-built binary's sha differs from the prebuilt reference binary (different build directory / Debug build), but its analyzer output is byte-identical to the canonical reference transcript and matches all five rounds, so the from-source build is functionally equivalent and deterministic. The committed repro/motivating_example/Dockerfile builds the same source with the same toolchain versions into /opt (protoc + grpc_cpp_plugin on /opt/grpc/bin; well-known protos and protobuf headers under /opt/grpc/include, the analog of this build's /include)."
     }
   },
   "legacyCachedImageReference": {

@@ -61,11 +61,15 @@ def compare(actual: dict, manifest: dict) -> dict:
             for message in mismatches
         ):
             matched_rounds.append(round_number)
+    if 6 in reference:
+        note = "All reference rounds (including round 6) were supplied and compared."
+    else:
+        note = "Round 6 is intentionally excluded because no historical reference was supplied."
     return {
         "match": not mismatches,
         "matchedRounds": matched_rounds,
         "mismatches": mismatches,
-        "note": "Round 6 is intentionally excluded because no historical reference was supplied.",
+        "note": note,
     }
 
 

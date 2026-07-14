@@ -3,7 +3,7 @@
 # Toolchain image for the CLODS static-analyzer reproduction. It builds only
 # the analyzer's pinned dependencies (LLVM 14.0.0, Z3, gRPC + protoc +
 # grpc_cpp_plugin); the analyzer source itself is exported from the component
-# HEAD and compiled at run time by reproduce-614good.sh. The base image digest
+# HEAD and compiled at run time by reproduce.sh. The base image digest
 # and all source revisions are pinned so reviewers can identify exactly what
 # was used even if an upstream release tag later moves. gRPC's CMake install
 # places protoc and grpc_cpp_plugin on /opt/grpc/bin (on PATH), which the

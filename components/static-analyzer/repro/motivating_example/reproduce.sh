@@ -284,14 +284,10 @@ find "$result_dir" -type f ! -path "$result_dir/artifact-inventory.tsv" \
 
 printf 'Reproduction evidence: %s\n' "$result_dir"
 if [[ -s "$result_dir/driver-result.json" ]]; then
-  python3 - "$result_dir/driver-result.json" <<'PY'
-import json, sys
-result = json.load(open(sys.argv[1]))
-print(f"Outcome: {result['outcome']}")
-print(f"Detail: {result['detail']}")
-PY
+  printf 'Driver output event (%s/driver-result.json):\n' "$result_dir"
+  python3 -m json.tool "$result_dir/driver-result.json"
 else
-  printf 'Outcome: build-or-driver-failure (exit %s)\n' "$driver_status"
+  printf 'Driver output event: not produced (build/driver failure, exit %s)\n' "$driver_status"
 fi
 if ((driver_status != 0)); then
   exit "$driver_status"

@@ -1,10 +1,10 @@
 # CLODS - Static Analyzer
 
-Backward control/data-flow + call-site analysis over a monolithic LLVM IR module: given the IR and a failure-relevant Java source location, emit an instrumentation plan that localizes the root cause. Reproduces the paper's motivating example, HDFS-10453 (CLODS, SOSP'26, §2 "Motivating Example").
+Backward static analysis: given the IR and a failure-relevant Java source location, emit an instrumentation plan that localizes the root cause. Reproduces the paper's motivating example, HDFS-10453 (CLODS, SOSP'26, §2 "Motivating Example").
 
 Everything runs in Docker. No host LLVM, Z3, or protobuf is required. Requirements: Linux x86-64, Docker Engine, Git LFS, internet during image build, ~2 GB disk for the bitcode.
 
-> **Determinism note.** LLVM IR generation (the `ir-generation` component) may reorder functions across runs/versions, which would change the analyzer's plan numbering. The static analyzer therefore consumes a **pinned pre-compiled module**, `bytecode/motivating_example_full.bc` (316 MB, Git LFS), so the plan is reproducible. Hydrate it with `git lfs pull --include='components/static-analyzer/bytecode/motivating_example_full.bc'`. To inspect the IR, disassemble on demand (do not commit the ~1.6 GB output):
+> **Determinism note.** LLVM IR generation (the `ir-generation` component) may reorder functions across runs/versions, which would change the analyzer's plan numbering. The static analyzer therefore consumes a **pinned pre-compiled module**, `bytecode/motivating_example_full.bc` (316 MB, Git LFS), so the plan is reproducible. Pull it with `git lfs pull --include='components/static-analyzer/bytecode/motivating_example_full.bc'`. To inspect the IR, disassemble on demand (do not commit the ~1.6 GB output):
 >
 > ```bash
 > llvm-dis bytecode/motivating_example_full.bc -o motivating_example_full.ll   # ~1 min, ~1.6 GB
@@ -23,18 +23,18 @@ bash repro/motivating_example/reproduce.sh --build-image --output "$out"
 
 ### What to check
 
-Expected outcome (exit `0`):
-
-```text
-Outcome: incomplete-unrecorded-divergence-input
-Detail: The next required input was an undocumented divergence answer.
-```
-
-`incomplete-unrecorded-divergence-input` is the *intended* success: all six recorded decisions were driven and all five plans matched, then the driver stopped at the `Was there a divergence point?` prompt the historical note never answers — it does **not** invent a Round 6.
+The output event is `$out/current/driver-result.json`. A successful bounded reproduction exits `0`; check the JSON directly:
 
 ```bash
 d="$out/current"
-cat "$d/driver-result.json"        # completedSelectionCount == expectedSelectionCount == 6
+cat "$d/driver-result.json"
+```
+
+- `completedSelectionCount == expectedSelectionCount == 6` — all six recorded selections replayed (listed in `completedSelections`: r1 id 1, r2 id 0, r3 id 3, r4 branch 0 + id 3, r5 id 0).
+- `childReturnCode` is negative (e.g. `-2` = killed by SIGINT) — the driver stopped the analyzer at the next prompt once the recorded input ran out; it did **not** crash and did **not** invent a Round 6. `outcome: "incomplete-unrecorded-divergence-input"` is just the driver's label for this; the negative return code is the real signal.
+- the plan matches the reference and the transcript is byte-identical:
+
+```bash
 cat "$d/reference-comparison.json" # {"match": true, "matchedRounds": [1,2,3,4,5], "mismatches": []}
 diff "$d/session.log" repro/motivating_example/reference/transcript-motivating-example-ref.log  # byte-identical
 ```
@@ -63,14 +63,7 @@ For a quicker smoke-test of the same pipeline, run the abridged module:
 bash repro/motivating_example/reproduce.sh --fast --build-image --output "$out-fast"
 ```
 
-`--fast` swaps in `bytecode/motivating_example_fast.bc` (33 MB) and `reference/manifest-fast.json`. Expected outcome (exit `0`):
-
-```text
-Outcome: stopped-before-unspecified-round-6-selection
-Detail: Captured the next plan and stopped at its id prompt.
-```
-
-Why it serves the same purpose as the full module: same analyzer, same seed (`BlockPlacementPolicyDefault.java:551`), same target method (`chooseRandom`), same CDA/DDA/CSA building blocks. The two references are **byte-identical through Round 3** (`chooseRandom` → `addIfIsGoodTarget` → `isGoodTarget`) and present the **same Round-4 fork** (the 3-branch `blockSize` / `node.getRemaining()` split that is the crux of the motivating example). They diverge only at the Round-4 id pick: the full module picks ID 3 → `chooseTarget` → Round 5 `chooseTargets` (then stops at the divergence prompt); the fast module picks ID 0 → `chooseLocalRack` → Round 6 `chooseLocalStorage` (then stops at the Round-6 id prompt). So the fast path is a faithful, ~10×-faster-parse exercise of the same analysis on the same bug, not a byte-copy of the full 5-round reference.
+`--fast` swaps in `bytecode/motivating_example_fast.bc` (33 MB) and `reference/manifest-fast.json`. A successful bounded reproduction exits `0`; check `$out-fast/current/driver-result.json` — `completedSelectionCount == 6`, `childReturnCode` negative (clean stop at the round-6 id prompt; `outcome: "stopped-before-unspecified-round-6-selection"` is the driver's label for it), and:
 
 ```bash
 d="$out-fast/current"
@@ -78,13 +71,7 @@ cat "$d/reference-comparison.json" # {"match": true, "matchedRounds": [1,2,3,4,5
 diff "$d/session.log" repro/motivating_example/reference/transcript-fast-ref.log  # byte-identical
 ```
 
-## Inputs & provenance
-
-- **Bitcode** — `bytecode/motivating_example_full.bc` (316,482,648 bytes; sha-256 `a0ca09ca4d4919ceffa29567ff723d2f941210d9de39503b9ac2741da5c1c2b6`) and `bytecode/motivating_example_fast.bc` (33,773,756 bytes; sha-256 `82fc7bb695fef9654cab68a12d521875963e37a154c1609c6f679afc309576a4`), both Git LFS (`.gitattributes`).
-- **Analyzer source** — `StaticAnalysis/`, ported from container `06865b433bbb:/home/ridevsot/StaticAnalysis` @ `222b486b`; protobuf schema vendored at `lib/ProtocBuf/bm_protobuf/instrumentation.proto` (no submodule).
-- **Reference** — `repro/motivating_example/reference/manifest.json` + `transcript-motivating-example-ref.log` (full); `manifest-fast.json` + `transcript-fast-ref.log` (fast). A clean from-source build was verified to reproduce the full reference byte-identically (see `manifest.json` → `analyzerProvenance.fromSourceBuildVerified`); the fast reference was captured with that same clean build and is deterministic across independent runs.
-- **Toolchain** — LLVM 14.0.0, Z3, gRPC 1.56.0, protobuf 23.1; pinned in `repro/motivating_example/Dockerfile`.
-- The dynamic half of CLODS (runtime instrumentation agent + archived `[BM]` logs that select each round's deviation point) is not part of this component; the harness drives the recorded selections directly (`manualOverride: 1`). The IR-generation component (`components/ir-generation`) documents how the bitcode is produced.
+Why it serves the same purpose as the full module: same analyzer, same seed (`BlockPlacementPolicyDefault.java:551`), same target method (`chooseRandom`), same CDA/DDA/CSA building blocks. The two references are **byte-identical through Round 3** (`chooseRandom` → `addIfIsGoodTarget` → `isGoodTarget`) and present the **same Round-4 fork** (the 3-branch `blockSize` / `node.getRemaining()` split that is the crux of the motivating example). They diverge only at the Round-4 id pick: the full module picks ID 3 → `chooseTarget` → Round 5 `chooseTargets` (then stops at the divergence prompt); the fast module picks ID 0 → `chooseLocalRack` → Round 6 `chooseLocalStorage` (then stops at the Round-6 id prompt). So the fast path is a faithful, ~10×-faster-parse exercise of the same analysis on the same bug, not a byte-copy of the full 5-round reference.
 
 ## References
 

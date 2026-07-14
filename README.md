@@ -8,3 +8,7 @@ CLODS is a multi-component artifact. Each subdirectory under `components/` is an
 | [`components/static-analyzer`](components/static-analyzer/) | Static analysis over the generated LLVM IR |
 
 Components are decoupled and can be reviewed independently. To evaluate one, open its README and follow the reproduction and verification steps documented there.
+
+## License
+
+This repository's scripts and documentation are licensed under the [Apache License, Version 2.0](LICENSE). Vendored or build-time third-party software (e.g., Hadoop, GraalVM) remains under its respective license.

@@ -104,15 +104,21 @@
     },
     {
       "id": "M6",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-10T20:20:00Z",
+      "finished": "2026-08-10T20:55:00Z",
+      "attempts": 1,
+      "by": "agent-run-da18f700",
+      "artifacts": [
+        "diagnosis/run_1.md",
+        "diagnosis/run_2.md",
+        "diagnosis/run_3.md",
+        "diagnosis/run_4.md",
+        "diagnosis/run_5.md"
+      ],
+      "note": "5 independent runs via context/run_diagnosis.sh; egress iptables-locked to api.anthropic.com:443 (pinned IP), WebFetch/WebSearch disabled, OAuth creds mounted, IS_SANDBOX bypassPermissions. Single fixed prompt, no follow-ups."
     },
     {
       "id": "M7",

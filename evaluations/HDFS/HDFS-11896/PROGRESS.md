@@ -16,7 +16,7 @@
 | M3 | Reproduce the failure | DONE | true |
 | M4 | Anonymize + rebuild + re-confirm | DONE | true |
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true |
-| M6 | Run LLM diagnosis ×5 (network locked) | PENDING | null |
+| M6 | Run LLM diagnosis ×5 (network locked) | DONE | true |
 | M7 | Grade each run | PENDING | null |
 | M8 | Summary & finalize | PENDING | null |
 

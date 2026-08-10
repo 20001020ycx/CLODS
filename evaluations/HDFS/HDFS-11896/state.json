@@ -89,15 +89,18 @@
     },
     {
       "id": "M5",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-10T19:56:00Z",
+      "finished": "2026-08-10T20:02:00Z",
+      "attempts": 1,
+      "by": "agent-run-da18f700",
+      "artifacts": [
+        "symptom.md",
+        "private/ground_truth.md"
+      ],
+      "note": "symptom.md = neutral description (auxiliary-used metric doubled after node re-registration). ground_truth.md names BOTH root-causing sites in anonymized source: NodeUsageRecord.clearNodeState() L54-60 omits setAuxUsed(0), AND LivenessTracker.register() L24-31 (branch if(!d.alive)) calls addNode->stats.add of the stale auxUsed BEFORE applyUsageReport(EMPTY) resets it. Verified zero fix-diff-token leakage in source/+symptom.log+symptom.md."
     },
     {
       "id": "M6",

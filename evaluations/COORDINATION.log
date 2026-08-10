@@ -10,3 +10,4 @@
 2026-08-10T19:04:56Z HDFS-11896 M2 DONE success (branch-2.7 pivot)
 2026-08-10T19:14:47Z HDFS-11896 M3 DONE success (repro 15000 vs 10000)
 2026-08-10T19:28:17Z HDFS-11896 M4 DONE success (anonymized; compiles+reproduces)
+2026-08-10T19:30:47Z HDFS-11896 M5 DONE success

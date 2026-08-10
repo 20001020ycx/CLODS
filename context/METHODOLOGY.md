@@ -307,7 +307,7 @@ keeping the source compilable and the log still traceable. See §6 for the full 
 1. Use `context/run_diagnosis.sh` (§7). It runs the diagnosis **5 times**, each in a
    fresh, stateless process, with web tools denied and egress restricted to the Anthropic
    API only. It stages only `symptom.md` + `source/` + `logs/symptom.log` (never
-   `private/`), pins `--model opus --effort high`, and writes `diagnosis/run_N.md`.
+   `private/`), pins `--model claude-opus-4-7 --effort high` (Opus 4.7), and writes `diagnosis/run_N.md`.
 2. The **exact prompt** (the script substitutes the staging paths for you):
 
    ```
@@ -397,8 +397,8 @@ trace) and the build system. Outputs: a compilable `source/` tree + updated `sym
   anonymization map) is **never** copied in, so it is unreachable regardless of the mount;
 - invokes `claude -p "<prompt>"` once per run — each a **fresh, stateless process** (no
   `--continue`/`--resume`), so no conversation history or orchestrator context leaks in;
-- pins the subject: `--model "$CLODS_MODEL"` (default `opus`) and `--effort "$CLODS_EFFORT"`
-  (default `high`), matching the paper's "Claude Opus, thinking=high"; override per run via
+- pins the subject: `--model "$CLODS_MODEL"` (default `claude-opus-4-7`, i.e. Opus 4.7) and `--effort "$CLODS_EFFORT"`
+  (default `high`), matching the paper's "Claude Opus 4.7, thinking=high"; override per run via
   env only if you intentionally change the subject;
 - hardens the session: `--bare` (skip CLAUDE.md auto-discovery, auto-memory, plugins,
   hooks, keychain — no project/user memory leaks in), `--no-session-persistence`,

@@ -16,8 +16,9 @@
 #   * Tools are restricted to read-only code inspection: Bash/Write/Edit/WebFetch/WebSearch/
 #     Task/NotebookEdit are DENIED, so the agent cannot shell out, modify files, go online,
 #     or spawn sub-agents that might bypass the above.
-#   * Model + effort are pinned (CLODS_MODEL / CLODS_EFFORT env, default opus / high) so the
-#     subject is reproducible and matches the paper's "Claude Opus, thinking=high".
+#   * Model + effort are pinned (CLODS_MODEL / CLODS_EFFORT env, default claude-opus-4-7 /
+#     high) so the subject is reproducible and matches the paper's "Claude Opus 4.7,
+#     thinking=high".
 #
 # Writes each run's full single-turn answer to <BUG_DIR>/diagnosis/run_N.md (and stderr to
 # run_N.stderr). Idempotent: an existing non-empty run_N.md is skipped, so a killed agent
@@ -39,8 +40,9 @@ for f in "$SYMPTOM_FILE" "$SOURCE_DIR" "$LOG_FILE"; do
 done
 
 # Pinned subject. Override per-run via env if you need a different model/effort, but for
-# the published experiment keep these fixed for reproducibility.
-MODEL="${CLODS_MODEL:-opus}"
+# the published experiment keep these fixed for reproducibility. NOTE: pin a full model
+# ID, NOT the `opus` alias — the alias drifts to whatever is "latest" on run day.
+MODEL="${CLODS_MODEL:-claude-opus-4-7}"   # Opus 4.7
 EFFORT="${CLODS_EFFORT:-high}"
 
 # How to invoke the CLI. Default `claude` is the container path (ANTHROPIC_API_KEY is

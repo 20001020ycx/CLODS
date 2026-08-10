@@ -140,7 +140,7 @@ docker run --rm -v "$PWD:/work" clods-eval bash -lc \
 
 # diagnose (M6): network locked to api.anthropic.com only, 5× single prompt.
 # The script stages only symptom.md+source/+logs/ (never private/) and runs each
-# diagnosis as a fresh, stateless `claude -p` (Opus, effort=high) with Bash/Write/web
+# diagnosis as a fresh, stateless `claude -p` (Opus 4.7, effort=high) with Bash/Write/web
 # denied. Mount read-write so it can write diagnosis/run_N.md.
 docker run --rm --cap-add=NET_ADMIN \
   -v "$PWD/evaluations/<SYSTEM>/<BUGID>:/bug" \

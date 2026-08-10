@@ -2,80 +2,84 @@
 
 Real bug: **HDFS-11896** "Non-dfsUsed will be doubled on dead node re-registration"
 (branch-2.7 pre-fix `b51623503fb`). Derived from `private/fix.diff`.
-The failure path is transcribed 1:1 into the anonymized `source/`
-(`com.acme.cluster.usage`); line numbers below refer to the anonymized tree.
-The identifier mapping is in `private/anonymization_map.json`.
+`source/` is the **real** HDFS failure-path source with only the metric renamed
+`nonDfsUsed → otherUsed` and the JIRA id scrubbed (see `private/anonymization_map.json`).
+Line numbers below refer to the files under `source/`.
 
-## The failure path (how the doubling happens)
-`ClusterState.getAuxUsedSpace()` → `LivenessTracker.getAuxUsedTotal()` returns the
-incrementally-maintained `Stats.auxUsedTotal`, kept by `Stats.add`/`Stats.subtract`
-(`auxUsedTotal += / -= node.getAuxUsed()`).
+## The failure path
+`FSNamesystem.getOtherUsedSpace()` (`FSNamesystem.java:6866`) →
+`DatanodeStatistics.getCapacityUsedOther()` (impl = `HeartbeatManager`) → returns the
+incrementally-maintained `HeartbeatManager.Stats.capacityUsedOther`, kept by
+`Stats.add`/`Stats.subtract` (`capacityUsedOther += / -= node.getOtherUsed()`,
+`HeartbeatManager.java:409` / `:426`).
 
-1. Node live and heartbeating → `auxUsedTotal` includes its `auxUsed` (= 5000).
-2. Node expires → `NodeRegistry.removeExpiredNode` → `LivenessTracker.dropNode`
-   (`stats.subtract`, `auxUsedTotal -= 5000`) → `ShardManager.releaseNodeShards` →
-   **`NodeUsageRecord.clearNodeState()`**.
-3. Node re-registers → `NodeRegistry.registerNode` → **`LivenessTracker.register`**.
-4. Next real heartbeat → `LivenessTracker.onHeartbeat` (subtract-then-add).
+1. Node live & heartbeating → `capacityUsedOther` includes its `otherUsed` (5000).
+2. Node declared dead → `DatanodeManager.removeDeadDatanode` → `removeDatanode(node)` →
+   `heartbeatManager.removeDatanode` (`stats.subtract`, `capacityUsedOther -= 5000`) →
+   `blockManager.removeBlocksAssociatedTo(node)` → **`DatanodeDescriptor.resetBlocks()`**.
+3. Node re-registers → `DatanodeManager.registerDatanode` → `heartbeatManager.register`.
+4. Next real heartbeat → `heartbeatManager.updateHeartbeat` (subtract-then-add).
 
 ## Root-causing line(s) — BOTH must be named
-### (1) `NodeUsageRecord.clearNodeState()` omits resetting `auxUsed`
-File `NodeUsageRecord.java`, lines **54–60** (anonymized).
+### (1) `DatanodeDescriptor.resetBlocks()` omits resetting `otherUsed`
+`DatanodeDescriptor.java`, lines **313–319**:
 ```java
-public void clearNodeState() {
+public void resetBlocks() {
   setCapacity(0);
   setRemaining(0);
-  setPoolUsed(0);
-  setPrimaryUsed(0);
+  setBlockPoolUsed(0);
+  setDfsUsed(0);
   setXceiverCount(0);
-  // BUG: setAuxUsed(0) is MISSING
+  // BUG: setOtherUsed(0) is MISSING
+  ...
 }
 ```
-It zeroes every node-level total **except `auxUsed`**. So after a node is removed,
-its `NodeUsageRecord` still carries the stale `auxUsed` (5000).
-(Real: `DatanodeDescriptor.resetBlocks()` zeroes capacity/remaining/blockPoolUsed/
-dfsUsed/xceiverCount but not `nonDfsUsed`.)
+It zeroes every node-level total **except `otherUsed`** (contrast `updateHeartbeatState`,
+which does call `setOtherUsed(totalOtherUsed)` at `DatanodeDescriptor.java:436`). So after
+a dead node is removed, its `DatanodeDescriptor` still carries the stale `otherUsed` (5000).
+(Real term: `nonDfsUsed`; real method omission: `setNonDfsUsed(0)`.)
 
-### (2) `LivenessTracker.register()` adds the node to the totals BEFORE resetting it
-File `LivenessTracker.java`, lines **24–31** (anonymized).
+### (2) `HeartbeatManager.register()` adds the node to the totals BEFORE resetting it
+`HeartbeatManager.java`, lines **189–196**:
 ```java
-synchronized void register(final NodeUsageRecord d) {
-  if (!d.alive) {                                      // <-- the branch
-    addNode(d);                                        // stats.add(d): auxUsedTotal += d.getAuxUsed()  (STALE 5000)
-    d.applyUsageReport(UsageReport.EMPTY_ARRAY, 0L, 0L, 0);  // only NOW is d.auxUsed reset to 0
+synchronized void register(final DatanodeDescriptor d) {
+  if (!d.isAlive) {                                          // <-- the re-registration branch
+    addDatanode(d);                                          // addDatanode -> stats.add(d):
+                                                             //   capacityUsedOther += d.getOtherUsed()  (STALE 5000)
+    d.updateHeartbeatState(StorageReport.EMPTY_ARRAY, 0L, 0L, 0, 0, null); // only NOW is d.otherUsed reset to 0
   }
 }
 ```
-`addNode(d)` (line 33-35) calls `stats.add(d)` → `auxUsedTotal += node.getAuxUsed()`
-(`Stats.add`, line 69) using the **stale** `auxUsed` left by `clearNodeState()`,
-and only *afterwards* does `applyUsageReport(EMPTY)` zero `d.auxUsed`. The stale
-5000 is now baked into `auxUsedTotal` and is never subtracted (the next heartbeat's
-`stats.subtract` sees `auxUsed == 0`). The subsequent real heartbeat then adds the
-true 5000 on top → the node's auxUsed is counted **twice** → 15000 instead of 10000.
-(Real: `HeartbeatManager.register()` calls `addDatanode(d)` — which does
-`stats.add(d)` — before `updateHeartbeatState(EMPTY)`.)
+`addDatanode(d)` (`:202-206`) runs `stats.add(d)` → `capacityUsedOther += node.getOtherUsed()`
+(`Stats.add`, `:409`) using the **stale** `otherUsed` left by `resetBlocks()`, and only
+*afterwards* does `updateHeartbeatState(EMPTY_ARRAY)` zero `d.otherUsed`. The stale 5000 is
+now baked into `capacityUsedOther` and is never subtracted (the next heartbeat's
+`stats.subtract` sees `otherUsed == 0`). The subsequent real heartbeat then adds the true
+5000 on top → the node's other-used is counted **twice** → 15000 instead of 10000.
 
 ## Exact wrong branch / condition
-The decisive branch is `if (!d.alive)` in `LivenessTracker.register` (line 25): on
-the re-registration path it runs `addNode(d)` (stats.add of the **stale, un-reset**
-`auxUsed`) *before* `applyUsageReport` clears it. Combined with `clearNodeState()`
-never resetting `auxUsed`, the removed node's stale auxiliary-used value is
-re-added on re-registration and double-counted.
+The decisive branch is `if (!d.isAlive)` in `HeartbeatManager.register` (`:190`): on the
+re-registration path it calls `addDatanode(d)` (which does `stats.add` of the **stale,
+un-reset** `otherUsed`) *before* `updateHeartbeatState(EMPTY_ARRAY)` clears it. Combined with
+`resetBlocks()` never resetting `otherUsed`, the removed node's stale value is re-added on
+re-registration and double-counted.
 
 ## What a correct diagnosis must name (PASS criteria)
-1. `NodeUsageRecord.clearNodeState()` fails to reset `auxUsed` (it resets the other
-   totals but not `auxUsed`), leaving a stale value on a removed node — **and**
-2. On re-registration, `LivenessTracker.register()` adds the node's (stale) usage to
-   the cluster total (`addNode`→`stats.add`, `auxUsedTotal += getAuxUsed()`) **before**
-   `applyUsageReport(EMPTY)` resets it (the ordering / the `if(!d.alive)` re-register
-   branch), so the stale `auxUsed` is counted again and never subtracted → doubled.
+1. `DatanodeDescriptor.resetBlocks()` fails to reset `otherUsed` (it resets the other
+   node-level totals but not `otherUsed`), leaving a stale value on a removed node — **and**
+2. On re-registration, `HeartbeatManager.register()` adds the node's (stale) usage to the
+   cluster total (`addDatanode` → `stats.add`, `capacityUsedOther += getOtherUsed()`) **before**
+   `updateHeartbeatState(EMPTY_ARRAY)` resets it (the ordering / the `if(!d.isAlive)`
+   re-registration branch), so the stale `otherUsed` is counted again and never subtracted →
+   doubled.
 
-A run naming only the symptom site (`getAuxUsedSpace`/`Stats`) or only one of the two
-without the stale-`auxUsed`-re-added-on-reregistration mechanism = FAIL.
+A run naming only the symptom site (`getOtherUsedSpace`/`Stats`) or only one of the two
+without the stale-`otherUsed`-re-added-on-reregistration mechanism = FAIL.
 
-## The real fix (either location resolves it; both verified on `source/`)
-- (A) reset `auxUsed` in `clearNodeState()` (add `setAuxUsed(0)`), i.e. real fix:
-  `resetBlocks()` → recompute all totals incl. `nonDfsUsed`; **or**
-- (B) reorder `register()` so `applyUsageReport(EMPTY)` runs **before** `addNode`
-  (real branch-2.7 fix to `HeartbeatManager.register`).
-Both were verified against the anonymized `source/`: each returns the metric to 10000.
+## The real fix (either location resolves it)
+- (A) reset the metric in `resetBlocks()` — the real upstream fix routes `resetBlocks()`
+  through `updateStorageStats(getStorageReports(), 0, 0, 0, 0, null)` so all totals incl.
+  `nonDfsUsed`/`otherUsed` are recomputed; **or**
+- (B) reorder `HeartbeatManager.register()` so `updateHeartbeatState(EMPTY_ARRAY)` runs
+  **before** `addDatanode` (the real branch-2.7 fix to `HeartbeatManager.register`).
+Both were verified to restore the metric to 10000.

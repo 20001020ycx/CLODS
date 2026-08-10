@@ -46,13 +46,18 @@ mvn -B -o -Dmaven.repo.local="$M2" -pl "$HDFS" \
     -Dsurefire.useFile=false -Dmaven.test.redirectTestOutputToFile=false > "$RAW" 2>&1
 set -e
 
-# 4. Extract the symptom log = HDFS runtime logs + our probe/symptom markers.
-mkdir -p "$BUG/logs"
+# 4. Extract the RAW real reproduction log (HDFS runtime logs + probe/symptom markers)
+#    to private/symptom.orig.log. The LLM-facing logs/symptom.log is then produced by
+#    private/anonymize.sh (bug-id scrub + nonDfs->other rename).
+mkdir -p "$BUG/private"
 grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2} |^PROBE |^SYMPTOM|^REPRO_RESULT|AssertionError' \
-    "$RAW" > "$BUG/logs/symptom.log"
+    "$RAW" > "$BUG/private/symptom.orig.log"
 
 echo "---- symptom summary ----"
-grep -E '^PROBE|^SYMPTOM|^REPRO_RESULT' "$BUG/logs/symptom.log" || true
-grep -q "REPRO_RESULT=BUG_REPRODUCED" "$BUG/logs/symptom.log" \
+grep -E '^PROBE|^SYMPTOM|^REPRO_RESULT' "$BUG/private/symptom.orig.log" || true
+grep -q "REPRO_RESULT=BUG_REPRODUCED" "$BUG/private/symptom.orig.log" \
   && echo "reproduce.sh: BUG REPRODUCED" \
   || { echo "reproduce.sh: FAILED TO REPRODUCE" >&2; exit 2; }
+
+# 5. Produce the anonymized LLM-facing artifacts (source/ + logs/symptom.log).
+bash "$BUG/private/anonymize.sh"

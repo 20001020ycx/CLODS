@@ -2,51 +2,39 @@
   "system": "Apache Hadoop HDFS",
   "bug": "HDFS-11896",
   "pre_fix_commit": "b51623503fbd71b88647c175a79470d19b11d907",
-  "approach": "The real HDFS failure path spans a 15k-file tree whose every log line and class name is inherently HDFS-identifying, so it cannot be de-identified in place. Instead the self-contained failure path was transcribed faithfully (same logic, same bug) into a generic 'cluster node usage accounting' service under source/. The anonymized code compiles and reproduces the identical doubling (observed 15000 vs correct 10000, ratio 1.5). logs/symptom.log is the stdout of running the anonymized code (private/repro/ReproDriver.java).",
-  "files": {
-    "hadoop-hdfs/.../blockmanagement/DatanodeDescriptor.java": "source/.../usage/NodeUsageRecord.java",
-    "hadoop-hdfs/.../protocol/DatanodeInfo.java (node-level totals)": "source/.../usage/NodeUsageBase.java",
-    "hadoop-hdfs/.../blockmanagement/HeartbeatManager.java (+ nested Stats)": "source/.../usage/LivenessTracker.java",
-    "hadoop-hdfs/.../blockmanagement/DatanodeManager.java": "source/.../usage/NodeRegistry.java",
-    "hadoop-hdfs/.../blockmanagement/BlockManager.java (removeBlocksAssociatedTo)": "source/.../usage/ShardManager.java",
-    "hadoop-hdfs/.../blockmanagement/DatanodeStorageInfo.java": "source/.../usage/VolumeUsage.java",
-    "hadoop-hdfs/.../server/protocol/StorageReport.java": "source/.../usage/UsageReport.java",
-    "hadoop-hdfs/.../server/namenode/FSNamesystem.java (getNonDfsUsedSpace)": "source/.../usage/ClusterState.java"
+  "policy": "Minimal, case-targeted anonymization (METHODOLOGY.md §6). The REAL HDFS source and the REAL reproduction log are used, with system identifiers KEPT (DatanodeDescriptor, HeartbeatManager, FSNamesystem, datanode, namenode, block, ...). Only two things are redacted: the JIRA bug id, and the one distinctive metric term that names the bug.",
+  "regenerate": "source/ and logs/symptom.log are gitignored and rebuilt deterministically by private/anonymize.sh (inputs: repos/HDFS-HDFS-11896 @ pre_fix_commit for source; private/symptom.orig.log from reproduce.sh for the log).",
+  "source_files": [
+    "org/apache/hadoop/hdfs/server/blockmanagement/DatanodeDescriptor.java",
+    "org/apache/hadoop/hdfs/server/blockmanagement/HeartbeatManager.java",
+    "org/apache/hadoop/hdfs/server/blockmanagement/DatanodeManager.java",
+    "org/apache/hadoop/hdfs/server/blockmanagement/BlockManager.java",
+    "org/apache/hadoop/hdfs/server/blockmanagement/DatanodeStorageInfo.java",
+    "org/apache/hadoop/hdfs/server/blockmanagement/DatanodeStatistics.java",
+    "org/apache/hadoop/hdfs/protocol/DatanodeInfo.java",
+    "org/apache/hadoop/hdfs/server/protocol/StorageReport.java",
+    "org/apache/hadoop/hdfs/server/namenode/FSNamesystem.java"
+  ],
+  "redactions": {
+    "bug_id": {
+      "HDFS-HDFS-11896": "hdfs-eval",
+      "HDFS-11896": "hdfs-eval",
+      "11896": "xxxxx",
+      "note": "The bug id only appeared in the reproduction log via the scratch-clone path /work/repos/HDFS-HDFS-11896/...; scrubbed. It does not occur in the source."
+    },
+    "distinctive_term_rename": {
+      "nonDfsUsed": "otherUsed",
+      "NonDfsUsed": "OtherUsed",
+      "nonDFSUsed": "otherUsed",
+      "NonDFSUsed": "OtherUsed",
+      "getNonDfsUsed": "getOtherUsed",
+      "setNonDfsUsed": "setOtherUsed",
+      "capacityUsedNonDfs": "capacityUsedOther",
+      "getNonDfsUsedSpace": "getOtherUsedSpace",
+      "getCapacityUsedNonDFS": "getCapacityUsedOther",
+      "non-DFS / non-dfs (prose)": "other",
+      "why": "The JIRA title is 'Non-dfsUsed will be doubled on dead node re-registration'; renaming the nonDfsUsed metric removes the string a reader would grep to recall the exact ticket, while keeping the code otherwise real."
+    }
   },
-  "identifiers": {
-    "DatanodeDescriptor": "NodeUsageRecord",
-    "DatanodeInfo": "NodeUsageBase",
-    "HeartbeatManager": "LivenessTracker",
-    "HeartbeatManager.Stats": "LivenessTracker.Stats",
-    "DatanodeManager": "NodeRegistry",
-    "BlockManager": "ShardManager",
-    "DatanodeStorageInfo": "VolumeUsage",
-    "StorageReport": "UsageReport",
-    "FSNamesystem": "ClusterState",
-    "resetBlocks": "clearNodeState",
-    "updateHeartbeatState": "applyUsageReport",
-    "updateHeartbeat": "onHeartbeat",
-    "registerDatanode / register": "registerNode / register",
-    "removeDeadDatanode": "removeExpiredNode",
-    "removeDatanode": "dropNode / removeNode",
-    "addDatanode": "addNode",
-    "removeBlocksAssociatedTo": "releaseNodeShards",
-    "getNonDfsUsedSpace": "getAuxUsedSpace",
-    "getCapacityUsedNonDFS": "getAuxUsedTotal",
-    "nonDfsUsed / NonDfsUsed": "auxUsed / AuxUsed",
-    "capacityUsedNonDfs": "auxUsedTotal",
-    "dfsUsed": "primaryUsed",
-    "blockPoolUsed": "poolUsed",
-    "isAlive": "alive",
-    "heartbeatedSinceRegistration": "heartbeatedSinceRegistration",
-    "block / shard": "shard",
-    "datanode / DataNode": "node",
-    "namenode / NameNode / cluster controller": "controller / NodeRegistry / ClusterState",
-    "StorageReport.EMPTY_ARRAY": "UsageReport.EMPTY_ARRAY"
-  },
-  "strings": [
-    {"original": "BLOCK* registerDatanode: from <node>", "replacement": "REGISTER: register node from <node>", "file": "NodeRegistry.java", "appears_in_log": true},
-    {"original": "BLOCK* removeDeadDatanode: lost heartbeat from <node>", "replacement": "EXPIRE: lost heartbeat from <node>", "file": "NodeRegistry.java", "appears_in_log": true},
-    {"original": "(probe) non-DFS-used doubled after dead-node re-registration", "replacement": "cluster auxiliary-used space is WRONG after node re-registration", "file": "ReproDriver (harness)", "appears_in_log": true}
-  ]
+  "kept_as_is": "All other HDFS identifiers: class names (DatanodeDescriptor, HeartbeatManager, DatanodeManager, BlockManager, FSNamesystem, StorageReport, DatanodeInfo, DatanodeStorageInfo), method names (resetBlocks, register, addDatanode, updateHeartbeatState, registerDatanode, removeDeadDatanode), dfsUsed, blockPoolUsed, and all runtime log lines (registerDatanode / removeDeadDatanode / etc.)."
 }

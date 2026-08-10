@@ -40,26 +40,38 @@ Make sure, in the shell you launch Claude Code from:
 - **Git push works** — this repo's remote is over SSH, so your host SSH key must be able
   to push to `github.com:20001020ycx/CLODS.git`. Verify with `ssh -T git@github.com`.
 
-### 1. Start Claude Code (host, repo root)
+### 1. Open the repo (host)
 
 ```bash
 cd /path/to/CLODS      # the repo root (contains Dockerfile, context/, evaluations/)
-claude                 # open a fresh Claude Code session here
 ```
 
-### 2. Fill in `context/prompt.md` and paste it as your first message
+### 2. Launch one bug
 
-Open `context/prompt.md` and replace the three placeholders with the bug you want to
-evaluate:
+Read `context/prompt.md` **as-is** (don't edit it) and append a `## Inputs` block with the
+three per-bug values, then hand the whole thing to `claude` as the single kickoff message:
 
-| Placeholder | Meaning | Example |
+```bash
+KICKOFF="$(cat context/prompt.md)
+
+---
+
+## Inputs
+- system: HDFS
+- jira: https://issues.apache.org/jira/browse/HDFS-11896
+- bug id: HDFS-11896
+"
+claude "$KICKOFF"
+```
+
+| Field | Meaning | Example |
 |---|---|---|
-| `<JIRA>` | the JIRA ticket (the **only** input) | `HDFS-11896` |
-| `<SYSTEM>` | the system category (folder under `evaluations/`) | `HDFS` |
-| `<BUGID>` | the bug id (folder name) | `HDFS-11896` |
+| `system` | system category (folder under `evaluations/`) | `HDFS` |
+| `jira` | the JIRA ticket — a URL **or** a bare ticket id (the **only** input) | `https://issues.apache.org/jira/browse/HDFS-11896` |
+| `bug id` | the bug id (folder name) | `HDFS-11896` |
 
-Then paste the whole file as your single kickoff message. That's the only prompt you send
-— the agent drives itself to M8 from there (no follow-ups).
+That drops you into an interactive Claude Code session that runs M0→M8 autonomously — no
+follow-up prompts needed.
 
 ### 3. Watch it run
 
@@ -94,7 +106,7 @@ A published, illustrative example of a completed folder lives at
 
 ## Running several bugs in parallel
 
-Open **one Claude Code session per bug**, each with its own filled-in `prompt.md`. They
+Open **one Claude Code session per bug**, each with its own `## Inputs` block. They
 share this workspace safely because every agent:
 
 - writes **only** to its own folder `evaluations/<SYSTEM>/<BUGID>/`,
@@ -107,9 +119,9 @@ See `context/METHODOLOGY.md` §13 for the full workspace-division and git-discip
 
 ## If an agent dies mid-run
 
-Just start a new Claude Code session in the repo root and paste the **same** filled-in
-`prompt.md`. The agent reads `PROGRESS.md` / `state.json`, finds the highest `DONE`
-milestone, and resumes from there. Heavy, reproducible artifacts (`source/`, `logs/`,
+Just start a new Claude Code session and re-send the **same** kickoff (same
+`system`/`jira`/`bug id` in the `## Inputs` block). The agent reads `PROGRESS.md` /
+`state.json`, finds the highest `DONE` milestone, and resumes from there. Heavy, reproducible artifacts (`source/`, `logs/`,
 `repos/`) are gitignored and are deterministically reconstructed on resume from
 `anonymization_map.json` + `deps-fix.patch` + `pre_fix_commit` (§9).
 
@@ -144,7 +156,7 @@ details in `context/METHODOLOGY.md` §11.
 | Path | What |
 |---|---|
 | `context/METHODOLOGY.md` | The agent runbook — the single source of truth each evaluation agent reads and follows. |
-| `context/prompt.md` | The kickoff prompt an operator hands to an agent for one bug (fill in JIRA/system/bugid, then paste). |
+| `context/prompt.md` | The generic kickoff text. Do **not** edit it — append a `## Inputs` block (system/jira/bug id) and pass the whole thing to `claude`. |
 | `Dockerfile` | The per-bug container base image (build toolchain + Claude Code CLI). The agent runs on the host and uses this image only for build/reproduce/diagnose steps. |
 | `context/run_diagnosis.sh` | Helper that runs the 5× network-locked, single-prompt LLM diagnoses inside the container. |
 | `evaluations/` | **Per-bug progress, tracked** (lightweight files: tracker, diagnosis runs, grades, summary). Heavy artifacts (`source/`, `logs/`, `repos/`) are gitignored. `evaluations/EXAMPLE/bug-1/` is a published illustrative example; `evaluations/COORDINATION.log` is the shared append-only log. |

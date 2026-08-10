@@ -1,0 +1,22 @@
+{
+  "bug_id": "HDFS-11896",
+  "system": "HDFS",
+  "jira": "HDFS-11896",
+  "source_repo": "https://github.com/apache/hadoop.git",
+  "fix_commit": null,
+  "pre_fix_commit": null,
+  "anonymized_commit": null,
+  "symptom_short": null,
+  "milestones": [
+    {"id": "M0", "status": "DONE", "outcome": "success", "success": true, "started": "2026-08-10T00:00:00Z", "finished": "2026-08-10T00:00:00Z", "attempts": 1, "by": "agent-run-da18f700", "artifacts": ["evaluations/HDFS/HDFS-11896/"], "note": "Folder scaffolded; created PROGRESS.md and state.json."},
+    {"id": "M1", "status": "PENDING", "outcome": "pending", "success": null, "started": null, "finished": null, "attempts": 0, "by": null, "artifacts": [], "note": ""},
+    {"id": "M2", "status": "PENDING", "outcome": "pending", "success": null, "started": null, "finished": null, "attempts": 0, "by": null, "artifacts": [], "note": ""},
+    {"id": "M3", "status": "PENDING", "outcome": "pending", "success": null, "started": null, "finished": null, "attempts": 0, "by": null, "artifacts": [], "note": ""},
+    {"id": "M4", "status": "PENDING", "outcome": "pending", "success": null, "started": null, "finished": null, "attempts": 0, "by": null, "artifacts": [], "note": ""},
+    {"id": "M5", "status": "PENDING", "outcome": "pending", "success": null, "started": null, "finished": null, "attempts": 0, "by": null, "artifacts": [], "note": ""},
+    {"id": "M6", "status": "PENDING", "outcome": "pending", "success": null, "started": null, "finished": null, "attempts": 0, "by": null, "artifacts": [], "note": ""},
+    {"id": "M7", "status": "PENDING", "outcome": "pending", "success": null, "started": null, "finished": null, "attempts": 0, "by": null, "artifacts": [], "note": ""},
+    {"id": "M8", "status": "PENDING", "outcome": "pending", "success": null, "started": null, "finished": null, "attempts": 0, "by": null, "artifacts": [], "note": ""}
+  ],
+  "result": null
+}

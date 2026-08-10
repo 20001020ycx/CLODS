@@ -4,4 +4,5 @@
 #   <ISO-UTC> <BUGID> <event>
 # Events: "claim M0", "M<N> DONE success", "M<N> FAILED <reason>", "M<N> BLOCKED",
 #          "bug COMPLETE <successes>/5".
-# See context/METHODOLOGY.md §13.
+# See context/METHODOLOGY.md §13.2026-08-10T18:34:34Z HDFS-11896 claim M0
+2026-08-10T18:34:34Z HDFS-11896 M0 DONE success

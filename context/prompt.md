@@ -2,8 +2,8 @@
 
 > This is the prompt an operator hands to a Claude Code agent to evaluate **one** bug.
 > Fill in the three placeholders (`<JIRA>`, `<SYSTEM>`, `<BUGID>`) and paste it into a
-> fresh Claude Code session running inside the `clods-eval` container (§11). The agent
-> then works autonomously to M8 with no further hand-holding.
+> fresh Claude Code session on your host, in the repo root (see `context/README.md`; §11).
+> The agent then works autonomously to M8 with no further hand-holding.
 
 ---
 
@@ -17,7 +17,8 @@ Before doing anything, **read `context/METHODOLOGY.md` in full** — it is your 
 Follow its milestones M0→M8 in order. Key rules, repeated here so you cannot miss them:
 
 1. **Workspace.** You own exactly one folder, `evaluations/<SYSTEM>/<BUGID>/`. Create it
-   at M0 and write *only* there. Use a per-bug scratch clone at `/work/repos/<SYSTEM>-<BUGID>`.
+   at M0 and write *only* there. Use a per-bug scratch clone at `repos/<SYSTEM>-<BUGID>`
+   (relative to the repo root; `/work/repos/<SYSTEM>-<BUGID>` inside containers).
    Never modify `context/`, `Dockerfile`, `example/`, the repo root, or any other agent's
    folder. Multiple agents share this workspace — do not clobber their work.
 

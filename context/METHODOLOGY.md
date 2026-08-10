@@ -38,10 +38,13 @@ For your assigned bug you will, in order:
 7. Record everything in a milestone-tracker file so any agent can resume your work.
 
 You do NOT need internet during diagnosis. You DO need it for clone/build/reproduce.
-You run **inside a Docker container**, never on bare metal (see §11) — this is deliberate:
-each bug lives on a different version of the system with a different dependency set, and
-the container lets you install exactly the toolchain/dependencies that bug needs without
-polluting the host or another bug's environment.
+**You run on the host** (a Claude Code session in the repo root, where your git
+credentials and `ANTHROPIC_API_KEY` already work), and you spin up **disposable Docker
+containers** for the per-bug build/reproduce/diagnose steps (see §11) — this is
+deliberate: each bug lives on a different version of the system with a different
+dependency set, and the container lets you install exactly the toolchain/dependencies that
+bug needs without polluting the host or another bug's environment. Per-milestone git
+commit/push happens on the host.
 
 ---
 
@@ -462,58 +465,77 @@ auditable.
 
 ---
 
-## 11. Docker (run inside the container, never on bare metal)
+## 11. Docker (per-bug containers, never on bare metal)
 
-Build the base image once:
+**You (the agent) run on the host** in a Claude Code session, where your git/GitHub
+credentials and `ANTHROPIC_API_KEY` already work — so per-milestone `git commit`/`push`
+(§13) happens on the host with no credential gymnastics. You spin up **disposable
+`clods-eval` containers** only for the per-bug steps that need the system's toolchain
+or network isolation. Each bug lives on a different version of the system and needs a
+different dependency set (an old Hadoop needs JDK 7 + a pinned Maven 3.2; a newer one
+needs JDK 11; a C++ system needs a specific gcc/boost; etc.), so the base image is just a
+common starting point and you **extend it per bug** at M2. Nothing one bug installs can
+break another bug's build — that is the whole reason for Docker rather than bare metal.
+
+Build the base image once (host):
 
 ```bash
-cd /mnt/SSD-4T/ycx/CLODS
+cd /mnt/SSD-4T/ycx/CLODS          # repo root; $PWD throughout this section
 docker build -t clods-eval -f Dockerfile .
 ```
 
-The base image (Ubuntu 22.04 + JDK 11/17, Maven, Gradle, Python 3, git, ripgrep, jq, less,
-Node + Claude Code CLI) provides a common toolchain. **It is intentionally just a base:**
-each bug lives on a different version of the system and needs a different dependency set
-(an old Hadoop needs JDK 7 + a pinned Maven 3.2; a newer one needs JDK 11; a C++ system
-needs a specific gcc/boost; etc.). You are expected to **extend the environment per bug** —
+The base image is Ubuntu 22.04 + JDK 11/17, Maven, Gradle, Python 3, git, ripgrep, jq,
+less, iptables/iproute2, and Node + Claude Code CLI.
 
-either `apt-get install` inside the running container at M2, or derive a per-bug image:
+**Build & reproduce (M2–M4):** network on, repo mounted at `/work`. The agent issues
+this from the host; the container does the compile and runs `reproduce.sh`, writing the
+failure log into the mounted repo (gitignored `logs/`).
 
 ```bash
-# optional per-bug image if the dep set is heavy/deterministic:
-docker build -t clods-eval:hdfs-11896 - <<'EOF'
+docker run --rm -v "$PWD:/work" clods-eval bash -lc '
+  cd /work/repos/<SYSTEM>-<BUGID> && <build cmd>          # M2
+  bash /work/evaluations/<SYSTEM>/<BUGID>/reproduce.sh    # M3
+'
+```
+
+For a heavy/deterministic dep set, derive a per-bug image instead of `apt-get` inline,
+and record every dependency added/pinned in `PROGRESS.md` + `private/deps-fix.patch` (M2):
+
+```bash
+docker build -t clods-eval:<SYSTEM>-<BUGID> - <<'EOF'
 FROM clods-eval
-RUN apt-get update && apt-get install -y --no-install-recommends openjdk-7-jdk maven=3.2.x ...
+RUN apt-get update && apt-get install -y --no-install-recommends openjdk-7-jdk ...
 EOF
+# then use clods-eval:<SYSTEM>-<BUGID> in the build/reproduce and diagnose commands below
 ```
 
-Record every dependency you add or pin in `PROGRESS.md` and save build-file edits as
-`private/deps-fix.patch` (M2). This per-bug isolation is the whole reason we run in Docker
-rather than on bare metal: nothing one bug installs can break another bug's build.
+> File ownership: containers run as root, so files they write into the mounted repo
+> (`source/`, `logs/`) are root-owned. That is fine — those paths are gitignored and
+> rebuilt on resume (§9). If you prefer host-owned artifacts, add
+> `--user "$(id -u):$(id -g)" -e HOME=/work` to the build/reproduce command (not the
+> diagnose command — iptables needs root).
 
-**Setup phase (M0–M5):** network on.
+**Anonymize (M4):** rename files and rewrite log literals *on the host* (plain text edits
+in the mounted `source/`), then rebuild + re-run inside a container to regenerate the
+anonymized symptom log. Verify zero original-identifier leakage (§6).
 
-```bash
-docker run --rm -it \
-  -v /mnt/SSD-4T/ycx/CLODS:/work \
-  -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
-  clods-eval bash
-# inside: cd /work/evaluations/<SYSTEM>/<BUGID> and follow M0–M5
-```
-
-**Diagnosis phase (M6):** network locked to the API only.
+**Diagnose (M6):** network locked to the API only. The entrypoint applies the iptables
+allowlist before launching Claude Code, so even if a web tool slipped through, egress
+would be dropped. The agent issues this from the host; outputs land in the mounted
+`diagnosis/`.
 
 ```bash
 docker run --rm --cap-add=NET_ADMIN \
-  -v /mnt/SSD-4T/ycx/CLODS/evaluations/<SYSTEM>/<BUGID>:/bug:ro \
+  -v "$PWD/evaluations/<SYSTEM>/<BUGID>:/bug:ro" \
   -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
   --entrypoint /opt/clods/run_diagnosis.sh \
   clods-eval /bug
 ```
 
-The entrypoint applies the iptables allowlist before launching Claude Code, so even if a
-web tool slipped through, egress would be dropped. Grading (M7) and summary (M8) run with
-no network.
+**Grade (M7) and summary (M8):** run on the host — no container, no network needed.
+
+For the operator-facing end-to-end walkthrough (what to type into a fresh Claude Code
+session), see `context/README.md`.
 
 ---
 
@@ -527,8 +549,8 @@ mkdir -p $BUG_DIR/{private,source,logs,diagnosis}
 cd $BUG_DIR
 
 # M1  (input = JIRA ticket HDFS-11896)
-git clone https://github.com/apache/hadoop.git /work/repos/hadoop-HDFS-11896
-cd /work/repos/hadoop-HDFS-11896
+git clone https://github.com/apache/hadoop.git repos/hadoop-HDFS-11896
+cd repos/hadoop-HDFS-11896
 # from the ticket's "Fix Version"/PR, locate the fix commit; e.g.:
 FIX=$(git log --oneline --grep=HDFS-11896 | head -1 | awk '{print $1}')
 PRE=$(git rev-parse $FIX^)
@@ -593,7 +615,7 @@ After **each** milestone is `DONE` (or `FAILED`), immediately commit and push so
 agent can resume your bug if you are killed:
 
 ```bash
-cd /work                          # = host /mnt/SSD-4T/ycx/CLODS inside the container
+cd /mnt/SSD-4T/ycx/CLODS          # repo root — git runs on the host (you are not in a container)
 git pull --rebase origin main      # pick up other agents' commits first
 git add evaluations/<SYSTEM>/<BUGID>   # your folder ONLY — never `git add -A`
 git commit -m "eval/<SYSTEM>/<BUGID>: M<N> <one-line outcome>  success=<true|false>"

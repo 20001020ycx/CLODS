@@ -1,7 +1,8 @@
 # CLODS LLM-diagnosis evaluation image.
-# Provides the toolchain to clone/build/reproduce the studied systems and to run
-# the Claude Code diagnosis agent. Run inside this container; never on bare metal.
-# See context/METHODOLOGY.md for usage.
+# Provides the toolchain to clone/build/reproduce the studied systems and to run the
+# 5x network-locked diagnosis. The agent runs on the host and launches this image for
+# per-bug build/reproduce/diagnose steps — never build or diagnose on bare metal.
+# See context/README.md (operator walkthrough) and context/METHODOLOGY.md §11 (usage).
 
 FROM ubuntu:22.04
 

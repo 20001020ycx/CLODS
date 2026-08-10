@@ -1,0 +1,20 @@
+# Per-bug evaluation outputs are NOT tracked.
+# This includes the progress docs (PROGRESS.md / state.json), the anonymized source
+# trees, logs, private ground truth, and diagnosis runs. See context/METHODOLOGY.md.
+evaluations/
+
+# Local repos cloned during reproduction (M1-M3).
+/work/
+/work/repos/
+
+# Build / editor noise
+*.log
+*.class
+target/
+build/
+.gradle/
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+.DS_Store

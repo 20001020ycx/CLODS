@@ -44,15 +44,16 @@ Make sure, in the shell you launch Claude Code from:
 
 ```bash
 cd /path/to/CLODS      # the repo root (contains Dockerfile, context/, evaluations/)
+claude                 # open a fresh Claude Code session here
 ```
 
 ### 2. Launch one bug
 
-Read `context/prompt.md` **as-is** (don't edit it) and append a `## Inputs` block with the
-three per-bug values, then hand the whole thing to `claude` as the single kickoff message:
+Paste **one message** as your first prompt — the full text of `context/prompt.md` followed
+by a `## Inputs` block with your three values:
 
-```bash
-KICKOFF="$(cat context/prompt.md)
+```
+<paste the full text of context/prompt.md here>
 
 ---
 
@@ -60,8 +61,6 @@ KICKOFF="$(cat context/prompt.md)
 - system: HDFS
 - jira: https://issues.apache.org/jira/browse/HDFS-11896
 - bug id: HDFS-11896
-"
-claude "$KICKOFF"
 ```
 
 | Field | Meaning | Example |
@@ -70,8 +69,10 @@ claude "$KICKOFF"
 | `jira` | the JIRA ticket — a URL **or** a bare ticket id (the **only** input) | `https://issues.apache.org/jira/browse/HDFS-11896` |
 | `bug id` | the bug id (folder name) | `HDFS-11896` |
 
-That drops you into an interactive Claude Code session that runs M0→M8 autonomously — no
-follow-up prompts needed.
+To grab `prompt.md`'s text cleanly: `cat context/prompt.md` (copy the output), or open it in
+your editor and select all. Only the four `## Inputs` lines change per bug — everything
+above is stable and lives in `context/prompt.md` (never edit it). The agent then runs
+M0→M8 autonomously — no follow-up prompts needed.
 
 ### 3. Watch it run
 
@@ -156,7 +157,7 @@ details in `context/METHODOLOGY.md` §11.
 | Path | What |
 |---|---|
 | `context/METHODOLOGY.md` | The agent runbook — the single source of truth each evaluation agent reads and follows. |
-| `context/prompt.md` | The generic kickoff text. Do **not** edit it — append a `## Inputs` block (system/jira/bug id) and pass the whole thing to `claude`. |
+| `context/prompt.md` | The generic kickoff text. Do **not** edit it — paste its full text + a `## Inputs` block (system/jira/bug id) as the first message in a fresh `claude` session. |
 | `Dockerfile` | The per-bug container base image (build toolchain + Claude Code CLI). The agent runs on the host and uses this image only for build/reproduce/diagnose steps. |
 | `context/run_diagnosis.sh` | Helper that runs the 5× network-locked, single-prompt LLM diagnoses inside the container. |
 | `evaluations/` | **Per-bug progress, tracked** (lightweight files: tracker, diagnosis runs, grades, summary). Heavy artifacts (`source/`, `logs/`, `repos/`) are gitignored. `evaluations/EXAMPLE/bug-1/` is a published illustrative example; `evaluations/COORDINATION.log` is the shared append-only log. |

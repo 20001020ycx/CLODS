@@ -1,0 +1,21 @@
+# deps-fix for HDFS-11896 (branch-2.7 pre-fix commit b51623503fb, Hadoop 2.7.4-SNAPSHOT)
+#
+# No source/pom.xml edits were required to build the pre-fix tree. The build only
+# needs the historically-correct TOOLCHAIN, provisioned in the per-bug Docker
+# image (see private/Dockerfile.hdfs11896), NOT via build-file patches:
+#
+#   * JDK 1.8 (Temurin 8) -- root pom sets javac.version=1.7; JDK 8 compiles the
+#     2.7 tree with source/target 1.7 (tools.jar present for jdk.tools dep).
+#   * protobuf 2.5.0 (protoc) -- hadoop-project/pom.xml pins <protobuf.version>2.5.0;
+#     the hadoop-maven-plugins protoc goal requires protoc 2.5.0 on PATH. Ubuntu
+#     22.04 ships protoc 3.x (incompatible), so 2.5.0 is built from source in the image.
+#
+# Build command (inside clods-eval:HDFS-HDFS-11896, repo mounted at /work):
+#   mvn -Dmaven.repo.local=/work/repos/.m2-HDFS-11896-27 \
+#       -pl hadoop-hdfs-project/hadoop-hdfs -am \
+#       install -DskipTests -Dmaven.javadoc.skip=true
+#
+# Result: hadoop-hdfs-2.7.4-SNAPSHOT.jar built successfully; all failure-path
+# classes (DatanodeDescriptor, HeartbeatManager, DatanodeStats, DatanodeManager,
+# BlockManager) compiled. Note: on 2.7 there is a single hadoop-hdfs module
+# (no separate hadoop-hdfs-client); DatanodeInfo lives under hadoop-hdfs.

@@ -1,30 +1,14 @@
-commit f90b9d2b25822868797d136de8bc268c5ca7ad2c
+commit c4a85c694fae3f814ab4e7f3c172da1df0e0e353
 Author: Brahma Reddy Battula <brahma@apache.org>
-Date:   Thu Jul 27 12:16:26 2017 -0700
+Date:   Thu Jul 27 12:02:57 2017 -0700
 
     HDFS-11896. Non-dfsUsed will be doubled on dead node re-registration. Contributed by Brahma Reddy Battula.
-    
-    (cherry picked from commit c4a85c694fae3f814ab4e7f3c172da1df0e0e353)
 
-diff --git a/hadoop-hdfs-project/hadoop-hdfs/CHANGES.txt b/hadoop-hdfs-project/hadoop-hdfs/CHANGES.txt
-index 5713513be07..51a11c117b4 100644
---- a/hadoop-hdfs-project/hadoop-hdfs/CHANGES.txt
-+++ b/hadoop-hdfs-project/hadoop-hdfs/CHANGES.txt
-@@ -396,6 +396,9 @@ Release 2.7.4 - UNRELEASED
- 
-     HDFS-11742. Improve balancer usability after HDFS-8818. (kihwal)
- 
-+    HDFS-11896. Non-dfsUsed will be doubled on dead node re-registration.
-+    (Brahma Reddy Battula via shv)
-+
- Release 2.7.3 - 2016-08-25
- 
-   INCOMPATIBLE CHANGES
 diff --git a/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/blockmanagement/DatanodeDescriptor.java b/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/blockmanagement/DatanodeDescriptor.java
-index 02b8eb92aeb..66a09900a6d 100644
+index 57348a3a616..2bd4a203ff7 100644
 --- a/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/blockmanagement/DatanodeDescriptor.java
 +++ b/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/blockmanagement/DatanodeDescriptor.java
-@@ -311,11 +311,7 @@ boolean removeBlock(String storageID, BlockInfoContiguous b) {
+@@ -331,11 +331,7 @@ boolean hasStaleStorages() {
    }
  
    public void resetBlocks() {
@@ -37,19 +21,7 @@ index 02b8eb92aeb..66a09900a6d 100644
      this.invalidateBlocks.clear();
      this.volumeFailures = 0;
      // pendingCached, cached, and pendingUncached are protected by the
-@@ -346,6 +342,11 @@ public int numBlocks() {
-     return blocks;
-   }
- 
-+  @VisibleForTesting
-+  public boolean isHeartbeatedSinceRegistration() {
-+    return heartbeatedSinceRegistration;
-+  }
-+
-   /**
-    * Updates stats from datanode heartbeat.
-    */
-@@ -363,6 +364,16 @@ public void updateHeartbeat(StorageReport[] reports, long cacheCapacity,
+@@ -384,6 +380,16 @@ public void updateHeartbeat(StorageReport[] reports, long cacheCapacity,
    public void updateHeartbeatState(StorageReport[] reports, long cacheCapacity,
        long cacheUsed, int xceiverCount, int volFailures,
        VolumeFailureSummary volumeFailureSummary) {
@@ -66,7 +38,7 @@ index 02b8eb92aeb..66a09900a6d 100644
      long totalCapacity = 0;
      long totalRemaining = 0;
      long totalBlockPoolUsed = 0;
-@@ -409,8 +420,6 @@ public void updateHeartbeatState(StorageReport[] reports, long cacheCapacity,
+@@ -434,8 +440,6 @@ public void updateHeartbeatState(StorageReport[] reports, long cacheCapacity,
      setCacheCapacity(cacheCapacity);
      setCacheUsed(cacheUsed);
      setXceiverCount(xceiverCount);
@@ -75,7 +47,7 @@ index 02b8eb92aeb..66a09900a6d 100644
      this.volumeFailures = volFailures;
      this.volumeFailureSummary = volumeFailureSummary;
      for (StorageReport report : reports) {
-@@ -426,7 +435,6 @@ public void updateHeartbeatState(StorageReport[] reports, long cacheCapacity,
+@@ -451,7 +455,6 @@ public void updateHeartbeatState(StorageReport[] reports, long cacheCapacity,
        totalDfsUsed += report.getDfsUsed();
        totalNonDfsUsed += report.getNonDfsUsed();
      }
@@ -83,74 +55,54 @@ index 02b8eb92aeb..66a09900a6d 100644
  
      // Update total metrics for the node.
      setCapacity(totalCapacity);
-diff --git a/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/blockmanagement/HeartbeatManager.java b/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/blockmanagement/HeartbeatManager.java
-index 8952fdbcbb9..dfc3c60b34d 100644
---- a/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/blockmanagement/HeartbeatManager.java
-+++ b/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/blockmanagement/HeartbeatManager.java
-@@ -188,10 +188,9 @@ public synchronized int getExpiredHeartbeats() {
- 
-   synchronized void register(final DatanodeDescriptor d) {
-     if (!d.isAlive) {
--      addDatanode(d);
--
-       //update its timestamp
-       d.updateHeartbeatState(StorageReport.EMPTY_ARRAY, 0L, 0L, 0, 0, null);
-+      addDatanode(d);
-     }
-   }
- 
 diff --git a/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/datanode/DataNode.java b/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/datanode/DataNode.java
-index 19c488d9a97..f23580cd776 100644
+index 35fbb9c5ef6..27303937c91 100644
 --- a/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/datanode/DataNode.java
 +++ b/hadoop-hdfs-project/hadoop-hdfs/src/main/java/org/apache/hadoop/hdfs/server/datanode/DataNode.java
-@@ -1066,10 +1066,8 @@ private BPOfferService getBPOSForBlock(ExtendedBlock block)
-     return bpos;
-   }
+@@ -1319,7 +1319,7 @@ private BPOfferService getBPOSForBlock(ExtendedBlock block)
  
--
--  
    // used only for testing
+   @VisibleForTesting
 -  void setHeartbeatsDisabledForTests(
 +  public void setHeartbeatsDisabledForTests(
        boolean heartbeatsDisabledForTests) {
      this.heartbeatsDisabledForTests = heartbeatsDisabledForTests;
    }
 diff --git a/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/server/namenode/TestDeadDatanode.java b/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/server/namenode/TestDeadDatanode.java
-index f26f4242196..00ea58f86db 100644
+index 6df8fcfb5d6..74be90cfb5a 100644
 --- a/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/server/namenode/TestDeadDatanode.java
 +++ b/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/server/namenode/TestDeadDatanode.java
-@@ -19,10 +19,12 @@
+@@ -17,9 +17,11 @@
+  */
+ package org.apache.hadoop.hdfs.server.namenode;
  
++import com.google.common.base.Supplier;
+ import org.apache.hadoop.hdfs.server.protocol.SlowDiskReports;
  import static org.junit.Assert.assertEquals;
  import static org.junit.Assert.assertFalse;
 +import static org.junit.Assert.assertTrue;
  import static org.junit.Assert.fail;
  
  import java.io.IOException;
- 
-+import com.google.common.base.Supplier;
- import org.apache.commons.logging.Log;
- import org.apache.commons.logging.LogFactory;
- import org.apache.hadoop.conf.Configuration;
-@@ -33,6 +35,7 @@
- import org.apache.hadoop.hdfs.protocol.Block;
+@@ -36,6 +38,7 @@
  import org.apache.hadoop.hdfs.protocol.BlockListAsLongs;
  import org.apache.hadoop.hdfs.server.blockmanagement.BlockManager;
+ import org.apache.hadoop.hdfs.protocol.BlockType;
 +import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeDescriptor;
+ import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeManager;
+ import org.apache.hadoop.hdfs.server.blockmanagement.DatanodeStorageInfo;
  import org.apache.hadoop.hdfs.server.datanode.DataNode;
- import org.apache.hadoop.hdfs.server.datanode.DataNodeTestUtils;
- import org.apache.hadoop.hdfs.server.protocol.BlockReportContext;
-@@ -45,6 +48,7 @@
- import org.apache.hadoop.hdfs.server.protocol.StorageBlockReport;
+@@ -52,6 +55,7 @@
  import org.apache.hadoop.hdfs.server.protocol.StorageReceivedDeletedBlocks;
  import org.apache.hadoop.hdfs.server.protocol.StorageReport;
+ import org.apache.hadoop.net.Node;
 +import org.apache.hadoop.test.GenericTestUtils;
  import org.junit.After;
  import org.junit.Test;
  
-@@ -128,4 +132,51 @@ public void testDeadDatanode() throws Exception {
-     assertEquals(cmd[0].getAction(), RegisterCommand.REGISTER
-         .getAction());
+@@ -178,4 +182,53 @@ public void testDeadNodeAsBlockTarget() throws Exception {
+           .getDatanodeDescriptor().equals(clientNode));
+     }
    }
 +
 +  @Test
@@ -159,40 +111,42 @@ index f26f4242196..00ea58f86db 100644
 +    conf.setInt(DFSConfigKeys.DFS_HEARTBEAT_INTERVAL_KEY, 1);
 +    conf.setInt(DFSConfigKeys.DFS_NAMENODE_HEARTBEAT_RECHECK_INTERVAL_KEY, 1);
 +    conf.setInt(DFSConfigKeys.DFS_NAMENODE_STALE_DATANODE_INTERVAL_KEY,
-+            6 * 1000);
++        6 * 1000);
++    long CAPACITY = 5000L;
++    long[] capacities = new long[] { 4 * CAPACITY, 4 * CAPACITY };
 +    try {
-+      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2).build();
++      cluster = new MiniDFSCluster.Builder(conf).numDataNodes(2)
++          .simulatedCapacities(capacities).build();
 +      long initialCapacity = cluster.getNamesystem(0).getCapacityTotal();
 +      assertTrue(initialCapacity > 0);
 +      DataNode dn1 = cluster.getDataNodes().get(0);
 +      DataNode dn2 = cluster.getDataNodes().get(1);
 +      final DatanodeDescriptor dn2Desc = cluster.getNamesystem(0)
-+              .getBlockManager().getDatanodeManager()
-+              .getDatanode(dn2.getDatanodeId());
++          .getBlockManager().getDatanodeManager()
++          .getDatanode(dn2.getDatanodeId());
 +      dn1.setHeartbeatsDisabledForTests(true);
 +      cluster.setDataNodeDead(dn1.getDatanodeId());
 +      assertEquals("Capacity shouldn't include DeadNode", dn2Desc.getCapacity(),
-+              cluster.getNamesystem(0).getCapacityTotal());
-+      assertEquals("NonDFS-used shouldn't include DeadNode", 
-+              dn2Desc.getNonDfsUsed(), 
-+              cluster.getNamesystem(0).getNonDfsUsedSpace());
++          cluster.getNamesystem(0).getCapacityTotal());
++      assertEquals("NonDFS-used shouldn't include DeadNode",
++          dn2Desc.getNonDfsUsed(),
++          cluster.getNamesystem(0).getNonDfsUsedSpace());
 +      // Wait for re-registration and heartbeat
 +      dn1.setHeartbeatsDisabledForTests(false);
 +      final DatanodeDescriptor dn1Desc = cluster.getNamesystem(0)
-+              .getBlockManager().getDatanodeManager()
-+              .getDatanode(dn1.getDatanodeId());
++          .getBlockManager().getDatanodeManager()
++          .getDatanode(dn1.getDatanodeId());
 +      GenericTestUtils.waitFor(new Supplier<Boolean>() {
 +
-+        @Override
-+        public Boolean get() {
-+          return dn1Desc.isAlive && dn1Desc.isHeartbeatedSinceRegistration();
++        @Override public Boolean get() {
++          return dn1Desc.isAlive() && dn1Desc.isHeartbeatedSinceRegistration();
 +        }
 +      }, 100, 5000);
 +      assertEquals("Capacity should be 0 after all DNs dead", initialCapacity,
-+              cluster.getNamesystem(0).getCapacityTotal());
-+      long nonDFSAfterReg = cluster.getNamesystem(0).getNonDfsUsedSpace();
-+      assertEquals("NonDFS should include actual DN NonDFSUsed", 
-+          dn1Desc.getNonDfsUsed() + dn2Desc.getNonDfsUsed(), nonDFSAfterReg);
++          cluster.getNamesystem(0).getCapacityTotal());
++      long nonDfsAfterReg = cluster.getNamesystem(0).getNonDfsUsedSpace();
++      assertEquals("NonDFS should include actual DN NonDFSUsed",
++          dn1Desc.getNonDfsUsed() + dn2Desc.getNonDfsUsed(), nonDfsAfterReg);
 +    } finally {
 +      if (cluster != null) {
 +        cluster.shutdown();

@@ -12,7 +12,7 @@
 |----|-----------|--------|---------|
 | M0 | Scaffold & claim | DONE | true |
 | M1 | Identify fix + pre-fix commit | DONE | true |
-| M2 | Build from source at pre-fix | PENDING | null |
+| M2 | Build from source at pre-fix | DONE | true |
 | M3 | Reproduce the failure | PENDING | null |
 | M4 | Anonymize + rebuild + re-confirm | PENDING | null |
 | M5 | Prepare diagnosis inputs & ground truth | PENDING | null |
@@ -23,4 +23,7 @@
 ## Log
 - 2026-08-10 M0 DONE: created bug folder, subdirs (private/source/logs/diagnosis), PROGRESS.md, state.json. Claimed bug. Base docker image `clods-eval` build kicked off.
 - 2026-08-10 M1 DONE: JIRA HDFS-11896 = "Non-dfsUsed doubled on dead node re-registration". Fix commit `c4a85c694fae3f814ab4e7f3c172da1df0e0e353` (trunk), pre-fix `11ece0bda1f6e5dd9d0f828b7c29acacf6087baa`. Functional change is entirely in `DatanodeDescriptor.resetBlocks()` (+ making a DataNode test helper public, + a new test). Saved private/fix.diff. Base image `clods-eval` built OK.
+- 2026-08-10 M2/M3 investigation: trunk pre-fix does NOT reproduce the doubling. On trunk `HeartbeatManager.register()` calls `updateHeartbeatState(EMPTY)` (resets nonDfsUsed→0) BEFORE `stats.add(d)`, so the stale value `resetBlocks()` leaves is never counted. Verified empirically: trunk minicluster repro gives correct 10000 (no doubling), even after patching SimulatedFSDataset to report nonzero non-DFS.
+- 2026-08-10 PIVOT to branch-2.7: the ONLY fix commit that also patches `HeartbeatManager.java` is the branch-2.7 cherry-pick `f90b9d2b258`. On 2.7 pre-fix (`b51623503fb`), `addDatanode()` does `stats.add(d)` and `register()` calls `addDatanode(d)` BEFORE `updateHeartbeatState(EMPTY)`, so the stale `nonDfsUsed` (never reset by `resetBlocks()`) is added to cluster totals, then the real value is added on the next heartbeat → doubled. This is the faithful reproduction tree. Updated fix_commit=f90b9d2 (2.7), pre_fix=b516235; private/fix.diff now = 2.7 fix, fix.trunk.diff kept for reference.
 
+- 2026-08-10 M2 DONE: built hadoop-hdfs 2.7.4-SNAPSHOT (`-pl hadoop-hdfs -am install -DskipTests`) from branch-2.7 pre-fix inside `clods-eval:HDFS-HDFS-11896` (Temurin JDK8 + protobuf 2.5.0). No pom edits needed; toolchain-only deps fix documented in private/deps-fix.patch + private/Dockerfile.hdfs11896. hadoop-hdfs jar + all failure-path classes compiled.

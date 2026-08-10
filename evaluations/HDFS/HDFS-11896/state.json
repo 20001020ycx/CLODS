@@ -3,8 +3,8 @@
   "system": "HDFS",
   "jira": "HDFS-11896",
   "source_repo": "https://github.com/apache/hadoop.git",
-  "fix_commit": "c4a85c694fae3f814ab4e7f3c172da1df0e0e353",
-  "pre_fix_commit": "11ece0bda1f6e5dd9d0f828b7c29acacf6087baa",
+  "fix_commit": "f90b9d2b25822868797d136de8bc268c5ca7ad2c",
+  "pre_fix_commit": "b51623503fbd71b88647c175a79470d19b11d907",
   "anonymized_commit": null,
   "symptom_short": "Cluster non-DFS-used space is doubled after a dead datanode re-registers",
   "milestones": [
@@ -34,19 +34,22 @@
       "artifacts": [
         "private/fix.diff"
       ],
-      "note": "Fix commit c4a85c6 (trunk): 'HDFS-11896 Non-dfsUsed doubled on dead node re-registration'. Functional change is entirely in DatanodeDescriptor.resetBlocks(); pre_fix = fix^ = 11ece0bda1f."
+      "note": "Fix committed to trunk (c4a85c6) AND cherry-picked to branch-2.x. The doubling ONLY manifests on branch-2.7: there register()->addDatanode() does stats.add(d) with the STALE nonDfsUsed BEFORE updateHeartbeatState(EMPTY) clears it. Trunk/2.8/2.9 already reset before add, masking the bug (verified: trunk pre-fix reproduction shows correct 10000, no doubling). So the faithful pre-fix tree is branch-2.7: fix=f90b9d2 (also patches HeartbeatManager.register ordering), pre_fix=b516235. private/fix.diff is the 2.7 fix; fix.trunk.diff kept for reference."
     },
     {
       "id": "M2",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-10T19:10:00Z",
+      "finished": "2026-08-10T19:20:00Z",
+      "attempts": 2,
+      "by": "agent-run-da18f700",
+      "artifacts": [
+        "private/deps-fix.patch",
+        "private/Dockerfile.hdfs11896"
+      ],
+      "note": "Built hadoop-hdfs 2.7.4-SNAPSHOT -am from branch-2.7 pre-fix with JDK8+protobuf2.5.0 image. No pom edits needed (toolchain-only). hadoop-hdfs jar + all failure-path classes compiled."
     },
     {
       "id": "M3",
@@ -121,5 +124,7 @@
       "note": ""
     }
   ],
-  "result": null
+  "result": null,
+  "fix_commit_trunk_ref": "c4a85c694fae3f814ab4e7f3c172da1df0e0e353",
+  "source_version": "branch-2.7 (2.7.4-SNAPSHOT)"
 }

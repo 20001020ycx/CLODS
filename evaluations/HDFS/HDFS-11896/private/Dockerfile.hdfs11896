@@ -1,0 +1,26 @@
+FROM clods-eval
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# --- Temurin (Adoptium) JDK 8 : Hadoop 3.0.0-beta1 needs JDK 1.8 ---
+RUN apt-get update && apt-get install -y --no-install-recommends gnupg ca-certificates curl \
+ && mkdir -p /etc/apt/keyrings \
+ && curl -fsSL https://packages.adoptium.net/artifactory/api/gpg/key/public | gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg \
+ && echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb jammy main" > /etc/apt/sources.list.d/adoptium.list \
+ && apt-get update && apt-get install -y --no-install-recommends temurin-8-jdk \
+ && rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME=/usr/lib/jvm/temurin-8-jdk-amd64
+ENV PATH=$JAVA_HOME/bin:$PATH
+
+# --- protobuf 2.5.0 (required exact version for Hadoop protoc codegen) ---
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential autoconf automake libtool curl ca-certificates \
+ && cd /tmp \
+ && curl -fsSL -o protobuf-2.5.0.tar.gz https://github.com/protocolbuffers/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz \
+ && tar xzf protobuf-2.5.0.tar.gz \
+ && cd protobuf-2.5.0 \
+ && ./configure --prefix=/usr/local \
+ && make -j"$(nproc)" && make install && ldconfig \
+ && cd / && rm -rf /tmp/protobuf-2.5.0 /tmp/protobuf-2.5.0.tar.gz \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN java -version 2>&1 | head -1 && protoc --version

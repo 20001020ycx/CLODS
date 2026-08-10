@@ -305,12 +305,13 @@ keeping the source compilable and the log still traceable. See §6 for the full 
 
 ### M6 — Run LLM diagnosis ×5 (network locked, single prompt, no follow-ups)
 1. Use `context/run_diagnosis.sh` (§7). It runs the diagnosis **5 times**, each in a
-   fresh, stateless session, with web tools disabled and egress restricted to the
-   Anthropic API only. It writes `diagnosis/run_N.md` (full transcript+answer).
-2. The **exact prompt** (substitute the container paths):
+   fresh, stateless process, with web tools denied and egress restricted to the Anthropic
+   API only. It stages only `symptom.md` + `source/` + `logs/symptom.log` (never
+   `private/`), pins `--model opus --effort high`, and writes `diagnosis/run_N.md`.
+2. The **exact prompt** (the script substitutes the staging paths for you):
 
    ```
-   Given the source code at /bug/source and the symptom logs located at /bug/logs/symptom.log,
+   Given the source code at <STAGE>/source and the symptom logs located at <STAGE>/logs/symptom.log,
    what is the root cause of the failure: <SYMPTOM from symptom.md>?
    Identify the specific lines of code and the exact logical conditions (branches) that
    dictate this failure path.
@@ -319,7 +320,8 @@ keeping the source compilable and the log still traceable. See §6 for the full 
    Instead rely purely on your reasoning to diagnose this failure.
    ```
 
-   `<SYMPTOM>` = the full text of `symptom.md`. The paths point at the anonymized tree.
+   `<SYMPTOM>` = the full text of `symptom.md`. `<STAGE>` = the throwaway staging dir
+   (so the agent never sees `/bug` or `private/`). Do not edit this prompt per bug.
 3. **No follow-up prompts.** Whatever the model returns in that single turn is the run's
    answer. Do not iterate, clarify, or hint.
 4. Mark M6 `DONE`, `success: true`.
@@ -388,13 +390,24 @@ trace) and the build system. Outputs: a compilable `source/` tree + updated `sym
 ## 7. The diagnosis helper (`context/run_diagnosis.sh`)
 
 `run_diagnosis.sh <BUG_DIR>` runs the 5 diagnoses. It:
-- mounts `<BUG_DIR>` read-only at `/bug` inside a restricted network,
 - sets egress to **api.anthropic.com:443 only** (iptables DROP default + ACCEPT for the
-  API + established connections),
-- invokes `claude -p "<prompt>"` once per run with
-  `--disallowedTools WebFetch,WebSearch` and no MCP web tools,
-- writes each run's full output to `diagnosis/run_N.md`,
-- requires `--cap-add=NET_ADMIN` on the docker run (documented in §11).
+  API + established connections); requires `--cap-add=NET_ADMIN` on the docker run (§11);
+- builds a **throwaway staging dir** containing **only** `symptom.md`, `source/`, and
+  `logs/symptom.log`, and runs the agent from there — `private/` (answer key, fix diff,
+  anonymization map) is **never** copied in, so it is unreachable regardless of the mount;
+- invokes `claude -p "<prompt>"` once per run — each a **fresh, stateless process** (no
+  `--continue`/`--resume`), so no conversation history or orchestrator context leaks in;
+- pins the subject: `--model "$CLODS_MODEL"` (default `opus`) and `--effort "$CLODS_EFFORT"`
+  (default `high`), matching the paper's "Claude Opus, thinking=high"; override per run via
+  env only if you intentionally change the subject;
+- hardens the session: `--bare` (skip CLAUDE.md auto-discovery, auto-memory, plugins,
+  hooks, keychain — no project/user memory leaks in), `--no-session-persistence`,
+  `--exclude-dynamic-system-prompt-sections`;
+- denies non-essential tools: `--disallowed-tools 'Bash,Write,Edit,WebFetch,WebSearch,
+  Task,NotebookEdit'` — the agent can only Read/Grep/Glob the staging tree; it cannot shell
+  out, go online, modify files, or spawn sub-agents;
+- writes each run's full output to `diagnosis/run_N.md` (needs the bug dir mounted
+  read-write; see §11).
 
 The prompt is assembled from `symptom.md` + the fixed template in §5/M6. The script is
 idempotent: a run whose `run_N.md` already exists and is non-empty is skipped on re-entry.
@@ -522,11 +535,14 @@ anonymized symptom log. Verify zero original-identifier leakage (§6).
 **Diagnose (M6):** network locked to the API only. The entrypoint applies the iptables
 allowlist before launching Claude Code, so even if a web tool slipped through, egress
 would be dropped. The agent issues this from the host; outputs land in the mounted
-`diagnosis/`.
+`diagnosis/`. Mount the bug dir **read-write** (the script writes `diagnosis/run_N.md`)
+— this is safe: `run_diagnosis.sh` stages only `symptom.md`+`source/`+`logs/` into a
+throwaway dir and runs the agent there with `Bash`/`Write`/`Edit` denied, so the agent can
+neither reach `private/` nor modify anything.
 
 ```bash
 docker run --rm --cap-add=NET_ADMIN \
-  -v "$PWD/evaluations/<SYSTEM>/<BUGID>:/bug:ro" \
+  -v "$PWD/evaluations/<SYSTEM>/<BUGID>:/bug" \
   -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
   --entrypoint /opt/clods/run_diagnosis.sh \
   clods-eval /bug

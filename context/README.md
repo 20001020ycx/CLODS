@@ -138,9 +138,12 @@ that need the per-bug toolchain or network isolation:
 docker run --rm -v "$PWD:/work" clods-eval bash -lc \
   'cd /work/repos/<SYSTEM>-<BUGID> && <build cmd> && bash /work/evaluations/<SYSTEM>/<BUGID>/reproduce.sh'
 
-# diagnose (M6): network locked to api.anthropic.com only, 5× single prompt
+# diagnose (M6): network locked to api.anthropic.com only, 5× single prompt.
+# The script stages only symptom.md+source/+logs/ (never private/) and runs each
+# diagnosis as a fresh, stateless `claude -p` (Opus, effort=high) with Bash/Write/web
+# denied. Mount read-write so it can write diagnosis/run_N.md.
 docker run --rm --cap-add=NET_ADMIN \
-  -v "$PWD/evaluations/<SYSTEM>/<BUGID>:/bug:ro" \
+  -v "$PWD/evaluations/<SYSTEM>/<BUGID>:/bug" \
   -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
   --entrypoint /opt/clods/run_diagnosis.sh \
   clods-eval /bug

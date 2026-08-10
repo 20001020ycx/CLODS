@@ -1,0 +1,16 @@
+{
+  "files": {
+    "src/main/java/org/example/retry/RetryHandler.java": "src/main/java/mod1/ClassA1.java",
+    "src/main/java/org/example/client/ReplicaClient.java": "src/main/java/mod1/ClassB2.java",
+    "src/main/java/org/example/metrics/MetricsSink.java": "src/main/java/mod1/ClassC3.java"
+  },
+  "modules_renamed": {
+    "example-retry": "mod1"
+  },
+  "strings": [
+    {"original": "Retrying operation after status {}", "replacement": "Event A7: {}", "file": "ClassA1.java", "appears_in_log": true},
+    {"original": "Operation completed successfully",     "replacement": "Event A8: {}",   "file": "ClassA1.java", "appears_in_log": true},
+    {"original": "Submitting request to replica {}",     "replacement": "Event A9: {}",   "file": "ClassB2.java", "appears_in_log": true},
+    {"original": "Recording metric {}={}",              "replacement": "Event A10: {}={}", "file": "ClassC3.java", "appears_in_log": false}
+  ]
+}

@@ -1,0 +1,6 @@
+2026-08-10T09:28:40.102Z INFO  mod1.ClassB2 - Event A9: replica-3
+2026-08-10T09:28:40.118Z INFO  mod1.ClassA1 - Event A8: OK
+2026-08-10T09:28:40.119Z WARN  mod1.ClassA1 - Event A7: PARTIAL_ACK
+2026-08-10T09:28:40.121Z INFO  mod1.ClassB2 - Event A9: replica-3
+2026-08-10T09:28:41.340Z INFO  mod1.ClassC3 - Event A10: duplicate_side_effect=2
+2026-08-10T09:28:41.341Z ERROR mod1.ClassA1 - Operation executed more than once after a successful completion

@@ -1,0 +1,7 @@
+# evaluations/COORDINATION.log
+# Shared append-only coordination log for all agents. NEVER overwrite (no `>`); only
+# append with `>>` under `flock`. One line per event:
+#   <ISO-UTC> <BUGID> <event>
+# Events: "claim M0", "M<N> DONE success", "M<N> FAILED <reason>", "M<N> BLOCKED",
+#          "bug COMPLETE <successes>/5".
+# See context/METHODOLOGY.md §13.

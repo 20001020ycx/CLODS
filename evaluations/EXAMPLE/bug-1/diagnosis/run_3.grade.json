@@ -1,0 +1,9 @@
+{
+  "run": 3,
+  "verdict": "FAIL",
+  "justification": "Named the correct file (ClassA1) but no exact line and no branch condition; only a vague 'inspect the handle method / retry counter'. Per rubric, right file without the exact line+branch is FAIL.",
+  "claimed_lines": [],
+  "claimed_branches": [],
+  "gt_lines": ["ClassA1.java:88"],
+  "gt_branches": ["response != Response.OK (should be response == RETRYABLE_ERROR)"]
+}

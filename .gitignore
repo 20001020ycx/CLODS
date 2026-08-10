@@ -1,14 +1,16 @@
-# Per-bug evaluation outputs are NOT tracked.
-# This includes the progress docs (PROGRESS.md / state.json), the anonymized source
-# trees, logs, private ground truth, and diagnosis runs. See context/METHODOLOGY.md.
-evaluations/
-
-# Local repos cloned during reproduction (M1-M3).
-/work/
-/work/repos/
+# Per-bug evaluation progress (lightweight) IS tracked in this repo so multiple agents
+# can coordinate and resume. Heavy, reproducible artifacts are ignored:
+#   - source/      : anonymized source trees (rebuild from anonymization_map.json +
+#                    deps-fix.patch + pre_fix_commit; see METHODOLOGY.md §resume)
+#   - logs/        : symptom logs (can be huge); the published example's small log is kept
+#   - repos/       : per-bug scratch clones of the system repo
+evaluations/**/source/
+evaluations/**/logs/*
+!evaluations/EXAMPLE/bug-1/logs/symptom.log
+evaluations/**/private/symptom.orig.log
+repos/
 
 # Build / editor noise
-*.log
 *.class
 target/
 build/
@@ -17,4 +19,5 @@ build/
 .vscode/
 __pycache__/
 *.pyc
+*.orig.log
 .DS_Store

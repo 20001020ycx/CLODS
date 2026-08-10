@@ -12,17 +12,22 @@ and source code alone (no internet, no knowledge of the known fix).
 | Path | What |
 |---|---|
 | `context/METHODOLOGY.md` | The agent runbook — the single source of truth each evaluation agent reads and follows. |
+| `context/prompt.md` | The kickoff prompt an operator hands to an agent for one bug (fill in JIRA/system/bugid). |
 | `Dockerfile` | The containerized environment (build toolchain + Claude Code CLI). Agents run inside it, never on bare metal. |
 | `context/run_diagnosis.sh` | Helper that runs the 5× network-locked, single-prompt LLM diagnoses. |
-| `evaluations/` | **Per-bug outputs (gitignored).** Each `<SYSTEM>/<BUGID>/` folder holds the milestone tracker, anonymized source, logs, and diagnosis results. |
+| `evaluations/` | **Per-bug progress, tracked** (lightweight files: tracker, diagnosis runs, grades, summary). Heavy artifacts (`source/`, `logs/`, `repos/`) are gitignored. `evaluations/EXAMPLE/bug-1/` is a published illustrative example; `evaluations/COORDINATION.log` is the shared append-only log. |
 
-## Quick start
+## Running a bug
+
+Multiple agents can work in this workspace at once — each owns one
+`evaluations/<SYSTEM>/<BUGID>/` folder, commits only there, and pushes after every
+milestone. See `context/METHODOLOGY.md` §13 for workspace division and git discipline.
 
 ```bash
-# build the image
+# build the base image
 docker build -t clods-eval -f Dockerfile .
 
-# setup phase (M0-M5): network on
+# setup phase (M0-M5): network on; inside, follow context/prompt.md for one bug
 docker run --rm -it -v "$PWD:/work" -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" clods-eval
 
 # diagnosis phase (M6): network locked to api.anthropic.com

@@ -1,0 +1,9 @@
+{
+  "run": 1,
+  "verdict": "PASS",
+  "justification": "Named ClassA1.java L88 and the response != Response.OK branch as the wrong condition; identified the non-OK intermediate state as the spurious retry trigger. Semantic match to ground truth.",
+  "claimed_lines": ["src/main/java/mod1/ClassA1.java:88"],
+  "claimed_branches": ["response != Response.OK"],
+  "gt_lines": ["ClassA1.java:88"],
+  "gt_branches": ["response != Response.OK (should be response == RETRYABLE_ERROR)"]
+}

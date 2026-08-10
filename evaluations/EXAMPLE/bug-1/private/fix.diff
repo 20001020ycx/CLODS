@@ -1,0 +1,12 @@
+diff --git a/src/main/java/org/example/retry/RetryHandler.java b/src/main/java/org/example/retry/RetryHandler.java
+index 1111111..2222222 100644
+--- a/src/main/java/org/example/retry/RetryHandler.java
++++ b/src/main/java/org/example/retry/RetryHandler.java
+@@ -85,7 +85,7 @@ public class RetryHandler {
+     public void handle(Response response) {
+         log.info("Event A8: {}", response);
+-        if (response != Response.OK) {
++        if (response == Response.RETRYABLE_ERROR) {
+             log.warn("Event A7: {}", response);
+             retry();
+         }

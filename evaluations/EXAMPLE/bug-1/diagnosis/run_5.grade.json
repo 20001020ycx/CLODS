@@ -1,0 +1,9 @@
+{
+  "run": 5,
+  "verdict": "FAIL",
+  "justification": "Named the caller (ClassB2.submit) as the root cause, not the actual root-cause branch in ClassA1. The retry *decision* (ClassA1 L88, response != OK) is what causes the second submit; ClassB2 merely re-submits because ClassA1 told it to. Wrong location and no branch condition.",
+  "claimed_lines": ["src/main/java/mod1/ClassB2.java"],
+  "claimed_branches": [],
+  "gt_lines": ["ClassA1.java:88"],
+  "gt_branches": ["response != Response.OK (should be response == RETRYABLE_ERROR)"]
+}

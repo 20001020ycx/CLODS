@@ -1,0 +1,20 @@
+diff --git a/mod1/pom.xml b/mod1/pom.xml
+index 3333333..4444444 100644
+--- a/mod1/pom.xml
++++ b/mod1/pom.xml
+@@ -12,9 +12,9 @@
+     <properties>
+-        <maven.compiler.source>1.4</maven.compiler.source>
+-        <maven.compiler.target>1.4</maven.compiler.target>
++        <maven.compiler.source>1.8</maven.compiler.source>
++        <maven.compiler.target>1.8</maven.compiler.target>
+     </properties>
+@@ -30,7 +30,7 @@
+             <plugin>
+                 <groupId>org.apache.maven.plugins</groupId>
+                 <artifactId>maven-compiler-plugin</artifactId>
+-                <version>3.1</version>
++                <version>3.8.1</version>
+             </plugin>
+-        <!-- repository https://repo1.maven.org/maven2 deprecated/404 in 2015 -->
++        <!-- pinned to central; old repo removed -->

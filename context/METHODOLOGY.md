@@ -70,12 +70,16 @@ All work lives under `/mnt/SSD-4T/ycx/CLODS/`. The layout is:
 CLODS/
 ├── context/
 │   ├── METHODOLOGY.md            # this file
+│   ├── prompt.md                 # ★ the kickoff prompt an operator hands to an agent
 │   ├── Dockerfile
 │   └── run_diagnosis.sh          # helper for the 5x network-locked diagnosis
-└── evaluations/
+└── evaluations/                  # live per-bug progress IS tracked here (see .gitignore)
+    ├── COORDINATION.log          # ★ shared append-only coordination log (flock; never overwrite)
+    ├── EXAMPLE/bug-1/            # published illustrative example (see its README)
+    ├── repos/                    # [gitignored, heavy] per-bug scratch clones: <SYSTEM>-<BUGID>
     └── <SYSTEM>/                 # e.g. HDFS, Presto, Blink, Velox
-        └── <BUGID>/              # e.g. HDFS-11896, or the dry-run "bug-1"
-            ├── PROGRESS.md       # ★ milestone tracker (the source of truth for resume)
+        └── <BUGID>/              # e.g. HDFS-11896
+            ├── PROGRESS.md       # ★ milestone tracker (source of truth for resume)
             ├── state.json        # ★ machine-readable mirror of PROGRESS milestones
             ├── reproduce.sh      # system-specific script that reproduces the bug (you write it)
             ├── private/          # NEVER given to the diagnosis LLM
@@ -83,10 +87,10 @@ CLODS/
             │   ├── anonymization_map.json # original→anonymized file/string mapping
             │   ├── fix.diff                 # the raw fix-commit diff
             │   ├── deps-fix.patch           # build-file edits made to compile the old pre-fix tree
-            │   └── symptom.orig.log         # pre-anonymization log (to verify anonymization)
-            ├── source/           # the anonymized, compilable source tree given to the LLM
+            │   └── symptom.orig.log         # [gitignored] pre-anonymization log
+            ├── source/           # [gitignored, heavy] anonymized source tree (rebuild on resume)
             ├── logs/
-            │   └── symptom.log   # the anonymized symptom log given to the LLM
+            │   └── symptom.log   # [gitignored, heavy] anonymized symptom log given to the LLM
             ├── symptom.md        # the symptom description given to the LLM
             ├── diagnosis/
             │   ├── run_1.md ... run_5.md   # full raw output of each of the 5 runs
@@ -94,8 +98,16 @@ CLODS/
             └── summary.md         # final: successes/5 + discussion
 ```
 
-**Path rule:** the `<SYSTEM>/<BUGID>` folder is created under `evaluations/`. For the
-dry run we use `evaluations/EXAMPLE/bug-1/`.
+**Tracked vs gitignored (important):** the **lightweight** per-bug files
+(`PROGRESS.md`, `state.json`, `symptom.md`, `summary.md`, `reproduce.sh`, `diagnosis/*`,
+`private/*.md|.json|.diff|.patch`) are committed to this repo so multiple agents can
+coordinate and resume. The **heavy / reproducible** artifacts are gitignored: `source/`
+(the anonymized source tree — rebuild from `anonymization_map.json` + `deps-fix.patch` +
+`pre_fix_commit`; see §9), `logs/` (symptom logs can be huge), and `repos/` (scratch
+clones). The published example's small `symptom.log` is the one exception that is tracked.
+
+**Path rule:** the `<SYSTEM>/<BUGID>` folder is created under `evaluations/`. The
+published example lives at `evaluations/EXAMPLE/bug-1/`.
 
 ---
 
@@ -118,6 +130,13 @@ each step succeeded. **Rules:**
    won't reproduce), set it to `FAILED` (`success: false`) with a precise reason, cascade
    the remaining milestones to `BLOCKED` (`success: null`), and stop. Do not silently
    skip ahead.
+6. **Commit & push after every milestone.** As soon as a milestone is `DONE` (or `FAILED`),
+   commit your bug-folder changes and push (§13 Git discipline). This is what makes a
+   killed agent resumable by another. Never accumulate multiple milestones in one commit.
+7. **Stay in your lane.** You own exactly one folder, `evaluations/<SYSTEM>/<BUGID>/`.
+   Write only there. Never modify `context/`, `Dockerfile`, `example/`, the repo root, or
+   any other bug's folder. Shared coordination is append-only via
+   `evaluations/COORDINATION.log` (§13) — never overwrite it or anyone else's file.
 
 | ID | Milestone | Network | Key outputs |
 |---|---|---|---|
@@ -214,8 +233,10 @@ PY
 1. Your **only** input is the JIRA ticket. From it, identify the system repo URL and the
    fix commit (the commit whose diff resolves the ticket). If the ticket references a PR,
    use the PR's merge commit as the fix commit.
-2. In a **scratch clone** of the system repo (under `/work/repos/<SYSTEM>`), confirm the
-   fix commit resolves the described symptom by reading its diff.
+2. In a **per-bug scratch clone** of the system repo at `/work/repos/<SYSTEM>-<BUGID>`
+   (container path = host `repos/<SYSTEM>-<BUGID>`, gitignored), confirm the fix commit
+   resolves the described symptom by reading its diff. Use a **per-bug** clone so two
+   agents working the same system never share/clobber one checkout.
 3. `pre_fix_commit = git rev-parse <fix_commit>^` — the last commit where the bug exists.
 4. Save `git show <fix_commit> > <BUG_DIR>/private/fix.diff`.
 5. Record `jira`, `source_repo`, `fix_commit`, and `pre_fix_commit` in `state.json`.
@@ -401,6 +422,13 @@ auditable.
 - **Redoing a DONE milestone** is allowed only if you find its artifacts are corrupted or
   wrong. In that case: set it back to `PENDING`, record *why* in the log, and re-run. Never
   silently overwrite `DONE` work.
+- **Reconstructing `source/` & `logs/` on resume (they are gitignored):** a resuming agent
+  finds the bug folder in git but NOT the `source/` tree or `logs/`. Rebuild them
+  deterministically from the tracked metadata: clone the system repo at `pre_fix_commit`,
+  apply `private/deps-fix.patch`, replay `private/anonymization_map.json` (rename files +
+  rewrite log strings) to regenerate `source/`, then re-run `reproduce.sh` to regenerate
+  `logs/symptom.log`. Only if the metadata is insufficient to reconstruct should you redo
+  M2–M4 from scratch.
 - **Atomic writes:** every `state.json` update uses the temp-file-then-`mv` pattern (§4).
 - **Determinism within a run:** do not set seeds or rely on `Date.now()` in scripts; shell
   `date` is fine for timestamps.
@@ -499,8 +527,8 @@ mkdir -p $BUG_DIR/{private,source,logs,diagnosis}
 cd $BUG_DIR
 
 # M1  (input = JIRA ticket HDFS-11896)
-git clone https://github.com/apache/hadoop.git /work/repos/hadoop
-cd /work/repos/hadoop
+git clone https://github.com/apache/hadoop.git /work/repos/hadoop-HDFS-11896
+cd /work/repos/hadoop-HDFS-11896
 # from the ticket's "Fix Version"/PR, locate the fix commit; e.g.:
 FIX=$(git log --oneline --grep=HDFS-11896 | head -1 | awk '{print $1}')
 PRE=$(git rev-parse $FIX^)
@@ -524,7 +552,70 @@ mvn -pl hadoop-hdfs-project/hadoop-hdfs -am package -DskipTests
 
 ---
 
-## 13. When you finish
+## 13. Workspace division, coordination & git discipline
+
+Multiple agents work in this same workspace at once. Follow these rules so they don't
+clobber each other.
+
+### Workspace ownership
+- You own exactly **one** folder: `evaluations/<SYSTEM>/<BUGID>/`. Create it at M0 and
+  write only inside it. Everything you produce goes there.
+- **Per-bug scratch clone:** `/work/repos/<SYSTEM>-<BUGID>` (host `repos/<SYSTEM>-<BUGID>`,
+  gitignored). Never share a clone with another agent, even for the same system — the
+  `-<BUGID>` suffix guarantees disjoint checkouts.
+- **Read-only shared:** `context/`, `Dockerfile`, `example/`, and the repo root files. Do
+  not edit, rename, or delete any of these. If the methodology or harness needs a change,
+  stop and tell the operator — do not patch it yourself.
+- **Never touch another agent's bug folder.** Read it only if you must coordinate; never
+  write to it.
+
+### The shared coordination log (append-only — never overwrite)
+`evaluations/COORDINATION.log` is the one shared file. Every agent **appends** to it; no
+one ever overwrites it. Use `flock` so concurrent appends don't corrupt each other:
+
+```bash
+append_coord() {  # usage: append_coord "M2 DONE success"
+  flock evaluations/COORDINATION.log bash -c \
+    "printf '%s %s %s\n' \"\$(date -u +%FT%TZ)\" \"\$BUGID\" \"\$1\"" \
+    >> evaluations/COORDINATION.log
+}
+append_coord "claim M0"
+append_coord "M2 DONE success"
+append_coord "M3 FAILED: won't reproduce"
+```
+
+Append a line when you: claim a bug, start/finish a milestone, hit `FAILED`/`BLOCKED`, or
+finish the bug. Your own per-bug log lives in `PROGRESS.md`'s append-only `## Log` section
+— also append with `>>`, never overwrite with `>`.
+
+### Git discipline — commit & push after every milestone
+After **each** milestone is `DONE` (or `FAILED`), immediately commit and push so another
+agent can resume your bug if you are killed:
+
+```bash
+cd /work                          # = host /mnt/SSD-4T/ycx/CLODS inside the container
+git pull --rebase origin main      # pick up other agents' commits first
+git add evaluations/<SYSTEM>/<BUGID>   # your folder ONLY — never `git add -A`
+git commit -m "eval/<SYSTEM>/<BUGID>: M<N> <one-line outcome>  success=<true|false>"
+git push origin main
+```
+
+Rules:
+- **One milestone per commit.** Prefix every commit `eval/<SYSTEM>/<BUGID>: M<N> ...` and
+  end the message with `success=<true|false>` so progress is greppable across the repo.
+- **Always `git pull --rebase` before `git push`** — other agents are pushing too; rebase
+  avoids divergent histories and lost commits.
+- **Stage only your own bug folder** (`git add evaluations/<SYSTEM>/<BUGID>`), never
+  `git add -A` or `git add .` — you must not commit another agent's in-progress work or any
+  shared file.
+- **Never force-push** `main`. If a rebase conflicts on your own folder (rare, since
+  folders are disjoint), resolve it on your files only.
+- **Keep heavy artifacts out:** `source/`, `logs/`, `repos/` are gitignored — do not
+  force-add them. They are reconstructed on resume (§9).
+
+---
+
+## 14. When you finish
 
 1. Ensure every milestone is `DONE` (`success: true`) or, if a step failed, `FAILED`
    (`success: false`) with the rest cascaded to `BLOCKED` (none `IN_PROGRESS`/`PENDING`).

@@ -5,7 +5,7 @@
   "source_repo": "https://github.com/apache/hadoop.git",
   "fix_commit": "f90b9d2b25822868797d136de8bc268c5ca7ad2c",
   "pre_fix_commit": "b51623503fbd71b88647c175a79470d19b11d907",
-  "anonymized_commit": null,
+  "anonymized_commit": "154e0a89b0a85a6349e1f8d8c091b9d4535341b5",
   "symptom_short": "Cluster non-DFS-used space is doubled after a dead datanode re-registers",
   "milestones": [
     {
@@ -71,15 +71,21 @@
     },
     {
       "id": "M4",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-10T19:35:00Z",
+      "finished": "2026-08-10T19:55:00Z",
+      "attempts": 1,
+      "by": "agent-run-da18f700",
+      "artifacts": [
+        "source/ (gitignored; canonical copy private/anon-source/)",
+        "logs/symptom.log (gitignored; committed copy private/symptom.anon.log)",
+        "private/anonymization_map.json",
+        "private/repro/ReproDriver.java",
+        "private/repro/materialize_source.sh"
+      ],
+      "note": "Curated faithful anonymization: the self-contained failure path transcribed into a generic 'cluster node usage accounting' service (com.acme.cluster.usage). Anonymized source COMPILES and REPRODUCES the identical doubling (observed 15000 vs correct 10000, ratio 1.5) via private/repro/ReproDriver.java -> logs/symptom.log. Verified zero original-identifier leakage in source/ + symptom.log. Fresh git repo source/ commit=154e0a89b0a85a6349e1f8d8c091b9d4535341b5. Both candidate fixes verified to restore 10000: (A) setAuxUsed(0) in clearNodeState, (B) reorder register() reset-before-add."
     },
     {
       "id": "M5",

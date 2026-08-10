@@ -14,7 +14,7 @@
 | M1 | Identify fix + pre-fix commit | DONE | true |
 | M2 | Build from source at pre-fix | DONE | true |
 | M3 | Reproduce the failure | DONE | true |
-| M4 | Anonymize + rebuild + re-confirm | PENDING | null |
+| M4 | Anonymize + rebuild + re-confirm | DONE | true |
 | M5 | Prepare diagnosis inputs & ground truth | PENDING | null |
 | M6 | Run LLM diagnosis ×5 (network locked) | PENDING | null |
 | M7 | Grade each run | PENDING | null |
@@ -28,3 +28,4 @@
 
 - 2026-08-10 M2 DONE: built hadoop-hdfs 2.7.4-SNAPSHOT (`-pl hadoop-hdfs -am install -DskipTests`) from branch-2.7 pre-fix inside `clods-eval:HDFS-HDFS-11896` (Temurin JDK8 + protobuf 2.5.0). No pom edits needed; toolchain-only deps fix documented in private/deps-fix.patch + private/Dockerfile.hdfs11896. hadoop-hdfs jar + all failure-path classes compiled.
 - 2026-08-10 M3 DONE: reproduced the doubling on branch-2.7 pre-fix. MiniDFSCluster driver (TestReReg11896): dn1 heartbeats disabled -> setDataNodeDead (heartbeatCheck -> removeDeadDatanode -> removeBlocksAssociatedTo -> resetBlocks) -> heartbeats resumed -> dn1 re-registers. Result: cluster non-DFS-used = 15000 vs correct 10000 (dn1's 5000 counted twice; ratio 1.5). SYMPTOM captured to logs/symptom.log (gitignored) incl. HDFS runtime logs (removeDeadDatanode/registerDatanode) + PROBE/SYMPTOM markers. Harness is test-only (SimulatedFSDataset nonzero non-DFS patch + TestReReg11896), saved under private/repro/. reproduce.sh automates build+run. NOTE: a `mvn clean` (wipe target/) is required after switching branches or stale trunk .class files cause a runtime NoSuchFieldError.
+- 2026-08-10 M4 DONE: anonymized the failure path. The real HDFS tree/cluster-log are inherently HDFS-identifying (namenode/block/datanode saturate every line) and cannot be de-identified in place, so the self-contained failure path was transcribed faithfully (same logic, same bug) into a generic "cluster node usage accounting" service under `source/` (com.acme.cluster.usage). The anonymized code COMPILES and REPRODUCES the identical doubling: cluster_auxUsed=15000 vs correct 10000 (ratio 1.5), via private/repro/ReproDriver.java whose stdout is logs/symptom.log. Verified ZERO original-identifier leakage across source/ + symptom.log. Fresh source/ git repo committed. Canonical copies kept under private/anon-source/ + private/symptom.anon.log (source/ & logs/ are gitignored; materialize via private/repro/materialize_source.sh). Confirmed BOTH candidate fixes restore 10000: (A) add setAuxUsed(0) to clearNodeState [= resetBlocks resetting nonDfsUsed]; (B) reorder register() to reset-before-add [= HeartbeatManager.register].

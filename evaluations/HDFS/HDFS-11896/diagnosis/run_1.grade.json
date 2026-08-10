@@ -1,0 +1,25 @@
+{
+  "verdict": "PASS",
+  "justification": "Names BOTH fix sites exactly: resetBlocks() (DatanodeDescriptor.java:313) omitting setOtherUsed(0), AND register() if(!d.isAlive) branch where addDatanode->stats.add (L409) re-adds the stale otherUsed BEFORE updateHeartbeatState(EMPTY) resets it (L194/436), with the subsequent heartbeat's subtract seeing 0. Full arithmetic matches the log. Explicit fix locus = resetBlocks setOtherUsed(0).",
+  "claimed_lines": [
+    "DatanodeDescriptor.resetBlocks() L313-318 (setOtherUsed(0) MISSING)",
+    "HeartbeatManager.register L189-194",
+    "Stats.add L409",
+    "Stats.subtract L426",
+    "updateHeartbeatState setOtherUsed(0) L436",
+    "updateHeartbeat L221-224"
+  ],
+  "claimed_branches": [
+    "register(): if(!d.isAlive) -> addDatanode(stats.add stale 5000) before updateHeartbeatState(EMPTY) reset",
+    "death: resetBlocks leaves otherUsed stale; heartbeat subtract removes 0"
+  ],
+  "gt_lines": [
+    "DatanodeDescriptor.resetBlocks() L313-319 (omits setOtherUsed(0))",
+    "HeartbeatManager.register() L189-196 (addDatanode->stats.add before updateHeartbeatState(EMPTY))",
+    "HeartbeatManager.Stats.add L409 (capacityUsedOther += node.getOtherUsed())"
+  ],
+  "gt_branches": [
+    "register(): if(!d.isAlive) -> addDatanode(d) [stats.add of STALE otherUsed] BEFORE d.updateHeartbeatState(EMPTY_ARRAY) resets it, with no compensating stats.subtract",
+    "death path leaves otherUsed stale (resetBlocks does not setOtherUsed(0)); next heartbeat subtract sees 0 -> double count"
+  ]
+}

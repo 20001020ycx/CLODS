@@ -1,0 +1,25 @@
+{
+  "verdict": "PASS",
+  "justification": "Identifies the register() defect precisely: if(!d.isAlive) -> addDatanode->stats.add(L409) adds STALE otherUsed BEFORE updateHeartbeatState(EMPTY) resets it (L436), no matching subtract; first real heartbeat subtract(0)+add(5000)=15000. Names the exact controlling branches (register L190, registerDatanode restart L885/886, ordering 191-before-194) and that the death path never resets DatanodeDescriptor.otherUsed. Full mechanism + exact branch; emphasizes the register-reorder fix location rather than naming resetBlocks.",
+  "claimed_lines": [
+    "HeartbeatManager.register L190-194 (ordering)",
+    "Stats.add L409",
+    "Stats.subtract L426",
+    "updateHeartbeatState setOtherUsed(0) L436",
+    "updateHeartbeat L221-224",
+    "registerDatanode restart branch L885/886/934"
+  ],
+  "claimed_branches": [
+    "register(): if(!d.isAlive) -> addDatanode(stats.add stale) before updateHeartbeatState(EMPTY) reset, unpaired",
+    "death path never resets DatanodeDescriptor.otherUsed"
+  ],
+  "gt_lines": [
+    "DatanodeDescriptor.resetBlocks() L313-319 (omits setOtherUsed(0))",
+    "HeartbeatManager.register() L189-196 (addDatanode->stats.add before updateHeartbeatState(EMPTY))",
+    "HeartbeatManager.Stats.add L409 (capacityUsedOther += node.getOtherUsed())"
+  ],
+  "gt_branches": [
+    "register(): if(!d.isAlive) -> addDatanode(d) [stats.add of STALE otherUsed] BEFORE d.updateHeartbeatState(EMPTY_ARRAY) resets it, with no compensating stats.subtract",
+    "death path leaves otherUsed stale (resetBlocks does not setOtherUsed(0)); next heartbeat subtract sees 0 -> double count"
+  ]
+}

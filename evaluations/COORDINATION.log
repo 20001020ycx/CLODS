@@ -13,3 +13,4 @@
 2026-08-10T19:30:47Z HDFS-11896 M5 DONE success
 2026-08-10T19:51:30Z HDFS-11896 M4+M5 REDONE (minimal anonymization: real HDFS source+log, scrub id + nonDfs->other)
 2026-08-10T20:40:59Z HDFS-11896 M6 DONE success (5 runs)
+2026-08-10T20:44:31Z HDFS-11896 bug COMPLETE 5/5

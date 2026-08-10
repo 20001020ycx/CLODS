@@ -17,8 +17,8 @@
 | M4 | Anonymize + rebuild + re-confirm | DONE | true |
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true |
 | M6 | Run LLM diagnosis ×5 (network locked) | DONE | true |
-| M7 | Grade each run | PENDING | null |
-| M8 | Summary & finalize | PENDING | null |
+| M7 | Grade each run | DONE | true |
+| M8 | Summary & finalize | DONE | true |
 
 ## Log
 - 2026-08-10 M0 DONE: created bug folder, subdirs (private/source/logs/diagnosis), PROGRESS.md, state.json. Claimed bug. Base docker image `clods-eval` build kicked off.
@@ -31,3 +31,6 @@
 - 2026-08-10 M4 DONE: anonymized the failure path. The real HDFS tree/cluster-log are inherently HDFS-identifying (namenode/block/datanode saturate every line) and cannot be de-identified in place, so the self-contained failure path was transcribed faithfully (same logic, same bug) into a generic "cluster node usage accounting" service under `source/` (com.acme.cluster.usage). The anonymized code COMPILES and REPRODUCES the identical doubling: cluster_auxUsed=15000 vs correct 10000 (ratio 1.5), via private/repro/ReproDriver.java whose stdout is logs/symptom.log. Verified ZERO original-identifier leakage across source/ + symptom.log. Fresh source/ git repo committed. Canonical copies kept under private/anon-source/ + private/symptom.anon.log (source/ & logs/ are gitignored; materialize via private/repro/materialize_source.sh). Confirmed BOTH candidate fixes restore 10000: (A) add setAuxUsed(0) to clearNodeState [= resetBlocks resetting nonDfsUsed]; (B) reorder register() to reset-before-add [= HeartbeatManager.register].
 - 2026-08-10 M5 DONE: wrote symptom.md (neutral) + private/ground_truth.md (names both root-causing sites: NodeUsageRecord.clearNodeState L54-60 omits setAuxUsed(0); LivenessTracker.register L24-31 branch `if(!d.alive)` adds stale auxUsed via addNode->stats.add BEFORE applyUsageReport resets it). Verified zero fix-diff-token leakage into source/ + symptom.log + symptom.md.
 - 2026-08-10 M4+M5 REDONE (operator policy change → minimal, case-targeted anonymization; METHODOLOGY.md §6 updated). Deleted the earlier generic-transcription source + synthetic log. Now: source/ = the 9 REAL HDFS failure-path files (identifiers KEPT: DatanodeDescriptor, HeartbeatManager, FSNamesystem, datanode/namenode/block, …); logs/symptom.log = the REAL M3 reproduction log (real registerDatanode/removeDeadDatanode NN lines). ONLY redactions: JIRA id scrubbed (appeared only via the clone path) + metric nonDfsUsed→otherUsed. Deterministic regen via private/anonymize.sh (reproduce.sh now emits the raw log to private/symptom.orig.log, then calls anonymize.sh). ground_truth.md updated to real names/lines (resetBlocks L313-319 omits setOtherUsed(0); register L189-196 addDatanode-before-reset). Verified zero bug-id and zero nonDfs* leakage.
+- 2026-08-10 M6 DONE: 5 network-locked diagnosis runs (egress iptables-locked to api.anthropic.com; WebFetch/WebSearch disabled; OAuth creds). All 5 produced substantive single-turn diagnoses.
+- 2026-08-10 M7 DONE: graded 5/5 PASS. Every run isolated the exact failure path + controlling `if(!d.isAlive)` branch + add-before-reset ordering, matching the log arithmetic 10000->5000->15000. Runs 1,3 named resetBlocks() omission (setOtherUsed(0)); runs 2,4,5 named the register() reorder — both real branch-2.7 fix locations.
+- 2026-08-10 M8 DONE: summary.md written; result = 5/5. BUG COMPLETE.

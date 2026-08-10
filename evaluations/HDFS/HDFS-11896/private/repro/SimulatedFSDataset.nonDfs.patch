@@ -1,0 +1,18 @@
+diff --git a/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/server/datanode/SimulatedFSDataset.java b/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/server/datanode/SimulatedFSDataset.java
+index 59da33b3862..f9c8fbca12b 100644
+--- a/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/server/datanode/SimulatedFSDataset.java
++++ b/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/server/datanode/SimulatedFSDataset.java
+@@ -425,9 +425,12 @@ DatanodeStorage getDnStorage() {
+     }
+ 
+     synchronized StorageReport getStorageReport(String bpid) {
++      // HDFS-11896 reproduction: report a nonzero, deterministic non-DFS-used
++      // value so the "doubled non-DFS-used" symptom is observable. Upstream's
++      // SimulatedFSDataset hardcodes 0L here, which makes the metric vacuous.
+       return new StorageReport(dnStorage,
+           false, getCapacity(), getUsed(), getFree(),
+-          map.get(bpid).getUsed(), 0L);
++          map.get(bpid).getUsed(), getCapacity() / 4);
+     }
+   }
+   

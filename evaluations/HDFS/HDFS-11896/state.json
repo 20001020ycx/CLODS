@@ -53,15 +53,21 @@
     },
     {
       "id": "M3",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-10T19:05:00Z",
+      "finished": "2026-08-10T19:25:00Z",
+      "attempts": 2,
+      "by": "agent-run-da18f700",
+      "artifacts": [
+        "reproduce.sh",
+        "logs/symptom.log (gitignored)",
+        "private/symptom.orig.log (gitignored)",
+        "private/repro/TestReReg11896.java",
+        "private/repro/SimulatedFSDataset.nonDfs.patch"
+      ],
+      "note": "Reproduced on branch-2.7 pre-fix via MiniDFSCluster driver. After dn1 marked dead (removeDeadDatanode->resetBlocks) and re-registered, cluster non-DFS-used = 15000 vs correct 10000 (dn1's 5000 double-counted, ratio 1.5). Test-only harness: SimulatedFSDataset emits nonzero deterministic non-DFS (upstream hardcodes 0L, vacuous) + TestReReg11896. Clean rebuild required to avoid stale cross-branch .class files (NoSuchFieldError LOG)."
     },
     {
       "id": "M4",

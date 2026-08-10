@@ -13,7 +13,7 @@
 | M0 | Scaffold & claim | DONE | true |
 | M1 | Identify fix + pre-fix commit | DONE | true |
 | M2 | Build from source at pre-fix | DONE | true |
-| M3 | Reproduce the failure | PENDING | null |
+| M3 | Reproduce the failure | DONE | true |
 | M4 | Anonymize + rebuild + re-confirm | PENDING | null |
 | M5 | Prepare diagnosis inputs & ground truth | PENDING | null |
 | M6 | Run LLM diagnosis ×5 (network locked) | PENDING | null |
@@ -27,3 +27,4 @@
 - 2026-08-10 PIVOT to branch-2.7: the ONLY fix commit that also patches `HeartbeatManager.java` is the branch-2.7 cherry-pick `f90b9d2b258`. On 2.7 pre-fix (`b51623503fb`), `addDatanode()` does `stats.add(d)` and `register()` calls `addDatanode(d)` BEFORE `updateHeartbeatState(EMPTY)`, so the stale `nonDfsUsed` (never reset by `resetBlocks()`) is added to cluster totals, then the real value is added on the next heartbeat → doubled. This is the faithful reproduction tree. Updated fix_commit=f90b9d2 (2.7), pre_fix=b516235; private/fix.diff now = 2.7 fix, fix.trunk.diff kept for reference.
 
 - 2026-08-10 M2 DONE: built hadoop-hdfs 2.7.4-SNAPSHOT (`-pl hadoop-hdfs -am install -DskipTests`) from branch-2.7 pre-fix inside `clods-eval:HDFS-HDFS-11896` (Temurin JDK8 + protobuf 2.5.0). No pom edits needed; toolchain-only deps fix documented in private/deps-fix.patch + private/Dockerfile.hdfs11896. hadoop-hdfs jar + all failure-path classes compiled.
+- 2026-08-10 M3 DONE: reproduced the doubling on branch-2.7 pre-fix. MiniDFSCluster driver (TestReReg11896): dn1 heartbeats disabled -> setDataNodeDead (heartbeatCheck -> removeDeadDatanode -> removeBlocksAssociatedTo -> resetBlocks) -> heartbeats resumed -> dn1 re-registers. Result: cluster non-DFS-used = 15000 vs correct 10000 (dn1's 5000 counted twice; ratio 1.5). SYMPTOM captured to logs/symptom.log (gitignored) incl. HDFS runtime logs (removeDeadDatanode/registerDatanode) + PROBE/SYMPTOM markers. Harness is test-only (SimulatedFSDataset nonzero non-DFS patch + TestReReg11896), saved under private/repro/. reproduce.sh automates build+run. NOTE: a `mvn clean` (wipe target/) is required after switching branches or stale trunk .class files cause a runtime NoSuchFieldError.

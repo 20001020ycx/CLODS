@@ -19,3 +19,4 @@
 2026-08-11T20:40:51Z Zookeeper-1434 claim M0
 2026-08-11T20:40:51Z Zookeeper-1434 M0 DONE success
 2026-08-11T20:44:25Z Zookeeper-1434 M1 DONE success
+2026-08-11T20:47:21Z Zookeeper-1434 M2 DONE success (ant jar, JDK8)

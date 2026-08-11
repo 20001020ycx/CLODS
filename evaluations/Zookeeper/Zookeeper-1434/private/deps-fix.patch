@@ -1,0 +1,41 @@
+diff --git a/build.xml b/build.xml
+index 3490c4dc9..9b13fca44 100644
+--- a/build.xml
++++ b/build.xml
+@@ -31,7 +31,7 @@
+     <property file="${basedir}/src/java/${revision.properties}" />
+     
+     <!-- Target Java 1.5 -->
+-    <property name="javac.target" value="1.5" />
++    <property name="javac.target" value="1.8" />
+ 
+     <property name="src.dir" value="${basedir}/src" />
+     <property name="java.src.dir" value="${src.dir}/java/main" />
+@@ -101,7 +101,7 @@
+ 
+     <property name="ivy.version" value="2.2.0"/>
+     <property name="ivy.url"
+-              value="http://repo2.maven.org/maven2/org/apache/ivy/ivy" />
++              value="https://repo1.maven.org/maven2/org/apache/ivy/ivy" />
+     <property name="ivy.home" value="${user.home}/.ant" />
+     <property name="ivy.lib" value="${build.dir}/lib"/>
+     <property name="ivy.test.lib" value="${build.dir}/test/lib"/>
+diff --git a/ivysettings.xml b/ivysettings.xml
+index 52cfa52df..b21159722 100644
+--- a/ivysettings.xml
++++ b/ivysettings.xml
+@@ -18,11 +18,11 @@
+ -->
+ 
+   <property name="repo.maven.org"
+-    value="http://repo1.maven.org/maven2/" override="false"/>
++    value="https://repo1.maven.org/maven2/" override="false"/>
+   <property name="repo.jboss.org"
+-    value="http://repository.jboss.org/nexus/content/groups/public/" override="false"/>
++    value="https://repo1.maven.org/maven2/" override="false"/>
+   <property name="repo.sun.org"
+-    value="http://download.java.net/maven/2/" override="false"/>
++    value="https://repo1.maven.org/maven2/" override="false"/>
+   <property name="maven2.pattern"
+     value="[organisation]/[module]/[revision]/[module]-[revision]"/>
+   <property name="maven2.pattern.ext" value="${maven2.pattern}.[ext]"/>

@@ -1,0 +1,9 @@
+# Per-bug toolchain for Zookeeper-1434 (pre-fix trunk @ 2011-05, ZooKeeper 3.4.0-dev).
+# The 2011 build is Ant + Ivy targeting Java 5/6, so it needs a JDK 8 (JDK 11+ refuses
+# -source/-target < 7) and Ant, neither of which is in the clods-eval base image.
+FROM clods-eval
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        openjdk-8-jdk ant ant-optional \
+    && rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+ENV PATH=$JAVA_HOME/bin:$PATH

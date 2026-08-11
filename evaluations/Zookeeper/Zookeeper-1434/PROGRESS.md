@@ -28,7 +28,7 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
 |---|---|---|---|---|---|
 | M0 | Scaffold & claim | DONE | true | success | folder + trackers created |
 | M1 | Identify fix / pre-fix commit | DONE | true | success | fix=7f64942ba (ZOOKEEPER-1059), pre=59ac9fa78 |
-| M2 | Build from source at pre-fix | PENDING | null | pending | |
+| M2 | Build from source at pre-fix | DONE | true | success | `ant jar` on JDK8 in per-bug image |
 | M3 | Reproduce the failure | PENDING | null | pending | |
 | M4 | Anonymize + re-confirm | PENDING | null | pending | |
 | M5 | Diagnosis inputs & ground truth | PENDING | null | pending | |
@@ -44,3 +44,21 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
 - 2026-08-11T20:55:00Z — M1 DONE (success). Fix commit 7f64942ba / pre-fix 59ac9fa78 identified
   from the ticket (via its Won't-Fix rationale pointing at ZOOKEEPER-1059); saved
   `private/fix.diff` and the ticket's own 3.3 patch attachment.
+
+## Build (M2)
+
+- Image: `clods-eval:Zookeeper-Zookeeper-1434` = `clods-eval` + `openjdk-8-jdk` + `ant`
+  (`private/Dockerfile.zk1434`). JDK 11/17 cannot compile this tree (`-target` < 7).
+- Command: `docker run --rm -v "$PWD:/work" -w /work/repos/Zookeeper-Zookeeper-1434 \
+  --entrypoint bash clods-eval:Zookeeper-Zookeeper-1434 -lc 'ant jar'`
+- Output: `build/zookeeper-3.4.0.jar`, `build/classes/`, `build/lib/` (slf4j 1.6.1,
+  log4j 1.2.15, jline 0.9.94, netty 3.2.2.Final).
+- Dependency fixes (`private/deps-fix.patch`, build files only — no source changes):
+  1. `build.xml` `ivy.url`: `http://repo2.maven.org/...` → `https://repo1.maven.org/...`
+     (host retired; Central refuses plain HTTP).
+  2. `ivysettings.xml` `repo.maven.org` → https, and the dead `repo.jboss.org` /
+     `download.java.net` mirrors repointed at Central.
+  3. `build.xml` `javac.target` `1.5` → `1.8` (javac 8 defaults to `-source 1.8`, which
+     is incompatible with `-target 1.5`).
+
+- 2026-08-11T20:50:00Z — M2 DONE (success). `ant jar` BUILD SUCCESSFUL on the pre-fix tree.

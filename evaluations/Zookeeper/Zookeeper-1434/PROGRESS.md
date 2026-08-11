@@ -32,7 +32,7 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
 | M3 | Reproduce the failure | DONE | true | success | real server + 4 real zkCli sessions; uncaught NPE, exit 1 |
 | M4 | Anonymize + re-confirm | DONE | true | success | 2 renames; renamed build rebuilt & re-reproduced |
 | M5 | Diagnosis inputs & ground truth | DONE | true | success | symptom.md + ground_truth.md; 0 leaks |
-| M6 | LLM diagnosis ×5 (network locked) | PENDING | null | pending | |
+| M6 | LLM diagnosis ×5 (network locked) | DONE | true | success | 5 substantive single-turn answers |
 | M7 | Grade runs | PENDING | null | pending | |
 | M8 | Summary & finalize | PENDING | null | pending | |
 
@@ -91,3 +91,23 @@ output of the renamed binary, never a post-hoc rewrite.
 - 2026-08-11T20:57:00Z — M5 DONE (success). `symptom.md` (symptom only) and
   `private/ground_truth.md` (root-causing line 726/727 + the missing `stat == null` branch,
   with an explicit per-bug PASS rule) written; leakage greps all zero.
+
+## Diagnosis harness (M6)
+
+```bash
+docker run --rm --cap-add=NET_ADMIN --add-host api.anthropic.com:<ip> \
+  -v "$PWD/evaluations/Zookeeper/Zookeeper-1434:/bug" \
+  -v "<scratch-config-with-oauth-creds>:/root/.claude" \
+  -e CLAUDE_CONFIG_DIR=/root/.claude -e IS_SANDBOX=1 -e CLAUDE_PURITY_FLAG=--safe-mode \
+  --entrypoint /opt/clods/run_diagnosis.sh clods-eval /bug
+```
+
+Harness notes (no change to `context/`, only env knobs the script already exposes):
+`--bare` refuses stored OAuth credentials in the container ("Not logged in"), so the
+script's documented `CLAUDE_PURITY_FLAG=--safe-mode` path is used (still no CLAUDE.md /
+skills / plugins / hooks). `IS_SANDBOX=1` is required because the script passes
+`--permission-mode bypassPermissions` and the container must run as root for `iptables`.
+`--add-host` pins the API address so the egress allowlist does not depend on DNS working
+after the `OUTPUT DROP` policy is installed.
+
+- 2026-08-11T21:20:00Z — M6 DONE (success). 5 network-locked, single-turn diagnoses written.

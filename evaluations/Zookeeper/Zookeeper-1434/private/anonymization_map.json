@@ -1,0 +1,54 @@
+{
+  "bug": "Zookeeper-1434",
+  "policy": "minimal, case-targeted (METHODOLOGY §6). The real ZooKeeper source and the real DEBUG reproduction log are kept; package names, class names (ZooKeeperMain, ZooKeeper, ClientCnxn, KeeperException), the Stat data class, znode/session/quorum vocabulary and the whole server-side log are untouched. Only the identifiers that pin the specific JIRA case are renamed.",
+  "bug_id_scrub": {
+    "terms": ["ZOOKEEPER-1434", "1434", "ZOOKEEPER-1059", "1059"],
+    "note": "Neither the reporting ticket nor the trunk ticket that carries the fix may appear in any LLM-facing artifact. The scratch clone path (repos/Zookeeper-Zookeeper-1434) and reproduce.sh's temp dir were therefore moved to neutral paths (repos/zookeeper-anonymized, /tmp/zk-repro-XXXX) before the log-producing run, because the JVM prints java.class.path and user.dir into the log.",
+    "verified": "grep -RniE 'ZOOKEEPER-(1434|1059)|\\b1434\\b|\\b1059\\b' source/ logs/symptom.log symptom.md -> 0 hits"
+  },
+  "renames": [
+    {
+      "original": "stat",
+      "anonymized": "meta",
+      "kind": "CLI command name",
+      "where": "ZooKeeperMain.java: commandMap.put(\"stat\",\"path [watch]\") and the dispatch branch cmd.equals(\"stat\"); consequently every occurrence in the reproduction log (the shell prompt lines and the production DEBUG line 'Processing stat')",
+      "why": "This is the term that names the case — the ticket is literally 'stat command on non-existing node causes NPE'. Renaming it stops the LLM from string-matching the ticket or the reported session transcript."
+    },
+    {
+      "original": "printStat",
+      "anonymized": "printNodeMeta",
+      "kind": "private static method of ZooKeeperMain (all 6 occurrences: declaration + 5 call sites)",
+      "where": "ZooKeeperMain.java; consequently the top frame of the uncaught-exception trace in the log",
+      "why": "The JIRA report quotes the stack trace verbatim, whose distinctive token is 'ZooKeeperMain.printStat'. Renaming it means the trace this build emits no longer matches the reported one."
+    }
+  ],
+  "jira_quoted_text_redaction": {
+    "applicable": true,
+    "what_the_ticket_quotes": "a 6-frame NullPointerException stack trace (printStat <- processZKCmd <- processCmd <- executeLine <- run <- main, ZooKeeperMain.java lines 130/722/581/353/311/270 in 3.3.5)",
+    "how_handled": "Not blanked out (the trace IS the symptom). It is de-matched by the renames above plus the fact that this tree is 3.4.0-dev: the log's trace reads printNodeMeta/132, processZKCmd/727, processCmd/583, executeLine/355, run/313, main/272. The remaining frame names (processZKCmd, processCmd, executeLine, run, main) are generic dispatch methods of the kept-real class and are not case-identifying.",
+    "note": "No other log or stack-trace text is quoted or attached in the ticket, so nothing else in the reproduction log needed redaction."
+  },
+  "regeneration": {
+    "script": "private/anonymize.sh",
+    "how": "copies the pre-fix working tree (with private/deps-fix.patch already applied) to the neutral path repos/zookeeper-anonymized, applies the two renames to ZooKeeperMain.java, rebuilds with `ant jar`, re-runs reproduce.sh (STAT_CMD=meta, PORT=21812) against the RENAMED build, publishes private/symptom.orig.log as logs/symptom.log, copies the curated failure-path files into source/, and re-verifies zero leakage.",
+    "note": "The symptom log is never rewritten after the fact — it is the genuine output of the renamed binary."
+  },
+  "source_files": [
+    "src/java/main/org/apache/zookeeper/ZooKeeperMain.java",
+    "src/java/main/org/apache/zookeeper/ZooKeeper.java",
+    "src/java/main/org/apache/zookeeper/ClientCnxn.java",
+    "src/java/main/org/apache/zookeeper/KeeperException.java",
+    "src/java/main/org/apache/zookeeper/JLineZNodeCompletor.java",
+    "src/java/main/org/apache/zookeeper/ZooDefs.java",
+    "src/java/main/org/apache/zookeeper/Watcher.java",
+    "src/java/main/org/apache/zookeeper/Quotas.java",
+    "src/java/main/org/apache/zookeeper/StatsTrack.java",
+    "src/java/main/org/apache/zookeeper/AsyncCallback.java",
+    "src/java/generated/org/apache/zookeeper/data/Stat.java",
+    "src/java/generated/org/apache/zookeeper/data/ACL.java",
+    "src/java/generated/org/apache/zookeeper/data/Id.java",
+    "src/java/generated/org/apache/zookeeper/proto/ExistsRequest.java",
+    "src/java/generated/org/apache/zookeeper/proto/SetDataRequest.java",
+    "src/java/generated/org/apache/zookeeper/proto/ReplyHeader.java"
+  ]
+}

@@ -30,7 +30,7 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
 | M1 | Identify fix / pre-fix commit | DONE | true | success | fix=7f64942ba (ZOOKEEPER-1059), pre=59ac9fa78 |
 | M2 | Build from source at pre-fix | DONE | true | success | `ant jar` on JDK8 in per-bug image |
 | M3 | Reproduce the failure | DONE | true | success | real server + 4 real zkCli sessions; uncaught NPE, exit 1 |
-| M4 | Anonymize + re-confirm | PENDING | null | pending | |
+| M4 | Anonymize + re-confirm | DONE | true | success | 2 renames; renamed build rebuilt & re-reproduced |
 | M5 | Diagnosis inputs & ground truth | PENDING | null | pending | |
 | M6 | LLM diagnosis ×5 (network locked) | PENDING | null | pending | |
 | M7 | Grade runs | PENDING | null | pending | |
@@ -66,3 +66,25 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
   four real zkCli sessions at DEBUG (~900 ops); the status command on a missing znode kills
   the shell with an uncaught NPE (exit 1), frames identical to the JIRA-quoted trace.
   9555-line symptom log (3147 DEBUG), zero injected lines. Write-up in `reproduce.md`.
+
+## Anonymization (M4)
+
+Renames (`private/anonymization_map.json`), both in `ZooKeeperMain.java` only:
+
+| original | anonymized | why |
+|---|---|---|
+| CLI command `stat` | `meta` | the term that names the case (ticket title, reported session transcript) |
+| `printStat` | `printNodeMeta` | the distinctive token of the stack trace the ticket quotes |
+
+Bug-id scrub covers **both** ticket numbers (the report's own and the trunk ticket carrying
+the fix). Because the JVM prints `java.class.path` / `user.dir` into the log, the
+log-producing build was moved to the neutral path `repos/zookeeper-anonymized` and
+`reproduce.sh`'s temp dir renamed to `/tmp/zk-repro-XXXX`.
+
+`private/anonymize.sh` regenerates both gitignored artifacts end-to-end: copy tree →
+rename → `ant jar` → re-run `reproduce.sh` (still reproduces, exit 1) → publish
+`logs/symptom.log` + `source/` → verify zero leakage. The log is therefore the genuine
+output of the renamed binary, never a post-hoc rewrite.
+
+- 2026-08-11T20:55:00Z — M4 DONE (success). Renamed build compiles, still reproduces; 16 curated
+  failure-path files in `source/`; leakage checks clean.

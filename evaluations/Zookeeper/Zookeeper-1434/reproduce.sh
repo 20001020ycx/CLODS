@@ -33,7 +33,7 @@ MAIN_CLASS="${MAIN_CLASS:-org.apache.zookeeper.ZooKeeperMain}"
 STAT_CMD="${STAT_CMD:-stat}"
 PORT="${PORT:-21811}"
 
-RUN="$(mktemp -d /tmp/zk1434-run-XXXX)"
+RUN="$(mktemp -d /tmp/zk-repro-XXXX)"   # neutral: the JVM prints paths into the log
 mkdir -p "$RUN/data" "$BUG_DIR/private" "$BUG_DIR/logs"
 
 # ---- 1. build (idempotent) ------------------------------------------------------------

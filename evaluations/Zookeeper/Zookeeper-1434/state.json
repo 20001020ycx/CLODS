@@ -72,15 +72,20 @@
     },
     {
       "id": "M4",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-11T20:52:17Z",
+      "finished": "2026-08-11T20:53:29Z",
+      "attempts": 1,
+      "by": "agent-run-57ce8ccf",
+      "artifacts": [
+        "source/ (gitignored; regen via private/anonymize.sh)",
+        "logs/symptom.log (gitignored; regen via private/anonymize.sh)",
+        "private/anonymize.sh",
+        "private/anonymization_map.json"
+      ],
+      "note": "Minimal, case-targeted anonymization. Renamed exactly two identifiers in ZooKeeperMain.java: the CLI command 'stat'->'meta' and the printer printStat->printNodeMeta (the two tokens the JIRA-quoted stack trace / ticket title string-match on). Everything else stays real (packages, ZooKeeperMain/ZooKeeper/ClientCnxn/KeeperException, Stat, whole server log). The renamed tree was REBUILT at a neutral path (repos/zookeeper-anonymized - the JVM prints classpath+user.dir into the log) and reproduce.sh re-run against it, so logs/symptom.log (9554 lines, 3147 DEBUG) is the genuine output of the renamed binary, not a rewritten log; the NPE still reproduces (exit 1). source/ = 16 curated real failure-path files. Verified: zero hits for ZOOKEEPER-1434/1059, bare 1434/1059, printStat, or the old command name."
     },
     {
       "id": "M5",

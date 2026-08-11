@@ -34,7 +34,7 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
 | M5 | Diagnosis inputs & ground truth | DONE | true | success | symptom.md + ground_truth.md; 0 leaks |
 | M6 | LLM diagnosis ×5 (network locked) | DONE | true | success | 5 substantive single-turn answers |
 | M7 | Grade runs | DONE | true | success | 5/5 PASS |
-| M8 | Summary & finalize | PENDING | null | pending | |
+| M8 | Summary & finalize | DONE | true | success | summary.md written; result 5/5 |
 
 ## Log
 
@@ -113,3 +113,5 @@ after the `OUTPUT DROP` policy is installed.
 - 2026-08-11T21:20:00Z — M6 DONE (success). 5 network-locked, single-turn diagnoses written.
 - 2026-08-11T21:03:00Z — M7 DONE (success). 5/5 PASS; per-run justifications in
   `diagnosis/run_N.grade.json`.
+- 2026-08-11T21:05:00Z — M8 DONE (success). `summary.md` written; `state.json.result` =
+  5/5 PASS. Bug complete.

@@ -140,18 +140,30 @@
     },
     {
       "id": "M8",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
       "started": null,
-      "finished": null,
+      "finished": "2026-08-11T21:03:08Z",
       "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "by": "agent-run-57ce8ccf",
+      "artifacts": [
+        "summary.md"
+      ],
+      "note": "5/5 PASS. All five single-turn runs named ZooKeeperMain.java:726/727 (unguarded zk.exists() result in the meta branch) plus the missing 'stat == null' condition; four also derived why the NPE is fatal (processCmd's catch chain). Summary records the honest caveat that a stack-trace-localized, single-file null dereference is the easy end of the spectrum, and that the model retains general familiarity with the ZooKeeper CLI despite the renames."
     }
   ],
-  "result": null,
+  "result": {
+    "successes": 5,
+    "total": 5,
+    "per_run": [
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS"
+    ]
+  },
   "fix_commit_jira_ref": "ZOOKEEPER-1059 (same defect; ZOOKEEPER-1434 is the 3.3.5 report, resolved Won't Fix for 3.3 because it was already fixed on trunk/3.4 by ZOOKEEPER-1059)",
   "source_version": "trunk @ 2011-05 (3.4.0-dev)"
 }

@@ -61,13 +61,14 @@
       "attempts": 2,
       "by": "agent-run-da18f700",
       "artifacts": [
+        "reproduce.md",
         "reproduce.sh",
         "logs/symptom.log (gitignored)",
         "private/symptom.orig.log (gitignored)",
         "private/repro/TestReReg11896.java",
         "private/repro/SimulatedFSDataset.nonDfs.patch"
       ],
-      "note": "REDONE (integrity fix): reproduction now runs with DEBUG logging on and exercises real operations (writes+reads of 3 files) before the dead->re-register cycle. NO print/log statements added anywhere; the earlier PROBE/SYMPTOM breadcrumbs (which leaked the mechanism) are removed. Reproduction is detected by a silent JUnit assertion on the NameNode metric (expected 2097152 vs observed 3145728 = doubled); the assertion output is NOT written to the symptom log. private/symptom.orig.log = the raw verbose log."
+      "note": "REDONE (integrity fix): reproduction now runs with DEBUG logging on and exercises real operations (writes+reads of 3 files) before the dead->re-register cycle. NO print/log statements added anywhere; the earlier PROBE/SYMPTOM breadcrumbs (which leaked the mechanism) are removed. Reproduction is detected by a silent JUnit assertion on the NameNode metric (expected 2097152 vs observed 3145728 = doubled); the assertion output is NOT written to the symptom log. private/symptom.orig.log = the raw verbose log. Added reproduce.md (human-readable reproduction write-up for operator review)."
     },
     {
       "id": "M4",

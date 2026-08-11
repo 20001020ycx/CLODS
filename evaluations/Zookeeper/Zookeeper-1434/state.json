@@ -122,15 +122,21 @@
     },
     {
       "id": "M7",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-11T21:02:07Z",
+      "finished": "2026-08-11T21:02:24Z",
+      "attempts": 1,
+      "by": "agent-run-57ce8ccf",
+      "artifacts": [
+        "diagnosis/run_1.grade.json",
+        "diagnosis/run_2.grade.json",
+        "diagnosis/run_3.grade.json",
+        "diagnosis/run_4.grade.json",
+        "diagnosis/run_5.grade.json"
+      ],
+      "note": "5/5 PASS. Every run named the root-causing pair in the meta branch of processZKCmd (stat = zk.exists(path, watch) at 726 passed unchecked to printNodeMeta at 727 - the exact place the fix inserts its guard), the NPE site at printNodeMeta:132, AND the two required branch conditions: the dispatch branch cmd.equals('meta') && args.length>=2, and the absent 'stat == null' guard justified by exists() returning null instead of throwing NoNodeException. Runs 2-5 additionally quoted the real log evidence (replyHeader -101 NONODE) and/or identified processCmd's catch chain as the reason the NPE is fatal; run 1's unwind explanation misattributes the catch chain to the jline reflection handlers, which is explanatory context only and does not affect its verdict under the ground-truth PASS rule."
     },
     {
       "id": "M8",

@@ -33,7 +33,7 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
 | M4 | Anonymize + re-confirm | DONE | true | success | 2 renames; renamed build rebuilt & re-reproduced |
 | M5 | Diagnosis inputs & ground truth | DONE | true | success | symptom.md + ground_truth.md; 0 leaks |
 | M6 | LLM diagnosis ×5 (network locked) | DONE | true | success | 5 substantive single-turn answers |
-| M7 | Grade runs | PENDING | null | pending | |
+| M7 | Grade runs | DONE | true | success | 5/5 PASS |
 | M8 | Summary & finalize | PENDING | null | pending | |
 
 ## Log
@@ -111,3 +111,5 @@ skills / plugins / hooks). `IS_SANDBOX=1` is required because the script passes
 after the `OUTPUT DROP` policy is installed.
 
 - 2026-08-11T21:20:00Z — M6 DONE (success). 5 network-locked, single-turn diagnoses written.
+- 2026-08-11T21:03:00Z — M7 DONE (success). 5/5 PASS; per-run justifications in
+  `diagnosis/run_N.grade.json`.

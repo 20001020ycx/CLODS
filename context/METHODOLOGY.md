@@ -89,6 +89,7 @@ CLODS/
             ├── PROGRESS.md       # ★ milestone tracker (source of truth for resume)
             ├── state.json        # ★ machine-readable mirror of PROGRESS milestones
             ├── reproduce.sh      # system-specific script that reproduces the bug (you write it)
+            ├── reproduce.md      # ★ human-readable write-up of the reproduction (for operator review)
             ├── private/          # NEVER given to the diagnosis LLM
             │   ├── ground_truth.md       # exact lines+branches the fix changed
             │   ├── anonymization_map.json # original→anonymized file/string mapping
@@ -106,9 +107,9 @@ CLODS/
 ```
 
 **Tracked vs gitignored (important):** the **lightweight** per-bug files
-(`PROGRESS.md`, `state.json`, `symptom.md`, `summary.md`, `reproduce.sh`, `diagnosis/*`,
-`private/*.md|.json|.diff|.patch`) are committed to this repo so multiple agents can
-coordinate and resume. The **heavy / reproducible** artifacts are gitignored: `source/`
+(`PROGRESS.md`, `state.json`, `symptom.md`, `summary.md`, `reproduce.sh`, `reproduce.md`,
+`diagnosis/*`, `private/*.md|.json|.diff|.patch`) are committed to this repo so multiple
+agents can coordinate and resume. The **heavy / reproducible** artifacts are gitignored: `source/`
 (the anonymized source tree — rebuild from `anonymization_map.json` + `deps-fix.patch` +
 `pre_fix_commit`; see §9), `logs/` (symptom logs can be huge), and `repos/` (scratch
 clones). The published example's small `symptom.log` is the one exception that is tracked.
@@ -282,7 +283,11 @@ per-stage probe) hands the model the answer and invalidates the run.
    subsystem packages on the failure path), so the symptom log is a rich, realistic trace.
 3. **Exercise the system with normal operations** — real reads/writes/RPCs — and, where
    feasible, a **stress workload (e.g. YCSB)**, so the log reflects genuine activity, not a
-   bare trigger. The failure path should be reached through ordinary use.
+   bare trigger. The failure path should be reached through ordinary use. A **large,
+   production-like log is desirable, not a problem** — verbose DEBUG plus real traffic
+   yields a symptom log that resembles what an operator would actually collect in
+   production; do not trim it down for size (the diagnosis LLM greps it, it does not load
+   it whole).
 4. **Do NOT add any log or print statement** to the production code *or* the test/harness to
    expose internal state. No `System.out.println`, no per-stage "PROBE"/metric dumps, no
    "this is wrong" markers. Detect that the bug reproduced with a **test assertion**
@@ -297,7 +302,20 @@ per-stage probe) hands the model the answer and invalidates the run.
 6. Run it. Confirm the symptom reproduced (via the assertion / the reporting surface). Keep
    the full verbose log as `private/symptom.orig.log` (M4 anonymizes it into
    `logs/symptom.log`).
-7. Mark M3 `DONE`, `success: true`. If the bug does not reproduce after genuine effort,
+7. **Write `<BUG_DIR>/reproduce.md`** — a concise, human-readable write-up so the operator
+   can review *how* the bug was reproduced without re-reading the code. It must cover:
+   - the exact scenario and the command(s) to run (mirroring `reproduce.sh`);
+   - how the failure is **triggered** (the real code path the scenario drives) and how it is
+     **detected** (the silent assertion / the reporting surface, with the concrete
+     observed-vs-expected values);
+   - the captured log: path, size, and that it is the system's own DEBUG output with **no
+     injected/answer-revealing lines**;
+   - any **test-only infrastructure** changes and why (e.g. a value a simulator must report,
+     reflection to toggle a flag) — anything that is not the pristine production path, stated
+     plainly for auditing;
+   - honest caveats (e.g. minicluster vs full production cluster).
+   Keep it factual and reviewable; it is committed (lightweight) alongside `reproduce.sh`.
+8. Mark M3 `DONE`, `success: true`. If the bug does not reproduce after genuine effort,
    set M3 `FAILED` (`success: false`, `outcome: "failed"`) with the exact commands tried
    and outputs, cascade the remaining milestones to `BLOCKED`, and stop.
 

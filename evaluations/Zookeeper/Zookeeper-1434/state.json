@@ -3,11 +3,11 @@
   "system": "Zookeeper",
   "jira": "ZOOKEEPER-1434",
   "jira_url": "https://issues.apache.org/jira/browse/ZOOKEEPER-1434",
-  "source_repo": null,
-  "fix_commit": null,
-  "pre_fix_commit": null,
+  "source_repo": "https://github.com/apache/zookeeper.git",
+  "fix_commit": "7f64942ba8e5ce00948f6e7b23271de0556b668f",
+  "pre_fix_commit": "59ac9fa78963ca746d21a62a27fde497fd4c4d58",
   "anonymized_commit": null,
-  "symptom_short": null,
+  "symptom_short": "zkCli shell dies with an unhandled NullPointerException when the node-status command is issued on a path that does not exist",
   "milestones": [
     {
       "id": "M0",
@@ -25,15 +25,18 @@
     },
     {
       "id": "M1",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-11T20:42:00Z",
+      "finished": "2026-08-11T20:55:00Z",
+      "attempts": 1,
+      "by": "agent-run-57ce8ccf",
+      "artifacts": [
+        "private/fix.diff",
+        "private/jira-1434-attached-3.3-patch.diff"
+      ],
+      "note": "ZOOKEEPER-1434 (zkCli NPE on `stat /non-existent`, affects 3.3.5) is Resolved/Won't Fix: Patrick Hunt declined a 3.3 backport because HBase depended on the 3.3 behaviour and the defect was ALREADY FIXED on trunk/3.4 by ZOOKEEPER-1059 (same symptom, same stack trace). The commit whose diff resolves the reported defect is therefore 7f64942ba (trunk, 2011-05-16, fixVersion 3.4.0): in ZooKeeperMain.processZKCmd the `stat` branch now null-checks zk.exists() and throws KeeperException.NoNodeException. pre_fix_commit=59ac9fa78 is the last commit where the bug exists (verified: the stat branch there calls printStat(zk.exists(...)) unguarded). The 3.3-branch patch attached to ZOOKEEPER-1434 itself (kept as private/jira-1434-attached-3.3-patch.diff) is the identical change, confirming the two tickets share one root cause."
     },
     {
       "id": "M2",
@@ -120,5 +123,7 @@
       "note": ""
     }
   ],
-  "result": null
+  "result": null,
+  "fix_commit_jira_ref": "ZOOKEEPER-1059 (same defect; ZOOKEEPER-1434 is the 3.3.5 report, resolved Won't Fix for 3.3 because it was already fixed on trunk/3.4 by ZOOKEEPER-1059)",
+  "source_version": "trunk @ 2011-05 (3.4.0-dev)"
 }

@@ -31,7 +31,7 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
 | M2 | Build from source at pre-fix | DONE | true | success | `ant jar` on JDK8 in per-bug image |
 | M3 | Reproduce the failure | DONE | true | success | real server + 4 real zkCli sessions; uncaught NPE, exit 1 |
 | M4 | Anonymize + re-confirm | DONE | true | success | 2 renames; renamed build rebuilt & re-reproduced |
-| M5 | Diagnosis inputs & ground truth | PENDING | null | pending | |
+| M5 | Diagnosis inputs & ground truth | DONE | true | success | symptom.md + ground_truth.md; 0 leaks |
 | M6 | LLM diagnosis ×5 (network locked) | PENDING | null | pending | |
 | M7 | Grade runs | PENDING | null | pending | |
 | M8 | Summary & finalize | PENDING | null | pending | |
@@ -88,3 +88,6 @@ output of the renamed binary, never a post-hoc rewrite.
 
 - 2026-08-11T20:55:00Z — M4 DONE (success). Renamed build compiles, still reproduces; 16 curated
   failure-path files in `source/`; leakage checks clean.
+- 2026-08-11T20:57:00Z — M5 DONE (success). `symptom.md` (symptom only) and
+  `private/ground_truth.md` (root-causing line 726/727 + the missing `stat == null` branch,
+  with an explicit per-bug PASS rule) written; leakage greps all zero.

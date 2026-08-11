@@ -89,15 +89,18 @@
     },
     {
       "id": "M5",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-11T20:53:59Z",
+      "finished": "2026-08-11T20:55:08Z",
+      "attempts": 1,
+      "by": "agent-run-57ce8ccf",
+      "artifacts": [
+        "symptom.md",
+        "private/ground_truth.md"
+      ],
+      "note": "symptom.md = 6-line operator-level description (shell dies with unhandled NPE, exit 1, when the 'meta' command targets a non-existent znode; server healthy; same command on existing znodes is fine). No bug id, no fix hint, no internal mechanism. ground_truth.md derived from private/fix.diff: root-causing site = ZooKeeperMain.processZKCmd branch 'cmd.equals(\"meta\") && args.length>=2' where stat=zk.exists(path,watch) (L726) is passed unchecked to printNodeMeta(stat) (L727); crash site = printNodeMeta L132 (stat.getCzxid()); required branch condition = the missing 'stat == null' guard, because ZooKeeper.exists() returns null (converting the server's NONODE/-101) instead of throwing NoNodeException, unlike every other command's API. Explanatory context: processCmd's catch chain handles NoNodeException but not NPE, so the exception kills the JVM. Leakage re-verified across source/, logs/symptom.log, symptom.md: 0 hits for both ticket numbers, printStat, and the old command name."
     },
     {
       "id": "M6",

@@ -56,15 +56,19 @@
     },
     {
       "id": "M3",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-11T20:48:16Z",
+      "finished": "2026-08-11T20:50:31Z",
+      "attempts": 1,
+      "by": "agent-run-57ce8ccf",
+      "artifacts": [
+        "reproduce.sh",
+        "reproduce.md",
+        "private/symptom.orig.log (gitignored)"
+      ],
+      "note": "Reproduced on the real system: standalone ZooKeeper server built from the pre-fix tree, root logger AND console appender at DEBUG, driven by four real zkCli sessions (~900 real ops: create/get/set/status/getAcl/ls/ls2/delete, two of them concurrent). The last command of session C asks for the status of a znode that was never created; the shell dies with an uncaught NullPointerException whose frames match the JIRA-quoted trace exactly (printStat<-processZKCmd<-processCmd<-executeLine<-run<-main). Detection is silent: assert client exit code!=0, assert its own output has 'Exception in thread main java.lang.NullPointerException', assert it does NOT contain 'Node does not exist' - printed to reproduce.sh stdout, never into the log. No log/print statement added anywhere. private/symptom.orig.log = 9555 lines (3147 DEBUG, 191 INFO) = server.log + 4 client session logs concatenated with one '===== file: X =====' header each."
     },
     {
       "id": "M4",

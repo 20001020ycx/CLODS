@@ -29,7 +29,7 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
 | M0 | Scaffold & claim | DONE | true | success | folder + trackers created |
 | M1 | Identify fix / pre-fix commit | DONE | true | success | fix=7f64942ba (ZOOKEEPER-1059), pre=59ac9fa78 |
 | M2 | Build from source at pre-fix | DONE | true | success | `ant jar` on JDK8 in per-bug image |
-| M3 | Reproduce the failure | PENDING | null | pending | |
+| M3 | Reproduce the failure | DONE | true | success | real server + 4 real zkCli sessions; uncaught NPE, exit 1 |
 | M4 | Anonymize + re-confirm | PENDING | null | pending | |
 | M5 | Diagnosis inputs & ground truth | PENDING | null | pending | |
 | M6 | LLM diagnosis ×5 (network locked) | PENDING | null | pending | |
@@ -62,3 +62,7 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
      is incompatible with `-target 1.5`).
 
 - 2026-08-11T20:50:00Z — M2 DONE (success). `ant jar` BUILD SUCCESSFUL on the pre-fix tree.
+- 2026-08-11T20:52:00Z — M3 DONE (success). `reproduce.sh` runs a real standalone server and
+  four real zkCli sessions at DEBUG (~900 ops); the status command on a missing znode kills
+  the shell with an uncaught NPE (exit 1), frames identical to the JIRA-quoted trace.
+  9555-line symptom log (3147 DEBUG), zero injected lines. Write-up in `reproduce.md`.

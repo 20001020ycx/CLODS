@@ -46,18 +46,20 @@ mvn -B -o -Dmaven.repo.local="$M2" -pl "$HDFS" \
     -Dsurefire.useFile=false -Dmaven.test.redirectTestOutputToFile=false > "$RAW" 2>&1
 set -e
 
-# 4. Extract the RAW real reproduction log (HDFS runtime logs + probe/symptom markers)
-#    to private/symptom.orig.log. The LLM-facing logs/symptom.log is then produced by
-#    private/anonymize.sh (bug-id scrub + nonDfs->other rename).
+# 4. Symptom log = ONLY the system's own verbose (DEBUG) log lines. No injected
+#    markers. The metric assertion output (which names the wrong value) is deliberately
+#    NOT written here — it belongs to the test runner, not the symptom log.
 mkdir -p "$BUG/private"
-grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2} |^PROBE |^SYMPTOM|^REPRO_RESULT|AssertionError' \
-    "$RAW" > "$BUG/private/symptom.orig.log"
+grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2} ' "$RAW" > "$BUG/private/symptom.orig.log"
 
-echo "---- symptom summary ----"
-grep -E '^PROBE|^SYMPTOM|^REPRO_RESULT' "$BUG/private/symptom.orig.log" || true
-grep -q "REPRO_RESULT=BUG_REPRODUCED" "$BUG/private/symptom.orig.log" \
-  && echo "reproduce.sh: BUG REPRODUCED" \
-  || { echo "reproduce.sh: FAILED TO REPRODUCE" >&2; exit 2; }
+# Confirm reproduction from the test runner: on the buggy tree the metric assertion
+# FAILS with observed != expected (doubled). Never copy this into the symptom log.
+if grep -qE 'expected:<[0-9]+> but was:<[0-9]+>' "$RAW"; then
+  obs=$(grep -oE 'expected:<[0-9]+> but was:<[0-9]+>' "$RAW" | head -1)
+  echo "reproduce.sh: BUG REPRODUCED (metric $obs) [assertion NOT written to symptom log]"
+else
+  echo "reproduce.sh: FAILED TO REPRODUCE (metric assertion did not fail)" >&2; exit 2
+fi
 
 # 5. Produce the anonymized LLM-facing artifacts (source/ + logs/symptom.log).
 bash "$BUG/private/anonymize.sh"

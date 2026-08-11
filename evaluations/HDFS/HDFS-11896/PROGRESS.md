@@ -16,9 +16,9 @@
 | M3 | Reproduce the failure | DONE | true |
 | M4 | Anonymize + rebuild + re-confirm | DONE | true |
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true |
-| M6 | Run LLM diagnosis ×5 (network locked) | DONE | true |
-| M7 | Grade each run | DONE | true |
-| M8 | Summary & finalize | DONE | true |
+| M6 | Run LLM diagnosis ×5 (network locked) | PENDING | null |
+| M7 | Grade each run | PENDING | null |
+| M8 | Summary & finalize | PENDING | null |
 
 ## Log
 - 2026-08-10 M0 DONE: created bug folder, subdirs (private/source/logs/diagnosis), PROGRESS.md, state.json. Claimed bug. Base docker image `clods-eval` build kicked off.
@@ -34,3 +34,4 @@
 - 2026-08-10 M6 DONE: 5 network-locked diagnosis runs (egress iptables-locked to api.anthropic.com; WebFetch/WebSearch disabled; OAuth creds). All 5 produced substantive single-turn diagnoses.
 - 2026-08-10 M7 DONE: graded 5/5 PASS. Every run isolated the exact failure path + controlling `if(!d.isAlive)` branch + add-before-reset ordering, matching the log arithmetic 10000->5000->15000. Runs 1,3 named resetBlocks() omission (setOtherUsed(0)); runs 2,4,5 named the register() reorder — both real branch-2.7 fix locations.
 - 2026-08-10 M8 DONE: summary.md written; result = 5/5. BUG COMPLETE.
+- 2026-08-11 INTEGRITY FIX (operator): the earlier symptom log injected PROBE/SYMPTOM println lines that narrated the mechanism (a cheat). METHODOLOGY.md M3 updated: reproduction must use real verbose DEBUG logs + real operations and add NO log/print statements; state the symptom only if it is not observable in the logs. Redid M3 (DEBUG on, real file writes/reads, detection via silent assertion — no injected output) and M4 (symptom.log is now the real 4578-line DEBUG trace). symptom.md states only the observable doubled metric (~3MB vs ~2MB) via JMX, no mechanism. Cleared M6/M7/M8 to re-run the diagnosis on the corrected log.

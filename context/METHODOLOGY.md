@@ -269,14 +269,35 @@ PY
    the exact errors and stop — a bug you cannot build cannot be anonymized or diagnosed.
 
 ### M3 — Reproduce the failure
-1. Write `reproduce.sh`: a self-contained script that (a) builds if needed, (b) runs
-   the real system or a targeted unit test, and (c) writes the failure log to
-   `<BUG_DIR>/logs/symptom.log`. Prefer the real failing operation; fall back to a unit
-   test only if a full cluster run is impractical, and say so in the note.
-2. Run it. Confirm the symptom appears in `logs/symptom.log`.
-3. Keep a copy of the **pre-anonymization** log in `private/symptom.orig.log` (needed to
-   verify anonymization later).
-4. Mark M3 `DONE`, `success: true`. If the bug does not reproduce after genuine effort,
+The symptom log the LLM later sees **must be the system's own log output**, produced by
+exercising the real system — never a narrative you inject. This is the integrity crux of
+the whole experiment: an added log line that reports internal state (a counter value, a
+per-stage probe) hands the model the answer and invalidates the run.
+
+1. Write `reproduce.sh`: a self-contained script that (a) builds if needed, (b) runs the
+   real system or a targeted unit test, and (c) writes the resulting log to
+   `<BUG_DIR>/private/symptom.orig.log`. Prefer the real failing operation; fall back to a
+   unit/integration test only if a full cluster run is impractical, and say so in the note.
+2. **Always run with verbose logging turned up to DEBUG** (root logger or at least the
+   subsystem packages on the failure path), so the symptom log is a rich, realistic trace.
+3. **Exercise the system with normal operations** — real reads/writes/RPCs — and, where
+   feasible, a **stress workload (e.g. YCSB)**, so the log reflects genuine activity, not a
+   bare trigger. The failure path should be reached through ordinary use.
+4. **Do NOT add any log or print statement** to the production code *or* the test/harness to
+   expose internal state. No `System.out.println`, no per-stage "PROBE"/metric dumps, no
+   "this is wrong" markers. Detect that the bug reproduced with a **test assertion**
+   (its output goes to the test runner, **not** into `symptom.orig.log`), or by reading the
+   system's own reporting surface.
+5. **Observing a non-log symptom.** Some bugs (e.g. a wrong in-memory metric) are not visible
+   in any log line. Then, and only then, capture the symptom from the **system's own reporting
+   surface** (JMX / an admin report / the web UI / metrics endpoint) — that is real system
+   output, not an injected log — and/or state it in `symptom.md`. What you state is the
+   *observable* (the final wrong value the user sees), **never** the per-stage internal
+   breakdown that reveals the mechanism.
+6. Run it. Confirm the symptom reproduced (via the assertion / the reporting surface). Keep
+   the full verbose log as `private/symptom.orig.log` (M4 anonymizes it into
+   `logs/symptom.log`).
+7. Mark M3 `DONE`, `success: true`. If the bug does not reproduce after genuine effort,
    set M3 `FAILED` (`success: false`, `outcome: "failed"`) with the exact commands tried
    and outputs, cascade the remaining milestones to `BLOCKED`, and stop.
 

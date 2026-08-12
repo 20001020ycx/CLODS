@@ -105,27 +105,39 @@
     },
     {
       "id": "M6",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": "2026-08-12T01:47:28Z",
-      "finished": null,
-      "attempts": 1,
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T20:21:33Z",
+      "finished": "2026-08-12T20:37:31Z",
+      "attempts": 2,
       "by": "agent-run-e47cfc21",
-      "artifacts": [],
-      "note": "Reset: symptom.md was rewritten under the updated M5 specification, so the previous runs/grades/summary are invalid and were deleted."
+      "artifacts": [
+        "diagnosis/run_1.md",
+        "diagnosis/run_2.md",
+        "diagnosis/run_3.md",
+        "diagnosis/run_4.md",
+        "diagnosis/run_5.md"
+      ],
+      "note": "RE-RUN against the rewritten (bare-observable) symptom.md. 5 independent single-turn diagnoses, model claude-opus-4-7 effort high, egress iptables-locked to api.anthropic.com:443 (--add-host pins the IP), Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, --safe-mode --no-session-persistence --exclude-dynamic-system-prompt-sections, no follow-up prompts, throwaway staging dir /tmp/clods-diag-Fp3J holding ONLY source/ + logs/symptom.log + symptom.md. As before, the clods-eval image's baked-in /opt/clods/run_diagnosis.sh is stale, so the tracked context/run_diagnosis.sh was mounted read-only and executed instead (context/ and the image unmodified). This batch ran clean: all 5 runs completed on the first attempt, every stderr empty, no auth interruption. The prompt now embeds only the two-sentence observable + the pasted client-side timeout line, so each run had to locate the failing operation in the log by itself."
     },
     {
       "id": "M7",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
       "started": null,
-      "finished": null,
+      "finished": "2026-08-12T20:37:31Z",
       "attempts": 0,
       "by": "agent-run-e47cfc21",
-      "artifacts": [],
-      "note": "Reset: symptom.md was rewritten under the updated M5 specification, so the previous runs/grades/summary are invalid and were deleted."
+      "artifacts": [
+        "diagnosis/run_1.grade.json",
+        "diagnosis/run_2.grade.json",
+        "diagnosis/run_3.grade.json",
+        "diagnosis/run_4.grade.json",
+        "diagnosis/run_5.grade.json"
+      ],
+      "note": "4/5 PASS under the stricter symptom. Runs 1, 3, 4 and 5 each named BOTH required root-causing sites with their exact branch conditions - the missing 'case OpCode.createExt:' in FollowerRequestProcessor.run's forward-to-leader switch (createExt matches no label, so zks.getFollower().request() never runs and no proposal/commit can return) AND its absence from CommitProcessor.needCommit (default: return false, so run()'s 'if (needCommit(request)) nextPending.set(...) else sendToNextProcessor(...)' takes the else arm and delivers a hdr==null request to FinalRequestProcessor) - and all four prescribed the fix at both lines. Each had to find the createExt request unaided: symptom.md no longer names the operation, so every run located it in the log via the 'zxid:0xfffffffffffffffe / txntype:unknown' fingerprint and the absent 'Committing request' line. Run 2 FAILED: it names only CommitProcessor.needCommit, mentions FollowerRequestProcessor exactly once and only as the component still enqueuing into the halted processor, never identifies the forwarding switch or its missing case, and prescribes a single-line fix. Its causal account is also wrong - it explains the null header as a timing race ('before the leader's Leader.COMMIT packet has installed the TxnHeader'), which presumes the request reached the leader; it never did. That fix would leave the member dark, stalling in nextPending instead of crashing. No partial credit -> FAIL."
     },
     {
       "id": "M8",

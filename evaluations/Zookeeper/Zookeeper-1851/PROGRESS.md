@@ -97,3 +97,5 @@ All post-M5 results (`diagnosis/*`, `summary.md`) were deleted and M6–M8 reset
 the experiment is re-run from M6 against the new `symptom.md`.
 
 - 2026-08-12T20:30Z M5 REDONE success=true — new `symptom.md`; M6–M8 reset.
+- 2026-08-12T20:33Z M6 DONE success=true (re-run) — 5 fresh single-turn diagnoses against the new `symptom.md`; all 5 completed first try, every stderr empty.
+- 2026-08-12T20:35Z M7 DONE success=true (re-run) — **4/5 PASS** (runs 1, 3, 4, 5). Run 2 FAIL: names only `CommitProcessor.needCommit()`, never identifies the forwarding switch, and explains the null header as a timing race with a COMMIT that was in fact never requested.

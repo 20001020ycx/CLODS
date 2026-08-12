@@ -1,0 +1,24 @@
+{
+  "verdict": "PASS",
+  "claimed_lines": [
+    "CommitProcessor.java:131-148 - `OpCode.createExt` lands in `default: return false`",
+    "FollowerRequestProcessor.java:79-100 - no `case OpCode.createExt`, so it is never forwarded",
+    "(consequence) Request.java:170 isQuorum, FinalRequestProcessor.java:126-128, ZKDatabase.java:251, CommitProcessor.java:283-290/346-350"
+  ],
+  "claimed_branches": [
+    "needCommit() default arm -> run() lines 172-176 treat it as a read and call sendToNextProcessor(request) instead of parking it in nextPending",
+    "FollowerRequestProcessor.run()'s switch has no case for createExt, so zks.getFollower().request(request) never runs and no PROPOSAL/COMMIT ever returns with a populated TxnHeader"
+  ],
+  "justification": "Names both required sites with their exact branch conditions and prescribes the fix at both. Worked forward from the client-visible timeout in symptom.md with no hint as to which operation was involved: located the createExt request in the log, used `zxid:0xfffffffffffffffe` + `txntype:unknown` as the fingerprint of a request with no assigned proposal, and derived the whole chain to CommitProcessor.halt(). Also reconstructed the client-side arithmetic (readTimeout = 2/3 x 10000 ms ~ 6667 ms) that produces the pasted 6670 ms line. Matches ground truth.",
+  "gt_lines": [
+    "FollowerRequestProcessor.java:79-92 - run()'s forward-to-leader switch (missing `case OpCode.createExt:` at line 84, so `zks.getFollower().request(request)` at line 91 is never reached)",
+    "CommitProcessor.java:131-147 - needCommit() (missing `case OpCode.createExt:` at line 133, so it returns false via `default:` at 145-146)"
+  ],
+  "gt_branches": [
+    "`switch (request.type)` in FollowerRequestProcessor.run(): OpCode.createExt matches no case and there is no `default:` arm -> the write is never forwarded to the leader (znode created nowhere)",
+    "`needCommit(request)` returns false for OpCode.createExt -> in CommitProcessor.run() the guard `if (needCommit(request)) nextPending.set(request); else sendToNextProcessor(request);` takes the ELSE arm -> the write is handed to FinalRequestProcessor as a read with request.getHdr()==null"
+  ],
+  "run": "run_1.md",
+  "graded_against": "private/ground_truth.md",
+  "symptom_spec": "M5 v2 (bare observable + log pointer only)"
+}

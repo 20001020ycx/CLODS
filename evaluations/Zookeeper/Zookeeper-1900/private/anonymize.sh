@@ -57,12 +57,21 @@ find src/java -name '*.java' -print0 | xargs -0 sed -i \
     -e 's/\btruncate\b/rollBack/g' \
     -e 's/\btruncated\b/rolledBack/g' \
     -e 's/\btruncLog\b/rbLog/g' \
-    -e 's/\bTRUNC\b/ROLLBACK/g'
+    -e 's/\bTRUNC\b/ROLLBACK/g' \
+    -e 's/Truncat[a-z]*/RollBack/g' \
+    -e 's/truncat[a-z]*/rollBack/g'
+
+# the test class is named after the operation too (it is not part of source/, but the tree
+# must stay self-consistent); `git clean` + `git checkout --force` above undo this on re-run
+if [ -f src/java/test/org/apache/zookeeper/test/TruncateTest.java ]; then
+    mv src/java/test/org/apache/zookeeper/test/TruncateTest.java \
+       src/java/test/org/apache/zookeeper/test/RollBackTest.java
+fi
 
 # ---- 4. rebuild the renamed tree --------------------------------------------------------
 ant jar
 
-leaks="$(grep -rElw 'truncate\|truncateLog\|truncated\|TRUNC\|Truncating' src/java || true)"
+leaks="$(grep -rEl '[Tt]runcat|\bTRUNC\b' src/java || true)"
 if [ -n "$leaks" ]; then
     echo "ERROR: rename missed files:"; echo "$leaks"; exit 1
 fi

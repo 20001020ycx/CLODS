@@ -43,3 +43,4 @@
 2026-08-12T17:48:21Z Zookeeper-1900 M1 DONE success
 2026-08-12T17:49:38Z Zookeeper-1900 M2 DONE success (ant jar, JDK8)
 2026-08-12T18:04:53Z Zookeeper-1900 M3 DONE success (observer NPE loop on rejoin)
+2026-08-12T18:11:05Z Zookeeper-1900 M4 DONE success (anonymized truncate->rollBack; rebuilt + re-reproduced)

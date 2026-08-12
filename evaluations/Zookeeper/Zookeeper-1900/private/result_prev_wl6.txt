@@ -1,3 +1,3 @@
-connect=OK connectString=127.0.0.1:24612 elapsed_ms=108
+connect=OK connectString=127.0.0.1:24612 elapsed_ms=101
 normal_ok=280 normal_failed=0
 final_state=CONNECTED

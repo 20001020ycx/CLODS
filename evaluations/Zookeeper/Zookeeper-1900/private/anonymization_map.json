@@ -1,0 +1,50 @@
+{
+  "bug_id": "Zookeeper-1900",
+  "principle": "Minimal, case-targeted anonymization (METHODOLOGY.md §6). The real ZooKeeper source and the real reproduction log are kept; package names, class names, log format and all domain terminology (leader/follower/observer, learner, quorum, znode, session, zxid, epoch, snapshot, txnlog, DIFF/SNAP, FileTxnLog, FileTxnSnapLog, ZKDatabase, Learner, QuorumPeer, ...) are UNCHANGED. Only the vocabulary that names the JIRA case is renamed, the two log messages the ticket quotes are rewritten, and the ticket id is scrubbed.",
+  "bug_id_scrub": {
+    "patterns": ["ZOOKEEPER-1900", "\\b1900\\b"],
+    "note": "The ticket id must appear nowhere in source/, logs/symptom.log or symptom.md. The pre-fix tree's CHANGES.txt is not part of source/ (source/ is src/java only). Two incidental sources of a bare 1900 in the log were removed: the build tree is checked out at the NEUTRAL path repos/zookeeper-ensemble-src (the JVM prints user.dir and the whole classpath into every server and client log, so a path containing the bug id would leak it 40+ times), and each reproduction client is kept under ~1500 requests so that no client's request xid reaches 1900. TCP ports are 2461x/2462x/2463x, none of which contains the substring."
+  },
+  "distinctive_term_renames": [
+    {
+      "original": "truncate / truncateLog / truncated / truncating / truncation / TRUNC",
+      "anonymized": "rollBack / rollBackLog / rolledBack / rolling back / roll-back / ROLLBACK",
+      "why": "The JIRA title is 'NullPointerException in truncate' and the report quotes the frame 'org.apache.zookeeper.server.persistence.FileTxnLog.truncate(FileTxnLog.java:352)'. The word 'truncate' next to 'FileTxnLog' is exactly the token a reader would grep to recall this ticket, so the whole truncation vocabulary is renamed to a neutral synonym with the same meaning (roll the transaction log back to a zxid). The semantics, the call graph and the line numbers are unchanged.",
+      "sites": [
+        "TxnLog.truncate(long) -> TxnLog.rollBack(long) (interface)",
+        "FileTxnLog.truncate(long) -> FileTxnLog.rollBack(long)  <-- the root-cause method",
+        "FileTxnSnapLog.truncateLog(long) -> FileTxnSnapLog.rollBackLog(long)",
+        "ZKDatabase.truncateLog(long) -> ZKDatabase.rollBackLog(long)",
+        "ZooKeeperServer.truncateLog(long) -> ZooKeeperServer.rollBackLog(long)",
+        "Leader.TRUNC constant (int 14) -> Leader.ROLLBACK, and Leader.getPacketType's \"TRUNC\" string -> \"ROLLBACK\" (this is what the leader prints as 'Sending TRUNC/ROLLBACK to follower')",
+        "local variables truncated/truncLog and all doc comments containing the word",
+        "src/java/test/.../TruncateTest.java -> RollBackTest.java (not part of source/, renamed so the tree stays self-consistent)"
+      ]
+    }
+  ],
+  "jira_quoted_text_redaction": {
+    "applicable": true,
+    "items": [
+      {
+        "quoted_in_ticket": "java.lang.NullPointerException at org.apache.zookeeper.server.persistence.FileTxnLog.truncate(FileTxnLog.java:352)",
+        "in_the_artifacts": "The reproduction log carries the real stack trace of the real failure, but the frame reads 'org.apache.zookeeper.server.persistence.FileTxnLog.rollBack(FileTxnLog.java:381)' — the method is renamed, and the line number is the pre-fix trunk one (the ticket's 352 is the 3.4.5 line). The exception type itself is genuine system output and is kept.",
+        "why_not_deleted": "Deleting the exception would mean fabricating the log. The rename is enough to stop a string match against the ticket."
+      },
+      {
+        "quoted_in_ticket": "Truncating log to get in sync with the leader",
+        "in_the_artifacts": "Rewritten at the source (Learner.java) to 'Rolling back the transaction log to get in sync with the leader', so the log emitted by the renamed binaries never contains the reported string."
+      }
+    ]
+  },
+  "kept_unchanged": [
+    "package names org.apache.zookeeper.*",
+    "every class name except the renamed test class",
+    "leader / follower / observer / learner / quorum / znode / session / zxid / epoch / snapshot terminology",
+    "FileTxnLog, FileTxnIterator, PositionInputStream, FileTxnSnapLog, ZKDatabase, Learner, Observer, LearnerHandler, QuorumPeer, ...",
+    "the log format and every other log message text (including 'Sending DIFF', 'Synchronizing with Follower sid:', 'Snapshotting:', 'PeerState set to LOOKING', 'shutdown called', ...)",
+    "the version string 3.5.0-SNAPSHOT",
+    "the java.lang.NullPointerException type and the full stack trace shape"
+  ],
+  "regeneration": "private/anonymize.sh rebuilds everything deterministically: clone at pre_fix_commit into repos/zookeeper-ensemble-src (neutral path) -> apply private/deps-fix.patch -> apply the renames above (sed over src/java/**/*.java + the test-file rename) -> `ant jar` (the renamed tree must compile) -> copy src/java/main + src/java/generated into source/ -> re-run reproduce.sh against the renamed build so logs/symptom.log is genuine output of the renamed binaries, not a rewritten log file -> verify zero hits for ZOOKEEPER-1900, \\b1900\\b, [Tt]runcat and TRUNC.",
+  "applies_to": ["source/", "logs/symptom.log", "symptom.md"]
+}

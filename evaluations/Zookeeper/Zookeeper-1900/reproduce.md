@@ -142,3 +142,17 @@ directory contains, or which branch was taken. M4 rewrites this file into
 * CLOSE_WAIT sockets are counted per network namespace (the container), where only these
   processes run. The observer's own socket count (`/proc/<pid>/fd`) grows in lockstep,
   which is the more direct evidence.
+
+## M4 re-run against the renamed (anonymized) build
+
+`private/anonymize.sh` re-ran this same script against the renamed tree at the neutral path
+`repos/zookeeper-ensemble-src`. The failure reproduced identically: observer snapshot
+`0x100001013` vs leader zxid `0x1000003b2`, **6 058** `NullPointerException`s in 40 s (now
+at `FileTxnLog.rollBack(FileTxnLog.java:381)` — same line, renamed method), 6 059
+leader-side syncs with sid 4, `srvr` again "not currently serving requests", client
+`connect=TIMEOUT`, observer sockets 35 → 113 and CLOSE_WAIT 0 → 32. `logs/symptom.log` =
+512 839 lines / 74 MB, genuine output of the renamed binaries.
+
+Two assertions in this script were made vocabulary-agnostic after the M3 run so that they
+match either wording (`FileTxnLog.(truncate|rollBack)`, `(Truncating|Rolling back the
+transaction) log to get in sync with the leader`); nothing else about the detection changed.

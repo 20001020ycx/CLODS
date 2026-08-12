@@ -338,15 +338,16 @@ FAILED=0
 OBS_LOG="$RUN/logs/server_4.log"
 
 NPES=$(grep -c 'java.lang.NullPointerException' "$OBS_LOG" || true)
-TRUNC_FRAMES=$(grep -c 'FileTxnLog.truncate' "$OBS_LOG" || true)
-SYNC_ATTEMPTS=$(grep -c 'Truncating log to get in sync with the leader' "$OBS_LOG" || true)
+# the M4 rename swaps this vocabulary (truncate -> rollBack), so accept either wording
+TRUNC_FRAMES=$(grep -cE 'FileTxnLog\.(truncate|rollBack)' "$OBS_LOG" || true)
+SYNC_ATTEMPTS=$(grep -cE '(Truncating|Rolling back the transaction) log to get in sync with the leader' "$OBS_LOG" || true)
 OBSERVING=$(grep -c '^.*OBSERVING' "$OBS_LOG" || true)
 LEADER_SYNCS=$(grep -c 'Synchronizing with Follower sid: 4' "$RUN/logs/server_"*.log || true)
 
 [ "$NPES" -ge 3 ] \
     || { echo "[reproduce] ASSERT FAIL: observer did not report repeated NullPointerExceptions (saw $NPES)"; FAILED=1; }
 [ "$TRUNC_FRAMES" -ge 3 ] \
-    || { echo "[reproduce] ASSERT FAIL: the failures are not in the log-truncation path (saw $TRUNC_FRAMES frames)"; FAILED=1; }
+    || { echo "[reproduce] ASSERT FAIL: the failures are not in the transaction-log roll-back path (saw $TRUNC_FRAMES frames)"; FAILED=1; }
 [ "$SYNC_ATTEMPTS" -ge 3 ] \
     || { echo "[reproduce] ASSERT FAIL: observer did not repeatedly try to sync with the leader (saw $SYNC_ATTEMPTS)"; FAILED=1; }
 grep -q 'probe=EXCEPTION\|connect=TIMEOUT' "$RUN/result_observer_probe.txt" 2>/dev/null \
@@ -361,8 +362,8 @@ echo "[reproduce] observer sockets: first sample=$FIRST_SOCKS last sample=$LAST_
 
 echo "[reproduce] --- counters ---"
 echo "[reproduce]   NullPointerExceptions in the observer log : $NPES"
-echo "[reproduce]   frames in the log-truncation path         : $TRUNC_FRAMES"
-echo "[reproduce]   'Truncating log ...' attempts             : $SYNC_ATTEMPTS"
+echo "[reproduce]   frames in FileTxnLog's roll-back method   : $TRUNC_FRAMES"
+echo "[reproduce]   'get in sync with the leader' attempts    : $SYNC_ATTEMPTS"
 echo "[reproduce]   leader-side syncs with sid 4              : $LEADER_SYNCS"
 echo "[reproduce] --- observer srvr ---"; sed 's/^/[reproduce]   /' "$RUN/result_observer_srvr.txt" || true
 echo "[reproduce] --- leader srvr ---";   sed 's/^/[reproduce]   /' "$RUN/result_leader_srvr.txt" || true

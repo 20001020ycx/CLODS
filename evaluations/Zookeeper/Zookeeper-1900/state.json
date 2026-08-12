@@ -75,15 +75,20 @@
     },
     {
       "id": "M4",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T18:40:00Z",
+      "finished": "2026-08-12T19:12:00Z",
+      "attempts": 3,
+      "by": "agent-run-ea3110e6",
+      "artifacts": [
+        "source/ (gitignored; regen via private/anonymize.sh)",
+        "logs/symptom.log (gitignored; regen via private/anonymize.sh)",
+        "private/anonymize.sh",
+        "private/anonymization_map.json"
+      ],
+      "note": "Minimal, case-targeted anonymization. Renamed exactly one distinctive vocabulary - the transaction-log TRUNCATION terms that name the ticket ('NullPointerException in truncate', whose report quotes the frame FileTxnLog.truncate(FileTxnLog.java:352) and the message 'Truncating log to get in sync with the leader'): truncate->rollBack, truncateLog->rollBackLog, truncated->rolledBack, truncating/truncation->rolling back/roll-back, Leader.TRUNC (int 14) + its \"TRUNC\" packet-name string->ROLLBACK, TruncateTest.java->RollBackTest.java. The two ticket-quoted log messages were rewritten at the source, so the binaries emit 'Rolling back the transaction log to get in sync with the leader' and the stack frame reads FileTxnLog.rollBack(FileTxnLog.java:381) - same line, renamed method (the ticket's :352 is the 3.4.5 line). Everything else stays real: packages, all other class names, leader/follower/observer/learner/quorum/znode/zxid/epoch/snapshot terminology, every other log message, the NullPointerException type and full stack shape, version 3.5.0-SNAPSHOT. The renamed tree was REBUILT ('ant jar', BUILD SUCCESSFUL) at the NEUTRAL path repos/zookeeper-ensemble-src (the JVM prints user.dir + the classpath into every log, so a path naming the bug leaked '1900' 40+ times in the M3 log) and reproduce.sh was re-run against it, so logs/symptom.log (512839 lines / 74 MB) is the genuine output of the renamed binaries, not a rewritten log: the failure reproduces identically (6058 NPEs in 40s at FileTxnLog.rollBack:381, observer snapshot 0x100001013 vs leader 0x1000003b2, srvr 'not currently serving requests', client connect=TIMEOUT, observer sockets 35->113, CLOSE_WAIT 0->32). source/ = the full renamed pre-fix Java tree (282 files: src/java/main + src/java/generated), not a hand-curated subset, so no file-selection hint is given to the LLM. Verified on the host: 0 hits for ZOOKEEPER-1900, bare \\b1900\\b, [Tt]runcat and \\bTRUNC\\b across source/ + logs/symptom.log + symptom.md. Attempts 1-2 failed on the built-in checks (rename missed 3 files' comments/test-class name; then two reproduce.sh assertions still grepped the old vocabulary) and were re-run - no artifact from them was kept."
     },
     {
       "id": "M5",

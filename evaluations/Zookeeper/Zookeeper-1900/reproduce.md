@@ -1,0 +1,144 @@
+# Reproducing Zookeeper-1900 (pre-fix trunk `8cfb9a0ef`, ZooKeeper 3.5.0-SNAPSHOT)
+
+## Scenario in one paragraph
+
+A four-member ZooKeeper ensemble (three participants + one **observer**) runs normally and
+serves a few thousand transactions; every member keeps its snapshots in `dataDir` and its
+transaction logs in a separate `dataLogDir`, as production deployments commonly do. The
+three participant machines are then re-provisioned on empty storage. The observer machine
+is left alone **except** that its transaction-log volume is replaced: `dataLogDir` in its
+`zoo.cfg` now points at a new, empty directory, while `dataDir` (its snapshots, `myid`,
+`currentEpoch`/`acceptedEpoch`) is untouched. When the cluster is brought back up, the
+observer never rejoins: every sync attempt dies, it cycles `LOOKING → OBSERVING` forever,
+it cannot serve any client, and it leaks one connection to the leader per attempt.
+
+## How to run it
+
+```bash
+cd /mnt/SSD-4T/ycx/CLODS
+docker run --rm -v "$PWD:/work" clods-eval:Zookeeper-Zookeeper-1900 \
+    -c 'bash /work/evaluations/Zookeeper/Zookeeper-1900/reproduce.sh'
+```
+
+`reproduce.sh` builds the pre-fix tree if needed (`ant jar`), runs the whole three-phase
+scenario against real server processes, writes the collected log to
+`private/symptom.orig.log` and prints its assertions to stdout. Ports are 24611-24614
+(client), 24621-24624 (quorum), 24631-24634 (election). Knobs: `PREV_OPS`, `PREV_CLIENTS`,
+`NEW_OPS`, `WATCH_SECS`, `REPO`, `OUT_LOG`.
+
+For the anonymized re-run (M4) the same script is invoked by `private/anonymize.sh` with
+`REPO` pointing at the renamed tree and `OUT_LOG=logs/symptom.log`.
+
+## What the script actually does
+
+**Phase A — the deployment as it ran before.** Four real `QuorumPeerMain` processes
+(myid 1-3 participants, myid 4 `peerType=observer`), root logger *and* console appender at
+`DEBUG`, `snapCount=300` so snapshots are written regularly. Roles are discovered with the
+servers' own `srvr` four-letter word (leader 24613, followers 24611/24612, node 4
+`Mode: observer`). Traffic is real and goes through the public API only: six concurrent
+`Workload` clients (280 iterations each of create/getData/setData/exists/getChildren/
+delete, spread over all three participants), a real `zkCli` shell session on the leader
+(40 × create/get/set/stat, then 20 deletes), and a client doing ephemeral create/read/
+delete work **through the observer**. The ensemble executes ~4 000 transactions; the
+observer ends with 18 snapshots and 18 transaction logs, newest `snapshot.100000fc6`
+(zxid 0x100000fc6). All four members are then stopped.
+
+**Phase B — the operator action** (no ZooKeeper code involved, no files edited): the three
+participants get brand-new empty `dataDir`/`dataLogDir`; the observer keeps its `dataDir`
+and its `dataLogDir` is repointed at a new empty directory. This is exactly the situation
+the upstream fix's own error message names ("*you still have snapshots from an old setup or
+log files were deleted accidentally or dataLogDir was changed in zoo.cfg*").
+
+**Phase C — the incident.** The three re-provisioned participants start, form a quorum
+(epoch 1, leader 24613) and serve real traffic: two 120-iteration workloads plus a
+long-running client that keeps doing ephemeral work for the whole 40 s window (185
+operations, 0 failures — the quorum is healthy throughout). The observer is then started.
+While it retries, the script samples its `/proc/<pid>/fd` and the container's CLOSE_WAIT
+socket count every 5 s, and after 20 s an ordinary client is pointed at the observer's
+client port.
+
+## How the failure is triggered
+
+The observer's last logged zxid comes from its old snapshot (`0x100000fc6` = 4038) because
+its new `dataLogDir` is empty; the re-provisioned quorum is only at `0x1000003b0` = 944.
+The observer's `acceptedEpoch` (1) equals the new cluster's epoch (1), so it is admitted,
+and `LearnerHandler.syncFollower` takes the `peerLastZxid > maxCommittedLog` branch:
+
+```
+[myid:3] LearnerHandler@659 - Synchronizing with Follower sid: 4 maxCommittedLog=0x100000269
+         minCommittedLog=0x100000075 lastProcessedZxid=0x100000269 peerLastZxid=0x100000fc6
+[myid:3] LearnerHandler@710 - Sending TRUNC to follower zxidToSend=0x100000269 for peer sid:4
+```
+
+The learner then tries to cut its transaction log back to that zxid — and its log directory
+holds no log file at all. Because the leader's zxid stays far below the observer's for the
+whole window, **every** retry takes the same branch, so the loop never ends.
+
+## How the failure is detected (silently)
+
+No log or print statement is added to ZooKeeper or to the test harness. `Workload.java`
+writes nothing to stdout/stderr; its observations go to `private/result_*.txt`, which the
+script reads. Detection is by assertion on the servers' own logs, those result files and
+`/proc`; assertion output goes to `reproduce.sh`'s stdout and is **never** written into the
+symptom log. Observed in the recorded run:
+
+| observable | value |
+|---|---|
+| `NullPointerException`s in the observer's log (40 s) | **6 239** |
+| stack frames in the log-truncation path | 6 239 |
+| `Truncating log to get in sync with the leader` | 6 239 |
+| leader-side `Synchronizing with Follower sid: 4` | 6 239 |
+| observer answering `srvr` | `This ZooKeeper instance is not currently serving requests` |
+| ordinary client pointed at the observer | `connect=TIMEOUT ... waited_ms=20001 state=CONNECTING` |
+| observer's open sockets, t=5 s → t=40 s | 25 → 122 |
+| sockets in CLOSE_WAIT, t=5 s → t=40 s | 0 → 42 |
+| client on the quorum during the same window | `collateral_ok=185 collateral_failed=0` |
+
+The observer's own log shows one full iteration as:
+
+```
+WARN  Learner@346 - Truncating log to get in sync with the leader 0x10000023d
+WARN  QuorumPeer@963 - Unexpected exception
+java.lang.NullPointerException
+    at org.apache.zookeeper.server.persistence.FileTxnLog.truncate(FileTxnLog.java:381)
+    at org.apache.zookeeper.server.persistence.FileTxnSnapLog.truncateLog(FileTxnSnapLog.java:317)
+    at org.apache.zookeeper.server.ZKDatabase.truncateLog(ZKDatabase.java:504)
+    at org.apache.zookeeper.server.quorum.Learner.syncWithLeader(Learner.java:348)
+    at org.apache.zookeeper.server.quorum.Observer.observeLeader(Observer.java:79)
+    at org.apache.zookeeper.server.quorum.QuorumPeer.run(QuorumPeer.java:961)
+INFO  Observer@164 - shutdown called
+WARN  QuorumPeer@1021 - PeerState set to LOOKING
+INFO  QuorumPeer@896 - LOOKING
+...
+INFO  QuorumPeer@959 - OBSERVING          <- and straight back into the same failure
+```
+
+(Line numbers are those of the pre-fix tree; the anonymized M4 re-run regenerates the log
+from the renamed build, so its frames carry the renamed method names.)
+
+## The captured log
+
+`private/symptom.orig.log` — 524 674 lines / 75 MB, the concatenation of all four servers'
+own DEBUG logs from both the previous deployment and the current one, plus every client
+session log (241 073 DEBUG, 119 743 INFO, 31 333 WARN/ERROR lines). The only text the
+script adds is one `===== file: <name> =====` header per collected file. There are **no**
+injected, answer-revealing lines: nothing reports why the truncation fails, what the log
+directory contains, or which branch was taken. M4 rewrites this file into
+`logs/symptom.log` by re-running the same script against the renamed build.
+
+## Test-only infrastructure, and caveats
+
+* `private/repro/Workload.java` is an ordinary client program (public `ZooKeeper` API
+  only). It is compiled at run time and is not part of the server build.
+* The samplers (`/proc/<pid>/fd`, `ss -tan`) observe the JVM from outside; they do not
+  touch ZooKeeper.
+* Everything runs on one host with loopback addresses, so leader election is far faster
+  than in a real deployment: the observer manages ~156 retries per second, where the
+  original report saw "over a million a day". The mechanism is identical; only the rate
+  differs.
+* The three participants are re-provisioned rather than restored from a backup. Either
+  produces the same precondition (quorum behind the learner, learner with no transaction
+  log); re-provisioning is deterministic and needs no epoch bookkeeping.
+* CLOSE_WAIT sockets are counted per network namespace (the container), where only these
+  processes run. The observer's own socket count (`/proc/<pid>/fd`) grows in lockstep,
+  which is the more direct evidence.

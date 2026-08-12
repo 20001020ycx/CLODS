@@ -1,0 +1,2 @@
+connect=TIMEOUT connectString=127.0.0.1:24614 waited_ms=20001 state=CONNECTING
+final_state=CONNECTING

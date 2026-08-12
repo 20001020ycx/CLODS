@@ -20,7 +20,7 @@ milestone carries `status` + `success` + `outcome`.
 | M0 | Scaffold & claim the bug folder | DONE | true | success |
 | M1 | From JIRA: fix commit + pre-fix commit | DONE | true | success |
 | M2 | Check out pre-fix, build from source, fix deps | DONE | true | success |
-| M3 | Reproduce the failure | PENDING | null | pending |
+| M3 | Reproduce the failure | DONE | true | success |
 | M4 | Anonymize, rebuild, re-confirm reproduction | PENDING | null | pending |
 | M5 | Prepare diagnosis inputs & ground truth | PENDING | null | pending |
 | M6 | Run LLM diagnosis x5 (network locked) | PENDING | null | pending |
@@ -34,3 +34,4 @@ milestone carries `status` + `success` + `outcome`.
 - 2026-08-12T17:58Z M1 DONE success=true — ZOOKEEPER-1900 "NullPointerException in truncate" (Blocker; affects 3.4.5/3.4.6, fixed in 3.4.7 + 3.5.0).
   Fix commit `6abd85938` (trunk, 2014-06-30) changes two production lines: a `if (input == null) throw new IOException(...)` guard in `FileTxnLog.truncate()`, and `catch (IOException e)` → `catch (Exception e)` in `Observer.observeLeader()`; it also adds `TruncateTest.testTruncationNullLog`. Pre-fix = `8cfb9a0ef`. Saved `private/fix.diff` (+ `private/fix.branch-3.4.diff`, which additionally widens the same catch in `Follower.java` — trunk's `Follower` already caught `Exception`, so on trunk only an **observer** exercises that second site).
 - 2026-08-12T18:05Z M2 DONE success=true — `ant jar` on the pre-fix tree inside `clods-eval:Zookeeper-Zookeeper-1900` (JDK 8 + Ant). Dep fixes saved to `private/deps-fix.patch`: dead Maven repos (`repo2.maven.org`, `repository.jboss.org`, `download.java.net`) → `https://repo1.maven.org`, and `javac.source`/`javac.target` 1.5 → 1.8. Artifact: `build/zookeeper-3.5.0-SNAPSHOT.jar`.
+- 2026-08-12T18:35Z M3 DONE success=true — real 4-node ensemble (3 participants + 1 observer) + real client traffic. After the three participants are re-provisioned and the observer's `dataLogDir` is repointed at an empty directory, the observer never rejoins: **6 239** `NullPointerException`s in 40 s (`FileTxnLog.truncate:381` ← `FileTxnSnapLog.truncateLog:317` ← `ZKDatabase.truncateLog:504` ← `Learner.syncWithLeader:348` ← `Observer.observeLeader:79` ← `QuorumPeer.run:961`), `LOOKING`→`OBSERVING` forever, `srvr` answers "not currently serving requests", an ordinary client times out connecting to it, and its open sockets grow 25→122 (CLOSE_WAIT 0→42) while the quorum serves 185 ops with 0 failures. `private/symptom.orig.log` = 524 674 lines / 75 MB. Write-up in `reproduce.md`.

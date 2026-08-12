@@ -55,15 +55,21 @@
     },
     {
       "id": "M3",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T01:32:57Z",
+      "finished": "2026-08-12T01:36:00Z",
+      "attempts": 1,
+      "by": "agent-run-e47cfc21",
+      "artifacts": [
+        "reproduce.sh",
+        "reproduce.md",
+        "private/repro/Workload.java",
+        "private/symptom.orig.log (gitignored)",
+        "private/result_*.txt"
+      ],
+      "note": "Reproduced on the real system: a 3-node ZooKeeper 3.5.0-SNAPSHOT ensemble built from the pre-fix tree, all three members with root logger AND console appender at DEBUG, roles discovered with the servers' own 'srvr' 4lw (leader=21853/myid3, followers=21851/myid1 and 21852/myid2). Real traffic: two 120-iteration create/getData/setData/exists/getChildren/delete workloads (leader + follower2) through the public ZooKeeper client API, a real zkCli shell session on the leader (40x create/get/set/stat + 20 deletes), and a client pinned to follower myid1 doing ephemeral create/read/delete every 200ms for 45s. The failing session (also pinned to myid1) does a plain create (OK, 8ms) then one create-with-Stat: it never completes (ConnectionLoss after 6768ms), the node is never created, follower myid1 logs NPE at ZKDatabase.addCommittedProposal:251 <- FinalRequestProcessor:127 <- CommitProcessor$CommitWorkRequest.doWork:294, then 'Exception thrown by downstream processor, unable to continue.' + 'CommitProcessor exited loop!', after which that member answers nothing (collateral client: 20 ops OK then 5 straight ConnectionLoss). Detection is silent: assertions read the clients' result files and the servers' own logs and print only to reproduce.sh stdout. Workload.java writes nothing to stdout/stderr; NO log or print statement added to ZooKeeper anywhere. private/symptom.orig.log = 19037 lines (15615 DEBUG, 474 INFO, 18 WARN/ERROR) = 3 server logs + 6 client session logs, one '===== file: X =====' header each."
     },
     {
       "id": "M4",

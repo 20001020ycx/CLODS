@@ -24,7 +24,7 @@ milestone carries `status` + `success` + `outcome`.
 | M4 | Anonymize, rebuild, re-confirm reproduction | DONE | true | success |
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true | success |
 | M6 | Run LLM diagnosis x5 (network locked) | DONE | true | success |
-| M7 | Grade each run vs ground truth | PENDING | null | pending |
+| M7 | Grade each run vs ground truth | DONE | true | success |
 | M8 | Write summary & finalize | PENDING | null | pending |
 
 ## Log
@@ -70,3 +70,4 @@ iptables requires root. The scratch credential copy was deleted after the run.
 **Operator action suggested (repeat of the Zookeeper-1851 note):** rebuild `clods-eval` so
 `/opt/clods/run_diagnosis.sh` matches `context/run_diagnosis.sh`.
 - 2026-08-12T19:44Z M6 DONE success=true — 5 single-turn diagnoses (`claude-opus-4-7`, effort high, network locked, staged inputs only, no follow-ups). All 5 completed first time; all stderr empty. See the harness-deviation section above.
+- 2026-08-12T19:50Z M7 DONE success=true — **5/5 PASS**. Each run named the unguarded `itr.inputStream` dereference at `FileTxnLog.rollBack` (380-381) *with* the condition that makes it null (no `log.*` in the replacement txnlog volume → `storedFiles` empty → `goToNextLog()` false → `createInputArchive()` never runs) **and** `Observer.observeLeader`'s `catch (IOException e)` at line 85 not catching the `RuntimeException`, hence the skipped `sock.close()`, the CLOSE_WAIT growth and the endless `LOOKING`→`OBSERVING` retry via `QuorumPeer.run`. (The grade JSONs were written just before the M6 commit and got swept into it; history was not rewritten.)

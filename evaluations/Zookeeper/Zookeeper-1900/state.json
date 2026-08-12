@@ -125,15 +125,21 @@
     },
     {
       "id": "M7",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T19:45:00Z",
+      "finished": "2026-08-12T19:50:00Z",
+      "attempts": 1,
+      "by": "agent-run-ea3110e6",
+      "artifacts": [
+        "diagnosis/run_1.grade.json",
+        "diagnosis/run_2.grade.json",
+        "diagnosis/run_3.grade.json",
+        "diagnosis/run_4.grade.json",
+        "diagnosis/run_5.grade.json"
+      ],
+      "note": "5/5 PASS. Every run named BOTH required sites with their exact branch conditions: (A) the unguarded dereference in FileTxnLog.rollBack - 'PositionInputStream input = itr.inputStream' (380) / 'long pos = input.getPosition()' (381) - together with the exact reason inputStream is null (the replacement txnlog volume holds no log.* file, so FileTxnIterator.init's loop adds nothing, storedFiles stays empty, goToNextLog()'s 'if (storedFiles.size() > 0)' is false and createInputArchive() - the only assignment of inputStream - never runs); and (B) Observer.observeLeader's 'catch (IOException e)' at line 85 not matching a RuntimeException, so sock.close() (88) is skipped and the NPE escapes to QuorumPeer.run's case OBSERVING catch/finally -> updateServerState() -> LOOKING -> re-observe, giving the endless retry and one leaked CLOSE_WAIT socket per attempt. All five also derived the credit-neutral context correctly (the leader's ROLLBACK decision from the stale-snapshot zxid, Learner.syncWithLeader:344/348, ZKDatabase.rollBackLog:504, FileTxnSnapLog.rollBackLog:317, and that Learner.shutdown never closes sock); runs 3, 4 and 5 additionally explained why the client port answers 4lw but hands out no sessions. Run 2 was the most explicit about the defect itself ('No null check on itr.inputStream; the code assumes the iterator always opened a file'); run 4 produced a 7-row table of decisive conditions; run 5 framed the remedy operationally (make dataDir consistent with snapDir) instead of as the upstream code fix, which the pre-registered rule does not penalise since it states the root-causing line and both branch conditions. Caveat recorded for the summary: the observer's stack trace in the log names FileTxnLog.rollBack:381 outright, so locating site A needed no search - the discriminating work was the null-ness condition and site B, which all five did. Runs 1, 3 and 5 still call the packet 'TRUNC' in prose although the tree calls it ROLLBACK, i.e. general ZooKeeper familiarity survives the rename. Bookkeeping note: the five grade JSONs were written before the M6 commit was made and were therefore swept into that commit; this M7 commit records the verdicts in state.json/PROGRESS.md. History was not rewritten."
     },
     {
       "id": "M8",

@@ -137,7 +137,7 @@
         "diagnosis/run_4.grade.json",
         "diagnosis/run_5.grade.json"
       ],
-      "note": "Graded with two readings. Strict (canonical resetBlocks omission): 0/5. Sufficient-fix (register-reorder branch + mechanism + valid fix): 5/5. None named resetBlocks; most mischaracterized the death path (claimed no fields cleared)."
+      "note": "Graded 0/5. PASS requires naming resetBlocks()'s missing setOtherUsed(0); no run did. All found only the register()-reorder workaround; most stated the death path incorrectly (claimed no fields cleared). Single verdict per run (FAIL); earlier dual-verdict removed."
     },
     {
       "id": "M8",
@@ -151,7 +151,7 @@
       "artifacts": [
         "summary.md"
       ],
-      "note": "Summary written. Headline: canonical-root-cause hit-rate dropped 5/5 (hinted) -> 0/5 (bare). Strong evidence that leaked symptom-narrowing had manufactured the earlier result."
+      "note": "Summary: 0/5 on bare symptom (was 5/5 with the leaked narrowing). Evidence the earlier result was a symptom-hint artifact."
     }
   ],
   "result": {
@@ -164,19 +164,7 @@
       "FAIL",
       "FAIL"
     ],
-    "reading": "strict/canonical: named resetBlocks() omission (setOtherUsed(0)) \u2014 0/5",
-    "reading_sufficient_fix": {
-      "successes": 5,
-      "per_run": [
-        "PASS",
-        "PASS",
-        "PASS",
-        "PASS",
-        "PASS"
-      ],
-      "what": "isolated the register()-reorder root-cause branch + correct mechanism + valid fix"
-    },
-    "note": "Bare-observable symptom (tightened M5). Canonical-root-cause identification collapsed from 5/5 (previous hinted symptom) to 0/5. All 5 found only the register()-reorder half and mischaracterized the death path. See summary.md; per-run grade.json carry both verdicts."
+    "note": "Bare-observable symptom (tightened M5). 0/5: no run named the root-causing line resetBlocks() (missing setOtherUsed(0)); all found only the register()-reorder workaround and most misdescribed the death path. With the earlier hinted symptom this had scored 5/5 \u2014 the hint (\"only other-used is wrong\") had been carrying the result."
   },
   "fix_commit_trunk_ref": "c4a85c694fae3f814ab4e7f3c172da1df0e0e353",
   "source_version": "branch-2.7 (2.7.4-SNAPSHOT)",

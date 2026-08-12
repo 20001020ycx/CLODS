@@ -1,28 +1,22 @@
 {
-  "verdict": "PASS",
-  "verdict_strict_resetBlocks_required": "FAIL",
-  "justification": "Isolated register() L189-196 if(!d.isAlive) add-before-reset EXACTLY (addDatanode L191 before updateHeartbeatState L194; Stats.add L409), correct leak mechanism, valid fix (reorder). MISS: does not name resetBlocks; explicitly (and WRONGLY) claims removeDatanode 'does not clear dfsUsed/capacity/remaining' (resetBlocks DOES) -> misses the resetBlocks asymmetry that is the canonical root cause.",
+  "verdict": "FAIL",
+  "justification": "FAIL. Did not name resetBlocks() (the root-causing line). Explicitly claims removeDatanode 'does not clear dfsUsed/capacity/remaining' \u2014 factually wrong; resetBlocks clears those and only forgets otherUsed. Found only the register()-reorder workaround.",
   "claimed_lines": [
-    "HeartbeatManager.register L189-196 (add-before-reset)",
+    "HeartbeatManager.register L189-196 (add-before-reset workaround)",
     "addDatanode->Stats.add L409",
     "updateHeartbeatState setOtherUsed(0) L436",
-    "updateHeartbeat L217-225",
-    "FSNamesystem.getOtherUsedSpace L6866"
+    "updateHeartbeat L217-225"
   ],
   "claimed_branches": [
     "register(): if(!d.isAlive) -> addDatanode(stats.add stale otherUsed) before updateHeartbeatState(EMPTY) reset"
   ],
-  "missed": [
-    "DatanodeDescriptor.resetBlocks() omission of setOtherUsed(0) (canonical root cause)",
-    "the resetBlocks asymmetry = why only other-used leaks; several runs wrongly claim NO fields are cleared on death"
-  ],
   "gt_lines": [
-    "DatanodeDescriptor.resetBlocks() L313-319 (omits setOtherUsed(0) while zeroing the OTHER node totals) -- CANONICAL root cause / the fix on trunk,2.8,2.9",
-    "HeartbeatManager.register() L189-196 (addDatanode->stats.add of stale otherUsed BEFORE updateHeartbeatState(EMPTY)) -- the branch-2.7 reorder half of the fix",
+    "DatanodeDescriptor.resetBlocks() L313-319 (omits setOtherUsed(0) while zeroing the OTHER node totals) \u2014 THE root-causing line",
+    "HeartbeatManager.register() L189-196 (branch-2.7 also reordered addDatanode/updateHeartbeatState)",
     "HeartbeatManager.Stats.add L409 (capacityUsedOther += node.getOtherUsed())"
   ],
   "gt_branches": [
-    "register(): if(!d.isAlive) -> addDatanode(stats.add stale otherUsed) BEFORE updateHeartbeatState(EMPTY) reset, no compensating subtract",
-    "death: resetBlocks() zeroes capacity/remaining/blockPoolUsed/dfsUsed/xceiver but NOT otherUsed -> that asymmetry is why ONLY other-used leaks"
+    "death: resetBlocks() zeroes capacity/remaining/blockPoolUsed/dfsUsed/xceiver but NOT otherUsed -> only other-used leaks",
+    "register(): if(!d.isAlive) -> addDatanode(stats.add stale otherUsed) BEFORE updateHeartbeatState(EMPTY) reset"
   ]
 }

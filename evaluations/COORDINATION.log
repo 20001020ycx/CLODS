@@ -55,3 +55,4 @@
 2026-08-12T20:38:31Z Zookeeper-1851 bug COMPLETE 4/5 (re-run under updated M5 spec)
 2026-08-12T20:48:42Z Zookeeper-1900 M5 REDONE (bare-observable symptom.md); M6-M8 reset, previous 5/5 batch discarded
 2026-08-12T20:49:14Z HDFS-11896 bug COMPLETE (bare symptom): canonical 0/5, sufficient-fix 5/5
+2026-08-12T20:55:57Z HDFS-11896 grading corrected: single verdict 0/5

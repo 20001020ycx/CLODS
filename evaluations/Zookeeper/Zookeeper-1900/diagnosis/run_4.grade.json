@@ -1,0 +1,25 @@
+{
+  "run": 4,
+  "verdict": "PASS",
+  "justification": "The longest answer, and it ends with an explicit table of the seven decisive conditions; rows 3-5 are precisely the two required sites and their branch conditions (empty log dir -> storedFiles empty -> goToNextLog false -> inputStream null; input.getPosition() at 381; catch (IOException) at 85 skipping sock.close()). It also argues correctly why no iteration can make progress (the NEWLEADER snapshot logic in syncWithLeader is downstream of line 348, so control never reaches it) and gives the kernel-level account of why the abandoned sockets sit in CLOSE_WAIT.",
+  "claimed_lines": [
+    "FileTxnLog.java:376-395, quoting 379/380/381 with '<-- NPE' on 381",
+    "FileTxnLog.java:566-582 (init), 601-608 (goToNextLog), 522 (PositionInputStream inputStream=null)",
+    "Observer.java:85 (catch IOException only), 88 (sock.close skipped), 96 (finally does not close sock)",
+    "QuorumPeer.java:960-968 (case OBSERVING), 962 (catch Exception)",
+    "Learner.java:581-590 and Observer.java:163-166 (credit-neutral)",
+    "Learner.java:344/348, ZKDatabase.java:500-512, FileTxnSnapLog.java:311-317 (credit-neutral chain)"
+  ],
+  "claimed_branches": [
+    "'With an empty logDir, files is empty, storedFiles stays empty, goToNextLog() at FileTxnLog.java:601-608 takes the storedFiles.size() > 0 branch as false and returns without ever touching inputStream (which is still null from its declaration on line 522). Line 381 dereferences that null'",
+    "'catch (IOException e) - an NPE is not an IOException, so the sock.close() on line 88 is skipped'; QuorumPeer.java:962's broad catch(Exception) swallows it and re-enters the state machine, guaranteeing the next OBSERVING attempt repeats with another leaked socket"
+  ],
+  "gt_lines": [
+    "source/src/java/main/org/apache/zookeeper/server/persistence/FileTxnLog.java:380-381 - FileTxnLog.rollBack(): 'PositionInputStream input = itr.inputStream; long pos = input.getPosition();' dereferenced with no null guard (the upstream fix inserts 'if (input == null) throw new IOException(...)')",
+    "source/src/java/main/org/apache/zookeeper/server/quorum/Observer.java:85 - Observer.observeLeader()'s inner 'catch (IOException e)' (the upstream fix widens it to 'catch (Exception e)')"
+  ],
+  "gt_branches": [
+    "itr.inputStream == null: FileTxnIterator.init() (566-582) finds no log.* file in the configured txnlog dir, so storedFiles stays empty; goToNextLog() (601-608) takes 'if (storedFiles.size() > 0)' as false and returns without calling createInputArchive() (633-639), the only assignment of inputStream",
+    "the thrown NullPointerException is a RuntimeException, not an IOException, so the catch at Observer.java:85 does not apply: sock.close() (88) and pendingRevalidations.clear() (94) are skipped (leaked leader connection -> CLOSE_WAIT) and the exception unwinds to QuorumPeer.run's 'case OBSERVING ... catch (Exception e) ... finally { observer.shutdown(); setObserver(null); updateServerState(); }' (957-969) -> LOOKING -> re-elect -> OBSERVING -> same failure forever"
+  ]
+}

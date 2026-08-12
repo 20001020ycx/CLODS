@@ -107,15 +107,21 @@
     },
     {
       "id": "M6",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T19:22:00Z",
+      "finished": "2026-08-12T19:44:00Z",
+      "attempts": 1,
+      "by": "agent-run-ea3110e6",
+      "artifacts": [
+        "diagnosis/run_1.md",
+        "diagnosis/run_2.md",
+        "diagnosis/run_3.md",
+        "diagnosis/run_4.md",
+        "diagnosis/run_5.md"
+      ],
+      "note": "5 independent single-turn diagnoses, model claude-opus-4-7 effort high, egress iptables-locked to api.anthropic.com:443 (--add-host pins 160.79.104.10 so the lock survives the DNS-killing DROP policy), Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, --safe-mode --no-session-persistence --exclude-dynamic-system-prompt-sections, no follow-up prompts, throwaway staging dir /tmp/clods-diag-3mGN holding ONLY source/ + logs/symptom.log + symptom.md (verified at runtime while the batch ran: no private/ in the stage, the prompt paths point at the stage and never at /bug, iptables -S shows DROP policies + a single ACCEPT to the API, and the running claude process carries --model claude-opus-4-7 --effort high --disallowed-tools Bash,Write,Edit,WebFetch,WebSearch,Task,NotebookEdit). SAME HARNESS DEVIATION AS Zookeeper-1851: the clods-eval image's baked-in /opt/clods/run_diagnosis.sh is still stale (md5 246ce82e2c2bfaa765fbd9756faa626a vs 324f602bbb59d1676d3287f6170bb6f3 for the tracked context/run_diagnosis.sh) - it would prompt with /bug paths (making /bug/private/ reachable), deny only WebFetch/WebSearch and pin no model/effort. So context/ was mounted read-only and context/run_diagnosis.sh executed instead; context/ and the image were NOT modified. Auth: host CCS OAuth credentials copied into a scratch config dir mounted at /root/.claude with CLAUDE_CONFIG_DIR + IS_SANDBOX=1 and CLAUDE_PURITY_FLAG=--safe-mode (--bare refuses CCS credentials); the scratch copy was deleted afterwards. All 5 runs completed on the first attempt, all 5 stderr files empty, answers 4.1-6.6 kB."
     },
     {
       "id": "M7",

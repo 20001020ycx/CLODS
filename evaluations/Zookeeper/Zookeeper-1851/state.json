@@ -39,15 +39,19 @@
     },
     {
       "id": "M2",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
       "started": null,
-      "finished": null,
+      "finished": "2026-08-12T01:29:20Z",
       "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "by": "agent-run-e47cfc21",
+      "artifacts": [
+        "private/deps-fix.patch",
+        "private/Dockerfile.zk1851",
+        "repos/Zookeeper-Zookeeper-1851/build/zookeeper-3.5.0-SNAPSHOT.jar (gitignored)"
+      ],
+      "note": "Built the pre-fix tree (25ea38a87, ZooKeeper 3.5.0-SNAPSHOT) from source with Ant+Ivy in per-bug image clods-eval:Zookeeper-Zookeeper-1851 (clods-eval + openjdk-8-jdk + ant; JDK11/17 refuse -source/-target<7). Build cmd: 'ant jar' -> build/zookeeper-3.5.0-SNAPSHOT.jar + build/classes + build/lib (slf4j 1.7.5, log4j 1.2.16, jline 2.11, netty 3.7.0.Final, jetty 6.1.26, jackson 1.9.11, commons-cli 1.2). Dep fixes (private/deps-fix.patch, 3 edits, no source changes): (1) build.xml ivy.url http://repo2.maven.org -> https://repo1.maven.org (repo2 host is gone and Central refuses plain HTTP); (2) build.xml javac.source/javac.target 1.5 -> 1.8 (javac 8 rejects source/target 1.5 pairing with its 1.8 default bootclasspath); (3) ivysettings.xml repo.maven.org/repo.jboss.org/repo.sun.org -> https://repo1.maven.org (jboss + download.java.net are dead). BUILD SUCCESSFUL in 10s."
     },
     {
       "id": "M3",

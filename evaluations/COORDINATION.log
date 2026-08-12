@@ -30,3 +30,4 @@
 2026-08-12T01:25:37Z Zookeeper-1851 claim M0
 2026-08-12T01:25:37Z Zookeeper-1851 M0 DONE success
 2026-08-12T01:27:52Z Zookeeper-1851 M1 DONE success
+2026-08-12T01:29:20Z Zookeeper-1851 M2 DONE success (ant jar, JDK8)

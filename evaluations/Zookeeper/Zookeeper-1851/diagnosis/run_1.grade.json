@@ -1,0 +1,23 @@
+{
+  "verdict": "PASS",
+  "claimed_lines": [
+    "FollowerRequestProcessor.java:79-100 / :84-92 - no `case OpCode.createExt` in the forward-to-leader switch; `zks.getFollower().request(request)` never called",
+    "CommitProcessor.java:131-148 - `OpCode.createExt` missing from needCommit(), hits `default: return false`",
+    "(also, as consequence) Request.java:169-170 isQuorum()==true, FinalRequestProcessor.java:126-128, ZKDatabase.java:251 NPE, CommitProcessor.java:284-290 cleanup()->halt()"
+  ],
+  "claimed_branches": [
+    "switch (request.type) in FollowerRequestProcessor.run(): createExt matches no case, so the request is queued to nextProcessor (line 72) but never shipped to the leader - 'why the znode is never created anywhere'",
+    "needCommit() returns false via default -> run() lines 172-176 take the `else` branch sendToNextProcessor(request) instead of nextPending.set(request), so FinalRequestProcessor receives it with request.getHdr()==null"
+  ],
+  "justification": "Names both required root-causing sites with their exact branch conditions: the missing `case OpCode.createExt:` in FollowerRequestProcessor.run()'s forward-to-leader switch (and that this is why the znode exists nowhere), and its absence from CommitProcessor.needCommit() with the resulting `default: return false` driving the else-arm of the `if (needCommit(request))` guard. Correctly derives, rather than assumes, the downstream chain (isQuorum() true -> addCommittedProposal -> null-hdr NPE -> CommitWorkRequest.cleanup -> halt) and explains why the member stays up but answers nothing. Also cites the log evidence (no 'Committing request' line, zxid sentinel 0xfffffffffffffffe, txntype:unknown). Matches ground truth exactly.",
+  "gt_lines": [
+    "FollowerRequestProcessor.java:79-92 - run()'s forward-to-leader switch (missing `case OpCode.createExt:` at line 84, so `zks.getFollower().request(request)` at line 91 is never reached)",
+    "CommitProcessor.java:131-147 - needCommit() (missing `case OpCode.createExt:` at line 133, so it returns false via `default:` at 145-146)"
+  ],
+  "gt_branches": [
+    "`switch (request.type)` in FollowerRequestProcessor.run(): OpCode.createExt matches no case and there is no `default:` arm -> the write is never forwarded to the leader (znode created nowhere)",
+    "`needCommit(request)` returns false for OpCode.createExt -> in CommitProcessor.run() the guard `if (needCommit(request)) nextPending.set(request); else sendToNextProcessor(request);` takes the ELSE arm -> the write is handed to FinalRequestProcessor as a read with request.getHdr()==null"
+  ],
+  "run": "run_1.md",
+  "graded_against": "private/ground_truth.md"
+}

@@ -23,9 +23,9 @@ milestone carries `status` + `success` + `outcome`.
 | M3 | Reproduce the failure | DONE | true | success |
 | M4 | Anonymize, rebuild, re-confirm reproduction | DONE | true | success |
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true | success |
-| M6 | Run LLM diagnosis x5 (network locked) | DONE | true | success |
-| M7 | Grade each run vs ground truth | DONE | true | success |
-| M8 | Write summary & finalize | DONE | true | success |
+| M6 | Run LLM diagnosis x5 (network locked) | PENDING | null | pending |
+| M7 | Grade each run vs ground truth | PENDING | null | pending |
+| M8 | Write summary & finalize | PENDING | null | pending |
 
 ## Log
 
@@ -72,3 +72,6 @@ iptables requires root. The scratch credential copy was deleted after the run.
 - 2026-08-12T19:44Z M6 DONE success=true — 5 single-turn diagnoses (`claude-opus-4-7`, effort high, network locked, staged inputs only, no follow-ups). All 5 completed first time; all stderr empty. See the harness-deviation section above.
 - 2026-08-12T19:50Z M7 DONE success=true — **5/5 PASS**. Each run named the unguarded `itr.inputStream` dereference at `FileTxnLog.rollBack` (380-381) *with* the condition that makes it null (no `log.*` in the replacement txnlog volume → `storedFiles` empty → `goToNextLog()` false → `createInputArchive()` never runs) **and** `Observer.observeLeader`'s `catch (IOException e)` at line 85 not catching the `RuntimeException`, hence the skipped `sock.close()`, the CLOSE_WAIT growth and the endless `LOOKING`→`OBSERVING` retry via `QuorumPeer.run`. (The grade JSONs were written just before the M6 commit and got swept into it; history was not rewritten.)
 - 2026-08-12T19:55Z M8 DONE success=true — `summary.md` written; `state.json.result` = 5/5 PASS (`["PASS","PASS","PASS","PASS","PASS"]`). Bug complete.
+
+- 2026-08-12T20:12Z **M5 REDONE** success=true — `context/METHODOLOGY.md` §5/M5 was tightened to "`symptom.md` = bare observable + log pointer, nothing else". The first `symptom.md` violated it (it narrated the trigger and timeline — maintenance window, participants re-provisioned, the member's transaction-log directory repointed — plus the mechanism and the "quorum is healthy / sockets pile up in CLOSE_WAIT" narrowing comparisons). Rewritten as two sentences + the exception exactly as `logs/symptom.log` prints it at line 244231. `private/ground_truth.md` keeps the same two required sites; only B's justification is restated (the CLOSE_WAIT consequence is no longer required, since it left the symptom). Verification gate re-run: 0 hits for the bug id, bare `1900`, `[Tt]runcat`, `TRUNC`; sentence-by-sentence audit clean.
+- 2026-08-12T20:12Z **M6–M8 reset to PENDING** — the earlier batch (5/5 PASS) was produced against the cause-leaking `symptom.md` and is **discarded, not part of the record**. `source/` and `logs/symptom.log` are unchanged, so M2–M4 stand and only the diagnosis is re-run.

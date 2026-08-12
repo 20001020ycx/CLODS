@@ -51,7 +51,7 @@ A run must name line 380/381 (the unguarded `itr.inputStream` / `input.getPositi
 state that condition — the log directory holding no transaction-log file, hence
 `storedFiles` empty / `goToNextLog()` false / `createInputArchive()` never called.
 
-## Site 2 (required for the loop + socket leak) — `Observer.observeLeader()` catches only `IOException`
+## Site 2 (required) — `Observer.observeLeader()` catches only `IOException`
 
 `source/src/java/main/org/apache/zookeeper/server/quorum/Observer.java:85`
 
@@ -67,8 +67,7 @@ state that condition — the log directory holding no transaction-log file, henc
 ```
 
 **The wrong branch condition:** the handler is selected on `e instanceof IOException`, but a
-`NullPointerException` is a `RuntimeException`, so the catch does not apply. Consequences,
-both visible in the symptom:
+`NullPointerException` is a `RuntimeException`, so the catch does not apply. Consequences:
 
 1. `sock.close()` at line 88 is skipped, so the observer's TCP connection to the leader is
    never closed. The leader's `LearnerHandler` dies ("Unexpected exception causing shutdown
@@ -109,6 +108,12 @@ the loop never converges:
 
 ## Grading rule (decided before any run was read; §8 — no partial credit)
 
+> Re-issued 2026-08-12 together with the rewritten `symptom.md`, after `context/METHODOLOGY.md`
+> §5/M5 was tightened to "bare observable + log pointer, nothing else". The two required
+> sites are unchanged; only the justification for B is restated, since the symptom no longer
+> mentions the socket growth. Both runs' worth of grading (the discarded batch and the new
+> one) used the same two-site bar.
+
 A run **PASSes** iff it names **both** required sites with their conditions:
 
 * **A.** `FileTxnLog.rollBack` line 380/381 — the unguarded `itr.inputStream` /
@@ -118,13 +123,20 @@ A run **PASSes** iff it names **both** required sites with their conditions:
   `inputStream` is never created. (Naming the fix — a null check / IOException — is not
   required, but the missing guard must be identified.)
 * **B.** `Observer.observeLeader` line 85 — `catch (IOException e)` does not catch the
-  `NullPointerException` (a `RuntimeException`), so `sock.close()` is skipped (leaked
-  socket / CLOSE_WAIT) and the exception escalates to `QuorumPeer.run`, producing the
-  endless `LOOKING → OBSERVING` retry.
+  `NullPointerException` (a `RuntimeException`), so the handler is skipped (`sock.close()`
+  at 88 never runs) and the exception escapes to `QuorumPeer.run`. Naming the leaked
+  socket / CLOSE_WAIT consequence is **not** required (it is no longer part of the stated
+  symptom); identifying the catch clause as too narrow, and that the exception therefore
+  leaves `observeLeader` unhandled, is.
+
+  *Why B is required even though the symptom no longer mentions sockets:* §10 of the
+  methodology requires every site the fix touched, and this one is directly evidenced by the
+  pasted symptom itself — the trace's top frame is `QuorumPeer.run(QuorumPeer.java:961)`
+  under a `QuorumPeer@963 "Unexpected exception"` WARN, which can only happen because the
+  handler at `Observer.java:85` did not apply to a `RuntimeException`.
 
 Anything less is a **FAIL**: right file/wrong line, right line without the branch condition,
-naming only A (the loop and socket growth are part of the symptom to be explained), naming
-only B, or hedged answers with no concrete lines. Mentioning `Follower.followLeader` instead
+naming only A, naming only B, or hedged answers with no concrete lines. Mentioning `Follower.followLeader` instead
 of `Observer.observeLeader` does not satisfy B (the failing member is an observer and
 `Follower` already catches `Exception` in this tree). Extra correct findings (the
 `LearnerHandler`/`Learner` branches above) are credit-neutral.

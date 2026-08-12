@@ -1,13 +1,13 @@
-A four-member ZooKeeper 3.5.0 ensemble (three participants and one observer) was rebuilt
-during a maintenance window: the three participant machines were re-provisioned on empty
-storage, and the observer machine was left as it was except that its transaction-log
-directory now points at a replacement volume.
+One member of the ZooKeeper ensemble is not serving client requests. Its log for this run,
+`logs/symptom.log`, repeats the following thousands of times (first at line 244231):
 
-Since the restart the three participants form a healthy quorum and serve clients normally,
-but the observer never rejoins it. Every attempt to join the leader ends in an unhandled
-exception, after which the observer falls back to leader election and tries again — many
-times a second, indefinitely, without ever making progress. Its process stays up, but it
-reports that it is not currently serving requests and an ordinary client pointed at its
-client port never gets a session. At the same time the number of sockets the observer
-process holds open keeps growing, roughly one more per attempt, and they pile up in
-CLOSE_WAIT.
+```
+2026-08-12 18:09:33,394 [myid:4] - WARN  [QuorumPeer[myid=4]/0:0:0:0:0:0:0:0:24614:QuorumPeer@963] - Unexpected exception
+java.lang.NullPointerException
+	at org.apache.zookeeper.server.persistence.FileTxnLog.rollBack(FileTxnLog.java:381)
+	at org.apache.zookeeper.server.persistence.FileTxnSnapLog.rollBackLog(FileTxnSnapLog.java:317)
+	at org.apache.zookeeper.server.ZKDatabase.rollBackLog(ZKDatabase.java:504)
+	at org.apache.zookeeper.server.quorum.Learner.syncWithLeader(Learner.java:348)
+	at org.apache.zookeeper.server.quorum.Observer.observeLeader(Observer.java:79)
+	at org.apache.zookeeper.server.quorum.QuorumPeer.run(QuorumPeer.java:961)
+```

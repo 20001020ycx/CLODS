@@ -362,8 +362,8 @@ reproduction log; the LLM may know it is HDFS. See §6 for the full procedure.
    **It must NOT contain:** the trigger; the mechanism/causal chain; the at-fault
    component, class, method, or branch; the buggy overload/operation/path that selects the
    failure; the fix or any hint toward it; the JIRA bug id; or any **narrowing comparison
-   that implies the cause** (e.g. "only the other-used metric is wrong; capacity and
-   dfs-used stay correct" — that tells the LLM exactly which metric to blame).
+   that implies the cause** (e.g. "only metric X is wrong; A and B stay correct" — that tells
+   the LLM exactly which metric to blame).
 
    The LLM is given `source/` + the log + this `symptom.md` and must derive the root cause
    itself. Naming the system (HDFS) or general structural terms (datanode, block) is fine;
@@ -374,40 +374,30 @@ reproduction log; the LLM may know it is HDFS. See §6 for the full procedure.
    sentence: *"does this state the **cause/trigger**, or only the **observable**?"* Delete
    any sentence that states or implies the cause.
 
-   **Correct (minimal) examples — `symptom.md` is the ONE thing an operator would paste to
-   a colleague to say "something is wrong":**
-   - *Wrong-value bug (HDFS-11896):* "The NameNode's other-used space metric is **doubled**
-     (reported ~2× the true value). The log for this run is `logs/symptom.log`. Identify the
-     root cause from the source code and the log. Do not assume any known fix."
-     (Use the **renamed** term — `other-used` — that appears in the anonymized `source/` +
-     log, not the real `non-dfs` term, so the LLM can map it without recognizing the JIRA
-     case. "Doubled" is the *observable*; it does not reveal *why* it doubles.)
-   - *Exception/error bug (Zookeeper-1851):* paste the **exact exception/stack trace as the
-     log prints it** (the `ConnectionLoss` + its stack from `logs/symptom.log`), and nothing
-     else — no "three-member ensemble," no "the `create(...,Stat)` overload," no "the
-     follower then stops serving everyone" timeline. Those are the cause.
+   The observable takes one of two forms:
+   - **Wrong value** (a metric/count/reported figure that is off): state the wrong value and,
+     if known, the expected one — e.g. "the reported other-used space is doubled". Use the
+     **renamed** term that appears in the anonymized `source/` + log, not the real
+     distinctive term, so the LLM can map it without recognizing the JIRA case. The
+     magnitude ("doubled") is the observable; it does not reveal *why*.
+   - **Exception / error / hang**: paste the **exact exception or stack trace as
+     `logs/symptom.log` prints it**, with one line of framing, and nothing else.
 
-   **Rule of thumb:** `symptom.md` = a wrong number, or a pasted stack trace. **Do not
-   throw the JIRA case's information into the symptom** — not the trigger, not the sequence
-   of events, not the "what stays correct" comparison, not the failing overload/path. All
-   of that is the *cause* and belongs only in `private/ground_truth.md`.
+   **Do not throw the JIRA case's information into the symptom** — not the trigger, not the
+   event sequence, not the "what stays correct" narrowing comparison, not the failing
+   overload/path. All of that is the *cause* and belongs only in `private/ground_truth.md`.
 
-   **Forbidden (cheating) version of the HDFS case — do NOT write this:**
-   > A DataNode stops heartbeating, is declared dead, then comes back and **re-registers**.
-   > From that point the metric is too high… Capacity and DFS-used totals remain correct;
-   > only the other-used metric is wrong.
-
-   "re-registers" / "dead node" / "only other-used is wrong" are the **trigger and the
-   location** — the root cause — not the symptom. (This was the real failure in the first
-   HDFS-11896 run; do not repeat it. The Zookeeper equivalent — naming the
-   `create(...,Stat)` overload as the failing call — is the same anti-pattern: that
-   overload is the trigger path, i.e. the cause.)
+   **Anti-pattern to avoid:** narrating the trigger as if it were the symptom — describing
+   the *triggering event sequence* (e.g. "a node dies and comes back, then the metric is
+   wrong") or naming the *specific failing operation/overload* that selects the failure.
+   Those are the cause, not the symptom. If `symptom.md` reads like a JIRA timeline, it is
+   cheating and the run is invalid.
 2. Derive `private/ground_truth.md` from `private/fix.diff`: list the **exact file:line(s)**
    the fix changed and the **exact branch/condition** that was wrong (before the fix), using
    the real class/method names (they are kept in `source/`) and the renamed distinctive term.
    This is the answer key. It lives only in `private/`.
 3. **Cause-leak verification (the anti-cheat gate).** This is separate from the anonymization
-   grep and is the one that actually catches the HDFS-11896 / Zookeeper-1851 failure mode.
+   grep and is the one that actually catches the narrate-the-trigger-as-symptom failure mode.
    Re-read `symptom.md` and assert **all** of:
    - **Anonymization grep:** `source/`, `logs/symptom.log`, and `symptom.md` contain **no
      JIRA bug id** and none of the distinctive terms you renamed (grep the bug id and each
@@ -416,7 +406,8 @@ reproduction log; the LLM may know it is HDFS. See §6 for the full procedure.
      stack) + the log pointer. It contains **no** trigger, no mechanism/timeline, no
      at-fault component/class/branch, no buggy overload/path, and no "what stays correct"
      narrowing comparison. If it does, **delete that content** — the run is invalid until it
-     is gone (this is exactly the cheat the first HDFS-11896 / Zookeeper-1851 runs hit).
+     is gone (this is exactly the cheat — narrating the trigger as the symptom — that
+     invalidates a run).
    - **No JIRA-case narrative:** nothing in `symptom.md` was copied from the JIRA ticket's
      description/timeline/attachments beyond the bare observable. (For an exception bug the
      pasted stack comes from `logs/symptom.log`, **not** from the JIRA attachment — the log

@@ -370,10 +370,6 @@ reproduction log; the LLM may know it is HDFS. See §6 for the full procedure.
    use the neutral name for any distinctive term you renamed in M4 (e.g. `otherUsed`) *only
    if that term is itself the observable surface* (e.g. the metric an operator reads).
 
-   **Self-audit before marking M5 done** — re-read `symptom.md` and ask, sentence by
-   sentence: *"does this state the **cause/trigger**, or only the **observable**?"* Delete
-   any sentence that states or implies the cause.
-
    The observable takes one of two forms:
    - **Wrong value** (a metric/count/reported figure that is off): state the wrong value and,
      if known, the expected one — e.g. "the reported other-used space is doubled". Use the
@@ -396,18 +392,15 @@ reproduction log; the LLM may know it is HDFS. See §6 for the full procedure.
    the fix changed and the **exact branch/condition** that was wrong (before the fix), using
    the real class/method names (they are kept in `source/`) and the renamed distinctive term.
    This is the answer key. It lives only in `private/`.
-3. **Cause-leak verification (the anti-cheat gate).** This is separate from the anonymization
-   grep and is the one that actually catches the narrate-the-trigger-as-symptom failure mode.
-   Re-read `symptom.md` and assert **all** of:
+3. **Verify before marking M5 done** — re-read `symptom.md` sentence by sentence
+   ("does this state the **cause/trigger**, or only the **observable**?") and assert **all** of:
    - **Anonymization grep:** `source/`, `logs/symptom.log`, and `symptom.md` contain **no
      JIRA bug id** and none of the distinctive terms you renamed (grep the bug id and each
      renamed term; expect zero hits). General system identifiers are expected and fine.
    - **No cause-leak:** `symptom.md` states only the observable (a wrong value or a pasted
      stack) + the log pointer. It contains **no** trigger, no mechanism/timeline, no
      at-fault component/class/branch, no buggy overload/path, and no "what stays correct"
-     narrowing comparison. If it does, **delete that content** — the run is invalid until it
-     is gone (this is exactly the cheat — narrating the trigger as the symptom — that
-     invalidates a run).
+     narrowing comparison. Delete any sentence that states or implies the cause.
    - **No JIRA-case narrative:** nothing in `symptom.md` was copied from the JIRA ticket's
      description/timeline/attachments beyond the bare observable. (For an exception bug the
      pasted stack comes from `logs/symptom.log`, **not** from the JIRA attachment — the log

@@ -107,41 +107,67 @@
     },
     {
       "id": "M6",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": "Reset to PENDING: the previous batch was produced against the old, cause-leaking symptom.md and is invalid under the updated M5 rule. The discarded batch scored 5/5 PASS; it is not part of the record."
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T20:15:00Z",
+      "finished": "2026-08-12T20:59:30Z",
+      "attempts": 1,
+      "by": "agent-run-ea3110e6",
+      "artifacts": [
+        "diagnosis/run_1.md",
+        "diagnosis/run_2.md",
+        "diagnosis/run_3.md",
+        "diagnosis/run_4.md",
+        "diagnosis/run_5.md"
+      ],
+      "note": "RE-RUN against the rewritten (bare-observable) symptom.md. 5 independent single-turn diagnoses, model claude-opus-4-7 effort high, egress iptables-locked to api.anthropic.com:443 (--add-host pins 160.79.104.10 so the lock survives the DNS-killing DROP policy), Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, --safe-mode --no-session-persistence --exclude-dynamic-system-prompt-sections, no follow-up prompts, throwaway staging dir holding ONLY source/ + logs/symptom.log + symptom.md (verified at runtime: 'ls -A' on the stage shows exactly logs/ source/ symptom.md, and the prompt's symptom text is the new two-sentence + pasted-stack version). Same harness deviation as before and as recorded for Zookeeper-1851: the image's baked-in /opt/clods/run_diagnosis.sh is stale, so context/ was mounted read-only and the tracked context/run_diagnosis.sh executed instead; context/ and the image were NOT modified. Host CCS OAuth credentials were copied into a scratch config dir (CLAUDE_CONFIG_DIR + IS_SANDBOX=1 + CLAUDE_PURITY_FLAG=--safe-mode) and deleted afterwards. All 5 runs completed first time, all 5 stderr files empty, answers 3.5-4.8 kB. source/ and logs/symptom.log are byte-identical to the M4 artifacts - only the symptom text differs from the discarded batch."
     },
     {
       "id": "M7",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": "Reset to PENDING: the previous batch was produced against the old, cause-leaking symptom.md and is invalid under the updated M5 rule. The discarded batch scored 5/5 PASS; it is not part of the record."
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T21:00:00Z",
+      "finished": "2026-08-12T21:08:00Z",
+      "attempts": 1,
+      "by": "agent-run-ea3110e6",
+      "artifacts": [
+        "diagnosis/run_1.grade.json",
+        "diagnosis/run_2.grade.json",
+        "diagnosis/run_3.grade.json",
+        "diagnosis/run_4.grade.json",
+        "diagnosis/run_5.grade.json"
+      ],
+      "note": "0/5 PASS under the pre-registered two-site rule. The five runs are remarkably uniform: EVERY run nailed site A - the unguarded 'PositionInputStream input = itr.inputStream; long pos = input.getPosition();' at FileTxnLog.rollBack 380-381 - together with the exact branch condition that makes it null (no log.* file in the txnlog dir -> FileTxnIterator.init leaves storedFiles empty -> goToNextLog()'s 'if (storedFiles.size() > 0)' is false -> createInputArchive(), the only assignment of inputStream, is never called), and four of them stated the missing guard or the one-line fix explicitly. Runs 1, 3 and 5 additionally derived a correct SECOND route to the same null (fast-forward hitting EOF, where next() nulls inputStream and goToNextLog() then returns false) that the upstream patch's own null check also covers. NONE of the five named site B: not one mentions Observer.java:85, the 'catch (IOException e)' in Observer.observeLeader, or the fact that a NullPointerException is a RuntimeException the handler cannot match. All five instead credit the repetition to QuorumPeer.run's broad 'catch (Exception e)' (962-963) - a correct account of the repetition (the peer re-enters OBSERVING even with a widened handler) but not a line the fix changed. This is a direct consequence of the tightened M5 symptom: the discarded batch, whose symptom.md mentioned sockets piling up in CLOSE_WAIT, scored 5/5 with every run naming Observer.java:85; with the socket observable removed, nothing in the stated symptom motivates the exception-handling site and no run went looking for it. Recorded verdicts follow METHODOLOGY \u00a710 ('the fix touches multiple files/branches: ... a run must name all to PASS') and \u00a78 (no partial credit). Each grade JSON carries site_a/site_b fields so the alternative bar - root-causing line only - is auditable: that bar would score 5/5."
     },
     {
       "id": "M8",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": "Reset to PENDING: the previous batch was produced against the old, cause-leaking symptom.md and is invalid under the updated M5 rule. The discarded batch scored 5/5 PASS; it is not part of the record."
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T21:08:00Z",
+      "finished": "2026-08-12T21:15:00Z",
+      "attempts": 1,
+      "by": "agent-run-ea3110e6",
+      "artifacts": [
+        "summary.md"
+      ],
+      "note": "0/5 PASS under the two-site bar; 5/5 on the root-causing line alone. summary.md records the comparison that makes this re-run informative: the discarded batch's symptom.md still mentioned the CLOSE_WAIT socket growth and all five of those runs found Observer.java:85; with that single observable removed - source/ and logs/symptom.log byte-identical - no run looked at exception handling at all. The model's search is symptom-driven, not fix-driven: it explains exactly what it is asked to explain and does not audit surrounding code for related defects. summary.md also keeps the standing caveat that this is a fail-stop bug whose stack trace names the guilty frame 6058 times, so it is weak evidence for the CLODS argument either way, and states plainly that a two-site bar on a patch whose second site the symptom does not exhibit measures the symptom's coverage as much as the model's reasoning - both numbers are recorded so the operator can choose the bar."
     }
   ],
-  "result": null,
+  "result": {
+    "successes": 0,
+    "total": 5,
+    "per_run": [
+      "FAIL",
+      "FAIL",
+      "FAIL",
+      "FAIL",
+      "FAIL"
+    ],
+    "site_a_only_successes": 5,
+    "note": "0/5 under the pre-registered two-site bar (both lines the fix changed). All 5 runs identified the root-causing line and its branch condition (site A); none identified the catch-widening site (Observer.java:85). Under a root-causing-line-only bar the score would be 5/5. The earlier 5/5 batch was produced against a cause-leaking symptom.md and is discarded."
+  },
   "source_version": "trunk @ 2014-06-30 (3.5.0-dev)"
 }

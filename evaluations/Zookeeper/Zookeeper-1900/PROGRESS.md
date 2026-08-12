@@ -23,9 +23,9 @@ milestone carries `status` + `success` + `outcome`.
 | M3 | Reproduce the failure | DONE | true | success |
 | M4 | Anonymize, rebuild, re-confirm reproduction | DONE | true | success |
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true | success |
-| M6 | Run LLM diagnosis x5 (network locked) | PENDING | null | pending |
-| M7 | Grade each run vs ground truth | PENDING | null | pending |
-| M8 | Write summary & finalize | PENDING | null | pending |
+| M6 | Run LLM diagnosis x5 (network locked) | DONE | true | success |
+| M7 | Grade each run vs ground truth | DONE | true | success |
+| M8 | Write summary & finalize | DONE | true | success |
 
 ## Log
 
@@ -75,3 +75,6 @@ iptables requires root. The scratch credential copy was deleted after the run.
 
 - 2026-08-12T20:12Z **M5 REDONE** success=true — `context/METHODOLOGY.md` §5/M5 was tightened to "`symptom.md` = bare observable + log pointer, nothing else". The first `symptom.md` violated it (it narrated the trigger and timeline — maintenance window, participants re-provisioned, the member's transaction-log directory repointed — plus the mechanism and the "quorum is healthy / sockets pile up in CLOSE_WAIT" narrowing comparisons). Rewritten as two sentences + the exception exactly as `logs/symptom.log` prints it at line 244231. `private/ground_truth.md` keeps the same two required sites; only B's justification is restated (the CLOSE_WAIT consequence is no longer required, since it left the symptom). Verification gate re-run: 0 hits for the bug id, bare `1900`, `[Tt]runcat`, `TRUNC`; sentence-by-sentence audit clean.
 - 2026-08-12T20:12Z **M6–M8 reset to PENDING** — the earlier batch (5/5 PASS) was produced against the cause-leaking `symptom.md` and is **discarded, not part of the record**. `source/` and `logs/symptom.log` are unchanged, so M2–M4 stand and only the diagnosis is re-run.
+- 2026-08-12T21:00Z M6 DONE success=true (re-run) — 5 single-turn diagnoses against the rewritten `symptom.md` (`claude-opus-4-7`, effort high, network locked, staged inputs only, no follow-ups). All 5 completed first time; all stderr empty. `source/` and `logs/symptom.log` unchanged from M4.
+- 2026-08-12T21:08Z M7 DONE success=true — **0/5 PASS** under the pre-registered two-site bar. Every run hit site A (`FileTxnLog.rollBack:380-381` + the exact null-ness chain), and three derived a correct second route to the same null; **no** run named site B (`Observer.observeLeader`'s `catch (IOException e)`, line 85) — all credited the repetition to `QuorumPeer.run`'s broad `catch (Exception e)` instead. Each grade JSON carries `site_a`/`site_b`, so the root-causing-line-only bar (5/5) is auditable.
+- 2026-08-12T21:15Z M8 DONE success=true — `summary.md` written; `state.json.result` = 0/5 PASS (`["FAIL"×5]`, `site_a_only_successes: 5`). Bug complete.

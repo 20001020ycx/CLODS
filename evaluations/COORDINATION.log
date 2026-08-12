@@ -56,3 +56,7 @@
 2026-08-12T20:48:42Z Zookeeper-1900 M5 REDONE (bare-observable symptom.md); M6-M8 reset, previous 5/5 batch discarded
 2026-08-12T20:49:14Z HDFS-11896 bug COMPLETE (bare symptom): canonical 0/5, sufficient-fix 5/5
 2026-08-12T20:55:57Z HDFS-11896 grading corrected: single verdict 0/5
+2026-08-12T21:02:40Z Zookeeper-1900 M6 DONE success (5 runs, re-run vs bare-observable symptom)
+2026-08-12T21:02:40Z Zookeeper-1900 M7 DONE success (0/5 PASS two-site bar; 5/5 root-causing line only)
+2026-08-12T21:02:40Z Zookeeper-1900 M8 DONE success
+2026-08-12T21:02:40Z Zookeeper-1900 bug COMPLETE 0/5 (re-run; prior 5/5 batch discarded as cause-leaking)

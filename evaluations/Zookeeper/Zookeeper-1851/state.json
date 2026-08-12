@@ -141,17 +141,29 @@
     },
     {
       "id": "M8",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
       "started": null,
-      "finished": null,
+      "finished": "2026-08-12T02:17:59Z",
       "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "by": "agent-run-e47cfc21",
+      "artifacts": [
+        "summary.md"
+      ],
+      "note": "4/5 PASS. Runs 1, 2, 4, 5 each named both required sites (the missing 'case OpCode.createExt:' in FollowerRequestProcessor.run's forward-to-leader switch and in CommitProcessor.needCommit) with their exact branch conditions, and three of them prescribed precisely the upstream one-line-per-switch fix. Run 3 stopped at needCommit, never mentioned FollowerRequestProcessor, and inverted the causality by deriving the missing leader-forwarding from the needCommit defect; its prescribed fix would have converted the crash into an indefinite stall, leaving the follower equally unusable. summary.md records the honest caveats: the DEBUG log signposts the search (request type + zxid printed at every processor hop) and the model still calls the opcode by its real upstream name despite the rename, i.e. general ZooKeeper familiarity survives anonymization - though it did not rescue run 3."
     }
   ],
-  "result": null,
+  "result": {
+    "successes": 4,
+    "total": 5,
+    "per_run": [
+      "PASS",
+      "PASS",
+      "FAIL",
+      "PASS",
+      "PASS"
+    ]
+  },
   "source_version": "trunk @ 2014-07 (3.5.0-dev)"
 }

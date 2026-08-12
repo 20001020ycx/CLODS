@@ -36,3 +36,5 @@
 2026-08-12T01:46:36Z Zookeeper-1851 M5 DONE success
 2026-08-12T02:16:04Z Zookeeper-1851 M6 DONE success (5 runs; stale image entrypoint bypassed)
 2026-08-12T02:17:10Z Zookeeper-1851 M7 DONE success (4/5 PASS)
+2026-08-12T02:17:59Z Zookeeper-1851 M8 DONE success
+2026-08-12T02:17:59Z Zookeeper-1851 bug COMPLETE 4/5

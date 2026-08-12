@@ -25,7 +25,7 @@ milestone carries `status` + `success` + `outcome`.
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true | success |
 | M6 | Run LLM diagnosis x5 (network locked) | DONE | true | success |
 | M7 | Grade each run vs ground truth | DONE | true | success |
-| M8 | Write summary & finalize | PENDING | null | pending |
+| M8 | Write summary & finalize | DONE | true | success |
 
 ## Log
 
@@ -73,3 +73,4 @@ mounted OAuth credentials; `IS_SANDBOX=1` is needed because the script passes
 `context/run_diagnosis.sh`, and re-check any bug whose M6 used the baked-in entrypoint.
 - 2026-08-12T02:20Z M6 DONE success=true — 5 single-turn diagnoses (`claude-opus-4-7`, effort high, network locked, staged inputs only). Run 5 was re-run once after the host rotated the OAuth token mid-batch (`401 ... revoked`); its failed placeholder was deleted first so the script would not skip it. See the harness-deviation section above.
 - 2026-08-12T02:22Z M7 DONE success=true — **4/5 PASS** (runs 1, 2, 4, 5). Run 3 FAIL: it names only `CommitProcessor.needCommit()`, never mentions `FollowerRequestProcessor` (0 occurrences), and misattributes the missing forward-to-leader step to the `needCommit` defect; its prescribed one-line fix would leave the follower dark (stalling in `nextPending`) rather than repair it.
+- 2026-08-12T02:24Z M8 DONE success=true — `summary.md` written; `state.json.result` = 4/5 PASS (`["PASS","PASS","FAIL","PASS","PASS"]`). Bug complete.

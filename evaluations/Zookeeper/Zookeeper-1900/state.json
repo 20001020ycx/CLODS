@@ -4,10 +4,10 @@
   "jira": "ZOOKEEPER-1900",
   "jira_url": "https://issues.apache.org/jira/browse/ZOOKEEPER-1900",
   "source_repo": "https://github.com/apache/zookeeper.git",
-  "fix_commit": null,
-  "pre_fix_commit": null,
+  "fix_commit": "6abd85938f450587ec1c8973176261fb60a6838b",
+  "pre_fix_commit": "8cfb9a0efa5c8934eb3c95ca69566c718a37d9ca",
   "anonymized_commit": null,
-  "symptom_short": null,
+  "symptom_short": "A restarted ZooKeeper observer never syncs with the leader: every sync attempt dies with a NullPointerException while it is rolling its transaction log back, the member loops forever re-electing and retrying, and each attempt leaks its leader connection (sockets pile up in CLOSE_WAIT until connections fail)",
   "milestones": [
     {
       "id": "M0",
@@ -25,15 +25,18 @@
     },
     {
       "id": "M1",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T17:46:00Z",
+      "finished": "2026-08-12T17:58:00Z",
+      "attempts": 1,
+      "by": "agent-run-ea3110e6",
+      "artifacts": [
+        "private/fix.diff",
+        "private/fix.branch-3.4.diff"
+      ],
+      "note": "JIRA ZOOKEEPER-1900 'NullPointerException in truncate' (Blocker, affects 3.4.5/3.4.6, fixVersion 3.4.7+3.5.0, Resolved/Fixed; reported by Camille Fournier). Ticket quotes the stack frame 'java.lang.NullPointerException at org.apache.zookeeper.server.persistence.FileTxnLog.truncate(FileTxnLog.java:352)' and the message 'Truncating log to get in sync with the leader', repeated >1M times/day, plus ~29k sockets stuck in CLOSE_WAIT until new connections failed with ConnectException. Fix commit (trunk/3.5.0) = 6abd85938 (Alexander Shraer, 2014-06-30, svn trunk@1606841); companion branch-3.4 commit 8ff14a712 saved as private/fix.branch-3.4.diff. Trunk diff changes exactly two production lines: (1) FileTxnLog.truncate() gains 'if (input == null) throw new IOException(\"No log files found to truncate! ...\")' before 'long pos = input.getPosition();' and (2) Observer.observeLeader()'s inner 'catch (IOException e)' becomes 'catch (Exception e)'; it also adds TruncateTest.testTruncationNullLog. The branch-3.4 diff is identical plus the same catch widening in Follower.java (trunk's Follower already caught Exception). pre_fix_commit = 8cfb9a0ef (ZOOKEEPER-1576, 2014-06-27) - verified its FileTxnLog.truncate does 'PositionInputStream input = itr.inputStream; long pos = input.getPosition();' with no null guard, and FileTxnIterator.init() leaves inputStream null when the log directory contains no log.* file (storedFiles stays empty so goToNextLog() returns false). Confirmed the diff resolves the reported symptom: a learner told to TRUNC whose dataLogDir holds no txn log NPEs inside truncate; on an observer the NPE (a RuntimeException) escapes the 'catch (IOException)' in observeLeader, so sock.close() never runs (CLOSE_WAIT leak) and the exception unwinds to QuorumPeer.run, which drops the peer back to LOOKING and retries forever."
     },
     {
       "id": "M2",
@@ -120,5 +123,6 @@
       "note": ""
     }
   ],
-  "result": null
+  "result": null,
+  "source_version": "trunk @ 2014-06-30 (3.5.0-dev)"
 }

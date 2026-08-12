@@ -1,0 +1,102 @@
+commit 8ff14a71216c56ed5b5aaee28977a03018108e53
+Author: Alexander Shraer <shralex@apache.org>
+Date:   Mon Jun 30 17:19:19 2014 +0000
+
+    ZOOKEEPER-1900
+    
+    git-svn-id: https://svn.apache.org/repos/asf/zookeeper/branches/branch-3.4@1606842 13f79535-47bb-0310-9956-ffa450edef68
+
+diff --git a/CHANGES.txt b/CHANGES.txt
+index 9142a0516..2eff7236c 100644
+--- a/CHANGES.txt
++++ b/CHANGES.txt
+@@ -54,6 +54,8 @@ Backward compatible changes:
+ 
+ BUGFIXES:
+ 
++  ZOOKEEPER-1900. NullPointerException in truncate (Camille Fournier)
++
+   ZOOKEEPER-1474. Cannot build Zookeeper with IBM Java: use of Sun
+   MXBean classes (Adalberto Medeiros via phunt)
+ 
+diff --git a/src/java/main/org/apache/zookeeper/server/persistence/FileTxnLog.java b/src/java/main/org/apache/zookeeper/server/persistence/FileTxnLog.java
+index b0dd79c1c..7456f743b 100644
+--- a/src/java/main/org/apache/zookeeper/server/persistence/FileTxnLog.java
++++ b/src/java/main/org/apache/zookeeper/server/persistence/FileTxnLog.java
+@@ -364,6 +364,11 @@ public class FileTxnLog implements TxnLog {
+         try {
+             itr = new FileTxnIterator(this.logDir, zxid);
+             PositionInputStream input = itr.inputStream;
++            if(input == null) {
++                throw new IOException("No log files found to truncate! This could " +
++                        "happen if you still have snapshots from an old setup or " +
++                        "log files were deleted accidentally or dataLogDir was changed in zoo.cfg.");
++            }
+             long pos = input.getPosition();
+             // now, truncate at the current position
+             RandomAccessFile raf = new RandomAccessFile(itr.logFile, "rw");
+diff --git a/src/java/main/org/apache/zookeeper/server/quorum/Follower.java b/src/java/main/org/apache/zookeeper/server/quorum/Follower.java
+index ab3f288ed..2aeb0c34d 100644
+--- a/src/java/main/org/apache/zookeeper/server/quorum/Follower.java
++++ b/src/java/main/org/apache/zookeeper/server/quorum/Follower.java
+@@ -85,7 +85,7 @@ public class Follower extends Learner{
+                     readPacket(qp);
+                     processPacket(qp);
+                 }
+-            } catch (IOException e) {
++            } catch (Exception e) {
+                 LOG.warn("Exception when following the leader", e);
+                 try {
+                     sock.close();
+diff --git a/src/java/main/org/apache/zookeeper/server/quorum/Observer.java b/src/java/main/org/apache/zookeeper/server/quorum/Observer.java
+index ee61a90c4..33b037961 100644
+--- a/src/java/main/org/apache/zookeeper/server/quorum/Observer.java
++++ b/src/java/main/org/apache/zookeeper/server/quorum/Observer.java
+@@ -75,7 +75,7 @@ public class Observer extends Learner{
+                     readPacket(qp);
+                     processPacket(qp);                   
+                 }
+-            } catch (IOException e) {
++            } catch (Exception e) {
+                 LOG.warn("Exception when observing the leader", e);
+                 try {
+                     sock.close();
+diff --git a/src/java/test/org/apache/zookeeper/test/TruncateTest.java b/src/java/test/org/apache/zookeeper/test/TruncateTest.java
+index 3d2854c17..4cf3f8fb9 100644
+--- a/src/java/test/org/apache/zookeeper/test/TruncateTest.java
++++ b/src/java/test/org/apache/zookeeper/test/TruncateTest.java
+@@ -126,6 +126,34 @@ public class TruncateTest extends ZKTestCase {
+         zkdb.commit();
+     }
+ 
++    
++    @Test
++    public void testTruncationNullLog() throws Exception {
++        File tmpdir = ClientBase.createTmpDir();
++        FileTxnSnapLog snaplog = new FileTxnSnapLog(tmpdir, tmpdir);
++        ZKDatabase zkdb = new ZKDatabase(snaplog);
++
++        for (int i = 1; i <= 100; i++) {
++            append(zkdb, i);
++        }
++        File[] logs = snaplog.getDataDir().listFiles();
++        for(int i = 0; i < logs.length; i++) {
++            logs[i].delete();
++        }
++        try {
++            zkdb.truncateLog(1);
++            Assert.assertTrue("Should not get here", false);
++        }
++        catch(IOException e) {
++            Assert.assertTrue("Should have received an IOException", true);
++        }
++        catch(NullPointerException npe) {
++            Assert.fail("This should not throw NPE!");
++        }
++ 
++        ClientBase.recursiveDelete(tmpdir);
++    }
++    
+     @Test
+     public void testTruncate() throws IOException, InterruptedException, KeeperException {
+         // Prime the server that is going to come in late with 50 txns

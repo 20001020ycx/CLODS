@@ -34,3 +34,4 @@
 2026-08-12T01:36:00Z Zookeeper-1851 M3 DONE success (follower pipeline dies on create-with-stat)
 2026-08-12T01:45:00Z Zookeeper-1851 M4 DONE success (anonymized; rebuilt + re-reproduced)
 2026-08-12T01:46:36Z Zookeeper-1851 M5 DONE success
+2026-08-12T02:16:04Z Zookeeper-1851 M6 DONE success (5 runs; stale image entrypoint bypassed)

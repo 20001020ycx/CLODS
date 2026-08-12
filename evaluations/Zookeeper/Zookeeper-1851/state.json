@@ -105,15 +105,21 @@
     },
     {
       "id": "M6",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T01:47:28Z",
+      "finished": "2026-08-12T02:16:04Z",
+      "attempts": 1,
+      "by": "agent-run-e47cfc21",
+      "artifacts": [
+        "diagnosis/run_1.md",
+        "diagnosis/run_2.md",
+        "diagnosis/run_3.md",
+        "diagnosis/run_4.md",
+        "diagnosis/run_5.md"
+      ],
+      "note": "5 independent single-turn diagnoses, model claude-opus-4-7 effort high, egress iptables-locked to api.anthropic.com:443 (--add-host pins the IP so the lock survives the DNS-killing DROP policy), Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, --safe-mode --no-session-persistence --exclude-dynamic-system-prompt-sections, no follow-up prompts, throwaway staging dir /tmp/clods-diag-XXXX holding ONLY source/ + logs/symptom.log + symptom.md (verified at runtime: no private/ in the stage, and the prompt paths point at the stage, never at /bug). IMPORTANT HARNESS NOTE: the clods-eval image's baked-in /opt/clods/run_diagnosis.sh is STALE (image built 2026-08-10T14:35, context/run_diagnosis.sh updated 15:43) - it prompts with /bug/source and /bug/logs/symptom.log (making /bug/private/ground_truth.md reachable), denies only WebFetch,WebSearch, and pins no model/effort. A first attempt used it via the documented --entrypoint and was DISCARDED (3 runs deleted). The accepted runs mount the tracked context/ read-only and execute context/run_diagnosis.sh instead; context/ and the image were NOT modified. Auth: host CCS OAuth credentials copied into a scratch config dir mounted at /root/.claude with CLAUDE_CONFIG_DIR + IS_SANDBOX=1 (bypassPermissions as root for iptables); run 5 first failed with '401 OAuth access token has been revoked' because the host rotated the token mid-batch, so its empty answer was deleted and run 5 alone was re-run with refreshed credentials (the script skips the 4 existing runs). All 5 stderr files empty; all 5 answers substantive."
     },
     {
       "id": "M7",

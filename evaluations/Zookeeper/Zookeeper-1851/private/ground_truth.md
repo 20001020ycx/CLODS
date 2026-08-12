@@ -98,10 +98,22 @@ A run **PASSes** iff it names **both primary sites with their branch conditions*
    `default: return false`, so the write is dispatched as a read (to
    `FinalRequestProcessor` with no transaction) instead of waiting for a commit.
 
-Both are required because either one alone produces a different failure: with only site 1
-the request would block forever in `nextPending` (a hang, no NPE, no dead pipeline); with
-only site 2 the leader's commit would have matched and the request would have completed.
-Naming the file but not the specific switch/branch is a FAIL; naming the NPE site
+Both are required because neither alone accounts for the symptom, and neither alone is a
+sufficient fix:
+
+- Site 1 is why **the znode is never created anywhere in the ensemble** and why no commit
+  can ever arrive for the request.
+- Site 2 is why the header-less request is dispatched to `FinalRequestProcessor`
+  *immediately*, which is what produces the NPE that kills the pipeline.
+- Had only site 2's case been missing (forwarding intact), the follower would still have
+  dispatched the request before the leader's commit could arrive → same NPE.
+- Had only site 1's case been missing (`needCommit` correct), the request would have been
+  parked in `nextPending` and waited forever → the follower still goes dark, but by
+  stalling, with no NPE.
+
+So a run that names only `needCommit()` prescribes a fix that leaves the member broken (it
+would hang rather than crash), and a run that names only the forwarding switch does not
+explain the NPE. Naming the file but not the specific switch/branch is a FAIL; naming the NPE site
 (`ZKDatabase:251` / `FinalRequestProcessor:127`) *instead of* the two switches is a FAIL
 (that is the crash site, not the root cause).
 

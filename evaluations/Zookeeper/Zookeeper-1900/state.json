@@ -40,15 +40,19 @@
     },
     {
       "id": "M2",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T18:00:00Z",
+      "finished": "2026-08-12T18:05:00Z",
+      "attempts": 1,
+      "by": "agent-run-ea3110e6",
+      "artifacts": [
+        "private/deps-fix.patch",
+        "private/Dockerfile.zk1900",
+        "repos/Zookeeper-Zookeeper-1900/build/zookeeper-3.5.0-SNAPSHOT.jar (gitignored)"
+      ],
+      "note": "Built the pre-fix tree (8cfb9a0ef, ZooKeeper 3.5.0-SNAPSHOT) from source with Ant+Ivy in per-bug image clods-eval:Zookeeper-Zookeeper-1900 (clods-eval base + openjdk-8-jdk + ant + ant-optional; JDK 11/17 refuse -source/-target < 7). Build cmd: 'ant jar' -> build/zookeeper-3.5.0-SNAPSHOT.jar + build/classes + build/lib (slf4j 1.7.5, log4j 1.2.16, jline 2.11, netty 3.7.0.Final, commons-cli 1.2). Dep fixes (private/deps-fix.patch, 3 edits, no source changes; identical to the ones another agent needed for the neighbouring 2014 trunk commit): (1) build.xml ivy.url http://repo2.maven.org -> https://repo1.maven.org (repo2 host is gone and Central refuses plain HTTP); (2) build.xml javac.source/javac.target 1.5 -> 1.8 (javac 8 rejects source/target 1.5 with its 1.8 bootclasspath); (3) ivysettings.xml repo.maven.org/repo.jboss.org/repo.sun.org -> https://repo1.maven.org (jboss nexus + download.java.net are dead). BUILD SUCCESSFUL in 7s, 4 rawtypes warnings only."
     },
     {
       "id": "M3",

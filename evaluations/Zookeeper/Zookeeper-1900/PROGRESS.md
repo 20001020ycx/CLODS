@@ -19,7 +19,7 @@ milestone carries `status` + `success` + `outcome`.
 |---|---|---|---|---|
 | M0 | Scaffold & claim the bug folder | DONE | true | success |
 | M1 | From JIRA: fix commit + pre-fix commit | DONE | true | success |
-| M2 | Check out pre-fix, build from source, fix deps | PENDING | null | pending |
+| M2 | Check out pre-fix, build from source, fix deps | DONE | true | success |
 | M3 | Reproduce the failure | PENDING | null | pending |
 | M4 | Anonymize, rebuild, re-confirm reproduction | PENDING | null | pending |
 | M5 | Prepare diagnosis inputs & ground truth | PENDING | null | pending |
@@ -33,3 +33,4 @@ milestone carries `status` + `success` + `outcome`.
 - 2026-08-12T17:44:30Z M0 DONE success=true — scaffold complete.
 - 2026-08-12T17:58Z M1 DONE success=true — ZOOKEEPER-1900 "NullPointerException in truncate" (Blocker; affects 3.4.5/3.4.6, fixed in 3.4.7 + 3.5.0).
   Fix commit `6abd85938` (trunk, 2014-06-30) changes two production lines: a `if (input == null) throw new IOException(...)` guard in `FileTxnLog.truncate()`, and `catch (IOException e)` → `catch (Exception e)` in `Observer.observeLeader()`; it also adds `TruncateTest.testTruncationNullLog`. Pre-fix = `8cfb9a0ef`. Saved `private/fix.diff` (+ `private/fix.branch-3.4.diff`, which additionally widens the same catch in `Follower.java` — trunk's `Follower` already caught `Exception`, so on trunk only an **observer** exercises that second site).
+- 2026-08-12T18:05Z M2 DONE success=true — `ant jar` on the pre-fix tree inside `clods-eval:Zookeeper-Zookeeper-1900` (JDK 8 + Ant). Dep fixes saved to `private/deps-fix.patch`: dead Maven repos (`repo2.maven.org`, `repository.jboss.org`, `download.java.net`) → `https://repo1.maven.org`, and `javac.source`/`javac.target` 1.5 → 1.8. Artifact: `build/zookeeper-3.5.0-SNAPSHOT.jar`.

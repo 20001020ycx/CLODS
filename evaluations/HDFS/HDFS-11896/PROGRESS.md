@@ -16,9 +16,9 @@
 | M3 | Reproduce the failure | DONE | true |
 | M4 | Anonymize + rebuild + re-confirm | DONE | true |
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true |
-| M6 | Run LLM diagnosis ×5 (network locked) | PENDING | null |
-| M7 | Grade each run | PENDING | null |
-| M8 | Summary & finalize | PENDING | null |
+| M6 | Run LLM diagnosis ×5 (network locked) | DONE | true |
+| M7 | Grade each run | DONE | true |
+| M8 | Summary & finalize | DONE | true |
 
 ## Log
 - 2026-08-10 M0 DONE: created bug folder, subdirs (private/source/logs/diagnosis), PROGRESS.md, state.json. Claimed bug. Base docker image `clods-eval` build kicked off.
@@ -38,3 +38,4 @@
 - 2026-08-11 M6/M7/M8 RE-RUN on corrected log: 5/5 PASS. On the real 4578-line DEBUG trace (no injected probes), all five runs explicitly named BOTH fix sites (resetBlocks omitting setOtherUsed(0) + register add-before-reset ordering, if(!d.isAlive) branch) and cited real log lines (removeDeadDatanode L4315, 'node restarted' L4468). Result holds and is now honest.
 - 2026-08-11 Added evaluations/HDFS/HDFS-11896/reproduce.md (reviewable reproduction write-up) per updated METHODOLOGY.md M3.
 - 2026-08-12 M5 REDONE (operator updated M5 spec): symptom.md reduced to the bare observable (getOtherUsedSpace ~3MB vs ~2MB) + log pointer; removed the dead/re-register trigger narrative and the capacity/DFS-stay-correct narrowing (cause-leaks). Deleted previous M6/M7/M8 outputs; re-running diagnosis on the harder bare symptom.
+- 2026-08-12 M6/M7/M8 on BARE symptom: result changed. Canonical root cause (resetBlocks omitting setOtherUsed(0)) identified by 0/5 (was 5/5 with the old hinted symptom). All 5 isolated only the register()-reorder half + mechanism + a valid fix, and most mischaracterized the death path (claimed no fields cleared). Headline (strict) = 0/5; sufficient-fix reading = 5/5. Direct evidence the removed "only other-used is wrong" narrowing had been carrying the resetBlocks identification. See summary.md.

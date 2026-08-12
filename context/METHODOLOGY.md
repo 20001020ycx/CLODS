@@ -30,12 +30,17 @@ For your assigned bug you will, in order:
    break on a modern toolchain — **fix dependencies as needed** (see M2) and record every
    fix.
 3. Reproduce the failure (real-system run, or a unit test if a full run is impractical).
-4. **Anonymize** minimally: keep the real system source and the real reproduction log, but
-   (a) never expose the **JIRA bug id** in any LLM-facing artifact, (b) redact only
-   log/stack-trace text that the **JIRA report itself** quotes/attaches (nothing to redact
-   if the ticket has no such text), and (c) rename the **distinctive bug-naming term(s)**
-   (e.g. the `nonDfsUsed` metric) to a neutral equivalent. Do **not** hide the system —
-   `datanode`, `namenode`, `block`, class names, etc. stay. Commit it.
+4. **Anonymize the failure path** (per the paper revision plan): keep the real system source
+   and reproduction behavior, but (a) never expose the **JIRA bug id** in any LLM-facing
+   artifact, (b) rename the **distinctive bug-naming term(s)** (e.g. the `nonDfsUsed` metric)
+   to a neutral equivalent, (c) **rename the file/type names on the failure path**, and
+   (d) **rewrite the log printing statements on the failure path** (at minimum any log/stack
+   text the **JIRA report itself** quotes/attaches; rewrite the rest of the failure-path log
+   literals too) — so the LLM cannot map the root cause to the symptom from parametric
+   knowledge. Do **not** hide the system — `datanode`, `namenode`, `block`, `FSNamesystem`,
+   package paths, and other generic system identifiers stay; only the **failure-path**
+   file/type names and log literals change. Rebuild + re-reproduce so the anonymized log
+   matches the anonymized source. Commit it.
 5. Run the LLM diagnosis **5 times**, independently, with internet blocked and a
    single fixed prompt. No follow-up prompts.
 6. Grade each of the 5 runs against ground truth (did it name the exact lines + branches?).
@@ -63,7 +68,7 @@ commit/push happens on the host.
 | **failure path** | The chain of code locations from the logged symptom down to the root cause (the call stack visible in the symptom log + the lines the fix changed). |
 | **symptom** | The **externally visible** failure an operator observes — a wrong value, an error message, an exception, or a hang. It is **only what is observed**, never the trigger or mechanism that causes it. `symptom.md` states only this observable plus a pointer to where it shows up in `logs/symptom.log` (see M5). Stating the cause/trigger in `symptom.md` is **cheating** — it hands the diagnosis LLM the answer and the run is invalid. |
 | **symptom log** | The log file produced when the bug is triggered. It is the *real* reproduction log — keep system identifiers as-is; only redact case-identifying strings (see anonymization). |
-| **anonymization** | The **minimal** redaction that stops the LLM from recognizing the *specific JIRA case* (and recalling its known fix from memory). It is **not** about hiding the system. Concretely: (1) never expose the **JIRA bug id** (e.g. `HDFS-11896`) in any LLM-facing artifact; (2) replace any **log/stack-trace text that is quoted or attached in the JIRA report itself** with neutral tokens (if the ticket attaches no logs, no log redaction is needed); (3) rename the **one or few distinctive terms** that name the bug (e.g. the `nonDfsUsed` metric) to a neutral equivalent. General system identifiers (class names, `datanode`, `namenode`, `block`, `FSNamesystem`, …) are **kept** — it is fine for the LLM to know it is HDFS. |
+| **anonymization** | The redaction that stops the LLM from mapping the symptom to the *specific JIRA case* (and recalling its known fix from parametric memory). It is **not** about hiding the system. Concretely: (1) never expose the **JIRA bug id** (e.g. `HDFS-11896`) in any LLM-facing artifact; (2) rewrite the **log printing statements on the failure path** to neutral text (at minimum, redact any log/stack-trace text the **JIRA report itself** quotes/attaches; if the ticket attaches no logs, still rewrite the failure-path log literals so they cannot be string-matched to known reports); (3) rename the **distinctive bug-naming term(s)** (e.g. the `nonDfsUsed` metric) to a neutral equivalent; (4) **rename the file/type names on the failure path** (per the paper revision plan) so the LLM cannot map "I recognize `HeartbeatManager.register` → this is HDFS-11896" — for compiled languages the file's public class is renamed too. Generic system identifiers (`datanode`, `namenode`, `block`, `FSNamesystem`, package paths, …) in code bodies are **kept** — it is fine for the LLM to know it is HDFS. |
 | **ground truth** | The exact line(s) and branch condition(s) the real fix touched. Derived from the fix-commit diff. Used only for grading, **never** shown to the diagnosis LLM. |
 | **run** | One independent LLM diagnosis attempt. 5 runs per bug. |
 
@@ -152,7 +157,7 @@ each step succeeded. **Rules:**
 | M1 | From JIRA ticket: identify fix commit + pre-fix commit | on | `fix.diff`, bug metadata in `state.json` |
 | M2 | Check out pre-fix, **build from source**, fix old deps as needed | on | built source tree, `private/deps-fix.patch` |
 | M3 | Reproduce the failure | on | `logs/symptom.log` (pre-anonymization), `reproduce.sh` |
-| M4 | Anonymize source + log statements, rebuild, re-confirm reproduction, commit | off | `source/`, `logs/symptom.log` (anonymized), `private/anonymization_map.json`, anon commit hash |
+| M4 | Anonymize failure path: rename file/type names + rewrite log literals, rebuild, re-reproduce, commit | off | `source/`, `logs/symptom.log` (anonymized, regenerated), `private/anonymization_map.json`, anon commit hash |
 | M5 | Prepare diagnosis inputs & ground truth | off | `symptom.md`, `private/ground_truth.md` |
 | M6 | Run LLM diagnosis ×5, network locked, single prompt | API-only | `diagnosis/run_1..5.md` |
 | M7 | Grade each run vs ground truth | off | `diagnosis/run_N.grade.json` |
@@ -323,25 +328,43 @@ per-stage probe) hands the model the answer and invalidates the run.
    set M3 `FAILED` (`success: false`, `outcome: "failed"`) with the exact commands tried
    and outputs, cascade the remaining milestones to `BLOCKED`, and stop.
 
-### M4 — Anonymize (minimal, case-identifying only)
-Goal: stop the LLM from recognizing the **specific JIRA case** (and recalling its known fix
-from memory) — **not** to hide the system. Keep the real system source and the real
-reproduction log; the LLM may know it is HDFS. See §6 for the full procedure.
+### M4 — Anonymize the failure path (case-identifying)
+Goal: stop the LLM from mapping the symptom to the **specific JIRA case** (and recalling its
+known fix from parametric memory) — **not** to hide the system. The LLM may know it is HDFS;
+generic system identifiers (`datanode`, `namenode`, `block`, `FSNamesystem`, package paths)
+stay. Per the paper revision plan, **change the file names and log printing statements on the
+failure path** so the LLM cannot map the root cause to the symptom from parametric knowledge.
+See §6 for the full procedure.
 
-1. Populate `<BUG_DIR>/source` with the **real** failure-path source (the actual files from
-   the pre-fix tree — keep `datanode`/`namenode`/`block`/class names). Apply only:
+1. Populate `<BUG_DIR>/source` with the **real** failure-path source — the actual files from
+   the pre-fix tree that are on the failure path (the files named in the fix diff **plus** the
+   files named in the symptom-log stack trace). Then apply, **consistently across `source/`
+   and the symptom log**:
    - **Bug-id scrub:** ensure the JIRA id (e.g. `HDFS-11896`, `11896`) appears **nowhere**
-     in `source/` or `logs/symptom.log`.
+     in `source/`, `logs/symptom.log`, or `symptom.md`.
    - **Distinctive-term rename:** rename the one/few terms that *name* the bug (e.g. the
-     `nonDfsUsed` metric → a neutral name such as `otherUsed`) consistently across `source/`
-     and the symptom log. Record every rename in `private/anonymization_map.json`.
-   - **JIRA-quoted text redaction:** if (and only if) the JIRA report quotes/attaches a
-     log or stack trace, replace those specific strings with neutral tokens. If the ticket
-     attaches no logs, the symptom log needs **no** redaction — use it as-is.
-2. Use the **real reproduction log** from M3 as `logs/symptom.log` (system identifiers kept).
-   If a distinctive term was renamed in `source/`, apply the same rename to the log so the
-   two stay consistent. Re-running `reproduce.sh` to regenerate it is fine but not required
-   when the only change is a mechanical term rename.
+     `nonDfsUsed` metric → a neutral name such as `otherUsed`).
+   - **Failure-path file/type rename:** rename the **file names on the failure path** to
+     neutral, plausible names. For compiled languages rename the contained public
+     class/interface too (file and type name must match) and update every reference —
+     imports, calls, and the `at pkg.Cls.method(File.java:NN)` frames in the symptom log.
+     Generic system identifiers in code *bodies* (`datanode`, `namenode`, `block`,
+     `FSNamesystem`, package paths) stay; only the failure-path file/type names change. This
+     blocks "I recognize `HeartbeatManager.register` / `FollowerRequestProcessor` → this is
+     HDFS-11896 / ZOOKEEPER-1851" mapping.
+   - **Failure-path log-statement rewrite:** rewrite the **log printing statements on the
+     failure path** (the literals and logger/subsystem tags those lines emit) to neutral,
+     plausible, information-equivalent text — so the symptom-log strings cannot be
+     string-matched to the JIRA report or recognized from parametric memory. At minimum,
+     redact any string the JIRA report quotes or attaches; rewrite the rest of the
+     failure-path log literals too (not only the quoted ones).
+   Record **every** rename/rewrite in `private/anonymization_map.json` (original → neutral,
+   for terms, file/type names, and log literals).
+2. Regenerate `logs/symptom.log` by **re-running `reproduce.sh` on the anonymized source**
+   (rebuild, then reproduce). Because failure-path log statements were rewritten and files
+   renamed, the log must come from the anonymized source so its literals and stack frames
+   match what the LLM sees — do **not** keep the pre-anonymization M3 log. Re-confirm the
+   symptom still reproduces (same observable, same assertion / reporting surface).
 3. Keep a committed, deterministic way to regenerate the (gitignored) `source/` + symptom
    log on resume — either a fresh local git repo at `<BUG_DIR>/source` (`git init`; record
    the hash as `anonymized_commit`) **or** a committed `private/` copy + a replay script.
@@ -390,8 +413,10 @@ reproduction log; the LLM may know it is HDFS. See §6 for the full procedure.
    cheating and the run is invalid.
 2. Derive `private/ground_truth.md` from `private/fix.diff`: list the **exact file:line(s)**
    the fix changed and the **exact branch/condition** that was wrong (before the fix), using
-   the real class/method names (they are kept in `source/`) and the renamed distinctive term.
-   This is the answer key. It lives only in `private/`.
+   the **real** file/class/method names (from the pre-fix tree) **and** the **anonymized**
+   names as they appear in `source/` (cross-referenced via `private/anonymization_map.json`).
+   This is the answer key; it lives only in `private/`. The grader uses the map to translate
+   the LLM's anonymized answer back to the real locations (§8).
 3. **Verify before marking M5 done** — re-read `symptom.md` sentence by sentence
    ("does this state the **cause/trigger**, or only the **observable**?") and assert **all** of:
    - **Anonymization grep:** `source/`, `logs/symptom.log`, and `symptom.md` contain **no
@@ -457,16 +482,19 @@ reproduction log; the LLM may know it is HDFS. See §6 for the full procedure.
 
 ## 6. Anonymization procedure (detail)
 
-**Principle.** Anonymization here is *minimal and case-targeted*. The threat is the LLM
-recognizing the exact JIRA case ("oh, this is HDFS-11896, the fix is in `resetBlocks`") and
-regurgitating the known fix instead of reasoning. It is **not** about disguising the system.
-So: keep the real source, keep the real class/log identifiers, keep the fact that it is
-HDFS — and remove only the handful of things that pin the *specific* ticket.
+**Principle.** Anonymization stops the LLM from mapping the symptom to the *exact JIRA case*
+("oh, this is HDFS-11896, the fix is in `resetBlocks`") and regurgitating the known fix
+instead of reasoning. It is **not** about disguising the system — the LLM may know it is HDFS.
+So: keep the real reproduction behavior, keep generic system identifiers in code bodies
+(`datanode`, `namenode`, `block`, `FSNamesystem`, package paths), and change exactly the
+things that pin the *specific* ticket — the bug id, the distinctive bug-naming term(s), and
+(per the paper revision plan) the **file/type names** and **log printing statements** on the
+failure path.
 
 Inputs: the real failure-path source (files named in the fix diff + files in the symptom-log
 stack trace) and the real M3 reproduction log. Outputs: `source/` = real failure-path files
-with the redactions below; `logs/symptom.log` = the real reproduction log with the same
-redactions.
+with the redactions below; `logs/symptom.log` = the reproduction log **regenerated from the
+anonymized source** so its literals and stack frames match.
 
 **(a) Bug-id scrub (always).**
 - The JIRA id and its bare number (`HDFS-11896`, `11896`) must appear **nowhere** in
@@ -479,24 +507,47 @@ redactions.
   `getNonDfsUsed`, `capacityUsedNonDfs`, `getNonDfsUsedSpace`, …) to a neutral but plausible
   equivalent (e.g. `otherUsed` / `getOtherUsed` / `getOtherUsedSpace`) **consistently** across
   `source/` and the symptom log. Record every rename in `private/anonymization_map.json`.
-- Leave everything else — `datanode`, `namenode`, `block`, `DatanodeDescriptor`,
-  `HeartbeatManager`, `FSNamesystem`, package paths — **unchanged**.
-- You do **not** need to rename across the whole build tree (metric names are often
-  proto-entangled); it is enough to rename within the curated failure-path files placed in
-  `source/`, which the LLM reads but need not recompile. Reproduction was already proven on
-  the real tree at M3.
+- Rename within the curated failure-path files placed in `source/` (the LLM reads them but
+  need not recompile the whole tree). Reproduction was already proven on the real tree at M3.
 
-**(c) JIRA-quoted-text redaction (only if applicable).**
-- If the JIRA report quotes or attaches a log snippet / stack trace, replace those *specific
-  reported strings* with neutral tokens (so the LLM can't string-match the ticket). If the
-  ticket attaches no logs — as with HDFS-11896 — there is **nothing to redact** in the log;
-  use the real reproduction log as-is (apply only the (b) rename for consistency).
+**(c) Failure-path file/type rename (per the paper revision plan).**
+- Rename the **file names on the failure path** (the root-cause files + the files named in
+  the symptom-log stack trace) to neutral, plausible names. For compiled languages rename
+  the contained public class/interface too (file and type name must match) and update every
+  reference: imports, calls, and the `at pkg.Cls.method(File.java:NN)` frames in the symptom
+  log (regenerating the log from the anonymized source in (e) handles the frames
+  automatically).
+- The threat this blocks: the LLM seeing `HeartbeatManager.register` / `FollowerRequestProcessor`
+  and mapping it to a known ticket's fix from parametric memory. Generic system identifiers
+  in code *bodies* (`datanode`, `namenode`, `block`, `FSNamesystem`, package paths) stay
+  unchanged — only the failure-path file/type names are renamed.
+- Record every original→neutral file/type rename in `private/anonymization_map.json`.
+
+**(d) Failure-path log-statement rewrite (per the paper revision plan).**
+- Rewrite the **log printing statements on the failure path** — the string literals and
+  logger/subsystem tags those lines emit — to neutral, plausible, information-equivalent
+  text, so the symptom-log strings cannot be string-matched to the JIRA report or recognized
+  from parametric memory.
+- This is broader than only redacting text the JIRA report quotes: rewrite the rest of the
+  failure-path log literals too. Keep the *kind* of information (a WARN/ERROR, a subsystem
+  tag) so the log still reads like real system output; change the *wording*.
+- If the JIRA report quotes/attaches a specific log snippet, that string must be among the
+  ones rewritten. Record rewritten literals in `private/anonymization_map.json`.
+
+**(e) Regenerate the symptom log from the anonymized source.**
+- Because (c) renamed files and (d) rewrote log literals on the failure path, regenerate
+  `logs/symptom.log` by re-running `reproduce.sh` on the anonymized source (rebuild + reproduce).
+  Do **not** keep the pre-anonymization M3 log — its literals and stack frames would no
+  longer match `source/`. Re-confirm the symptom still reproduces (same observable).
 
 **Verification (do not skip).**
-- `grep -RnE 'HDFS-11896|\b11896\b' source/ logs/symptom.log symptom.md` → **zero hits**.
-- `grep -RnwF '<each original distinctive term>' source/ logs/symptom.log` → **zero hits**
-  (they were renamed). General system identifiers are expected and are fine.
-- The symptom log is the real reproduction log (system identifiers intact, bug-id absent).
+- `grep -RnE '<BUGID>|\b<bug number>\b' source/ logs/symptom.log symptom.md` → **zero hits**.
+- `grep -RnwF '<each original distinctive term>' source/ logs/symptom.log` → **zero hits**.
+- `grep -RnwF '<each original failure-path file/class name>' source/ logs/symptom.log` →
+  **zero hits** (the stack frames in the log now carry the renamed names). General system
+  identifiers are expected and are fine.
+- The symptom log was regenerated from the anonymized source (its log literals and stack
+  frames match `source/`), and the symptom still reproduces.
 
 ---
 
@@ -530,8 +581,10 @@ idempotent: a run whose `run_N.md` already exists and is non-empty is skipped on
 ## 8. Grading rubric (precise)
 
 A run **PASSes** iff its single-turn answer contains:
-1. The **exact root-causing line(s)** — the same code locations the fix changed
-   (match by anonymized file name + code identity, not by line number), **and**
+1. The **exact root-causing line(s)** — the same code locations the fix changed. The LLM names
+   them by **anonymized** file/class (as they appear in `source/`); translate via
+   `private/anonymization_map.json` to the real file/class and match by **code identity**, not
+   by line number, **and**
 2. The **exact logical condition/branch** that is wrong on the failure path (the `if`/loop
    guard whose logic the fix corrected, stated precisely).
 

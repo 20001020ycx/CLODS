@@ -16,9 +16,9 @@
 | M3 | Reproduce the failure | DONE | true |
 | M4 | Anonymize + rebuild + re-confirm | DONE | true |
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true |
-| M6 | Run LLM diagnosis ×5 (network locked) | DONE | true |
-| M7 | Grade each run | DONE | true |
-| M8 | Summary & finalize | DONE | true |
+| M6 | Run LLM diagnosis ×5 (network locked) | PENDING | null |
+| M7 | Grade each run | PENDING | null |
+| M8 | Summary & finalize | PENDING | null |
 
 ## Log
 - 2026-08-10 M0 DONE: created bug folder, subdirs (private/source/logs/diagnosis), PROGRESS.md, state.json. Claimed bug. Base docker image `clods-eval` build kicked off.
@@ -37,3 +37,4 @@
 - 2026-08-11 INTEGRITY FIX (operator): the earlier symptom log injected PROBE/SYMPTOM println lines that narrated the mechanism (a cheat). METHODOLOGY.md M3 updated: reproduction must use real verbose DEBUG logs + real operations and add NO log/print statements; state the symptom only if it is not observable in the logs. Redid M3 (DEBUG on, real file writes/reads, detection via silent assertion — no injected output) and M4 (symptom.log is now the real 4578-line DEBUG trace). symptom.md states only the observable doubled metric (~3MB vs ~2MB) via JMX, no mechanism. Cleared M6/M7/M8 to re-run the diagnosis on the corrected log.
 - 2026-08-11 M6/M7/M8 RE-RUN on corrected log: 5/5 PASS. On the real 4578-line DEBUG trace (no injected probes), all five runs explicitly named BOTH fix sites (resetBlocks omitting setOtherUsed(0) + register add-before-reset ordering, if(!d.isAlive) branch) and cited real log lines (removeDeadDatanode L4315, 'node restarted' L4468). Result holds and is now honest.
 - 2026-08-11 Added evaluations/HDFS/HDFS-11896/reproduce.md (reviewable reproduction write-up) per updated METHODOLOGY.md M3.
+- 2026-08-12 M5 REDONE (operator updated M5 spec): symptom.md reduced to the bare observable (getOtherUsedSpace ~3MB vs ~2MB) + log pointer; removed the dead/re-register trigger narrative and the capacity/DFS-stay-correct narrowing (cause-leaks). Deleted previous M6/M7/M8 outputs; re-running diagnosis on the harder bare symptom.

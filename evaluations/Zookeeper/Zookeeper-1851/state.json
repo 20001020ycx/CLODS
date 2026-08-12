@@ -4,10 +4,10 @@
   "jira": "ZOOKEEPER-1851",
   "jira_url": "https://issues.apache.org/jira/browse/ZOOKEEPER-1851",
   "source_repo": "https://github.com/apache/zookeeper.git",
-  "fix_commit": null,
-  "pre_fix_commit": null,
+  "fix_commit": "bcf09c846cc68c85479659cb1b7c1a076af068cb",
+  "pre_fix_commit": "25ea38a87b73edfe934886a51b694fe9493a2be2",
   "anonymized_commit": null,
-  "symptom_short": null,
+  "symptom_short": "A client connected to a non-leader quorum member issues a create-with-stat write; the request is never answered, the member's commit pipeline halts, and every client on that member is disconnected",
   "milestones": [
     {
       "id": "M0",
@@ -25,15 +25,17 @@
     },
     {
       "id": "M1",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T01:27:36Z",
+      "finished": "2026-08-12T01:27:52Z",
+      "attempts": 1,
+      "by": "agent-run-e47cfc21",
+      "artifacts": [
+        "private/fix.diff"
+      ],
+      "note": "JIRA ZOOKEEPER-1851 ('Follower and Observer Request Processors Do Not Forward create2 Requests', Blocker, affects+fixVersion 3.5.0, Resolved/Fixed). Fix commit = bcf09c846 (Rakesh Radhakrishnan, 2014-07-18, svn trunk@1611732). Its diff adds the missing 'case OpCode.create2:' to (1) FollowerRequestProcessor.run's forward-to-leader switch, (2) ObserverRequestProcessor.run's forward-to-leader switch, (3) CommitProcessor.needCommit(), and (4) TraceFormatter.op2String (log/trace only); it also adds test QuorumRequestPipelineTest + QuorumBase refactor. pre_fix_commit = 25ea38a87 (ZOOKEEPER-1968, last commit where the bug exists; verified its FollowerRequestProcessor switch has create/delete/setData/reconfig/setACL/multi/check but NOT create2). Confirmed the diff resolves the reported symptom: without the case, the follower queues the request into CommitProcessor but never ships it to the leader; needCommit()==false makes CommitProcessor treat it as a read and hand it to FinalRequestProcessor with request.getHdr()==null, where the isQuorum() branch calls ZKDatabase.addCommittedProposal -> request.getHdr().serialize() -> NPE outside the processor's try/catch; WorkerService then runs CommitWorkRequest.cleanup(), which halts the CommitProcessor, so the member answers nothing further and its clients are disconnected."
     },
     {
       "id": "M2",
@@ -120,5 +122,6 @@
       "note": ""
     }
   ],
-  "result": null
+  "result": null,
+  "source_version": "trunk @ 2014-07 (3.5.0-dev)"
 }

@@ -6,8 +6,8 @@
 | system | Zookeeper |
 | JIRA | https://issues.apache.org/jira/browse/ZOOKEEPER-1851 |
 | source repo | https://github.com/apache/zookeeper.git |
-| fix commit | _TBD (M1)_ |
-| pre-fix commit | _TBD (M1)_ |
+| fix commit | `bcf09c846cc68c85479659cb1b7c1a076af068cb` |
+| pre-fix commit | `25ea38a87b73edfe934886a51b694fe9493a2be2` |
 | agent | `agent-run-e47cfc21` |
 
 Runbook: `context/METHODOLOGY.md`. This file and `state.json` are kept in sync; every
@@ -18,7 +18,7 @@ milestone carries `status` + `success` + `outcome`.
 | ID | Milestone | Status | success | outcome |
 |---|---|---|---|---|
 | M0 | Scaffold & claim the bug folder | DONE | true | success |
-| M1 | From JIRA: fix commit + pre-fix commit | PENDING | null | pending |
+| M1 | From JIRA: fix commit + pre-fix commit | DONE | true | success |
 | M2 | Check out pre-fix, build from source, fix deps | PENDING | null | pending |
 | M3 | Reproduce the failure | PENDING | null | pending |
 | M4 | Anonymize, rebuild, re-confirm reproduction | PENDING | null | pending |
@@ -31,3 +31,4 @@ milestone carries `status` + `success` + `outcome`.
 
 - 2026-08-12T01:24:23Z M0 IN_PROGRESS — created `evaluations/Zookeeper/Zookeeper-1851/` with `private/ source/ logs/ diagnosis/`, wrote `PROGRESS.md` + `state.json`, claimed the bug in `evaluations/COORDINATION.log`.
 - 2026-08-12T01:25:24Z M0 DONE success=true — scaffold complete.
+- 2026-08-12T01:28Z M1 DONE success=true — ZOOKEEPER-1851 "Follower and Observer Request Processors Do Not Forward create2 Requests" (Blocker, 3.5.0). Fix commit `bcf09c846` (2014-07-18, svn trunk@1611732) adds `case OpCode.create2:` to `FollowerRequestProcessor.run`, `ObserverRequestProcessor.run`, `CommitProcessor.needCommit`, and `TraceFormatter.op2String`. Pre-fix = `25ea38a87`. Saved `private/fix.diff`.

@@ -1,4 +1,4 @@
-connect=OK connectString=127.0.0.1:21851
+connect=OK connectString=127.0.0.1:24551
 collateral_failed i=21 org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /app/collateral/c20
 collateral_failed i=22 org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /app/collateral/c21
 collateral_failed i=23 org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /app/collateral/c22

@@ -37,10 +37,11 @@ set -euo pipefail
 
 REPO="${REPO:-/work/repos/Zookeeper-Zookeeper-1851}"
 BUG_DIR="${BUG_DIR:-/work/evaluations/Zookeeper/Zookeeper-1851}"
-CPORT_BASE="${CPORT_BASE:-21851}"   # client ports 21851/21852/21853
-QPORT_BASE="${QPORT_BASE:-21861}"   # quorum ports 21861/21862/21863
-EPORT_BASE="${EPORT_BASE:-21871}"   # election ports 21871/21872/21873
-APORT_BASE="${APORT_BASE:-21881}"   # admin (jetty) ports 21881/21882/21883
+CPORT_BASE="${CPORT_BASE:-24551}"   # client ports 24551/24552/24553
+QPORT_BASE="${QPORT_BASE:-24561}"   # quorum ports 24561/24562/24563
+EPORT_BASE="${EPORT_BASE:-24571}"   # election ports 24571/24572/24573
+APORT_BASE="${APORT_BASE:-24581}"   # admin (jetty) ports 24581/24582/24583
+OUT_LOG="${OUT_LOG:-$BUG_DIR/private/symptom.orig.log}"   # where the collected log lands
 
 RUN="$(mktemp -d /tmp/zk-repro-XXXX)"   # neutral: the JVM prints paths into the log
 mkdir -p "$BUG_DIR/private" "$BUG_DIR/logs"
@@ -182,7 +183,8 @@ cleanup
 sleep 1
 
 # ---- 5. assemble the symptom log (system output only) ----------------------------------
-OUT="$BUG_DIR/private/symptom.orig.log"
+OUT="$OUT_LOG"
+mkdir -p "$(dirname "$OUT")"
 : > "$OUT"
 for f in server_1.log server_2.log server_3.log \
          client_leaderwl.log client_followerwl.log client_shell.log \

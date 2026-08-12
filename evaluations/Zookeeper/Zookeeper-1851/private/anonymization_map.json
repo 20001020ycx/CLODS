@@ -1,0 +1,42 @@
+{
+  "bug_id": "Zookeeper-1851",
+  "principle": "Minimal, case-targeted anonymization (METHODOLOGY.md 6). The real ZooKeeper source and the real reproduction log are kept; package names, class names, log format, `datanode`-equivalent domain terms (leader/follower/observer, znode, session, zxid, CommitProcessor, FollowerRequestProcessor, ...) are all UNCHANGED. Only the term that names the JIRA case is renamed, and the ticket id is scrubbed.",
+  "bug_id_scrub": {
+    "patterns": ["ZOOKEEPER-1851", "1851"],
+    "note": "The ticket id must appear nowhere in source/, logs/symptom.log or symptom.md. The pre-fix tree's CHANGES.txt is not part of source/ (source/ is src/java only), and the reproduction's TCP ports were moved off 2185x so that no bare 1851 substring occurs in the log either."
+  },
+  "distinctive_term_renames": [
+    {
+      "original": "create2",
+      "anonymized": "createExt",
+      "why": "The JIRA title is 'Follower and Observer Request Processors Do Not Forward create2 Requests'; `create2` is the one token a reader would grep to recall the ticket. It is the opcode name of the create variant that also returns the new node's Stat. The neutral replacement keeps that meaning (create, extended response).",
+      "sites": "ZooDefs.OpCode.create2 constant, every `case OpCode.create2:` label, Request.op2String's \"create2\" string literal (which is what the server prints as `type:create2` in the log), and all uses in ZooKeeper.java / ClientCnxn.java / PrepRequestProcessor / FinalRequestProcessor / DataTree / SerializeUtils / MultiTransactionRecord / MultiResponse / OpResult / ReadOnlyRequestProcessor / AsyncCallback."
+    },
+    {
+      "original": "Create2",
+      "anonymized": "CreateExt",
+      "why": "Same term in CamelCase positions; renamed with the same replacement so the tree stays consistent and compilable.",
+      "covers": [
+        "Create2Request -> CreateExtRequest (class + file src/java/generated/org/apache/zookeeper/proto/Create2Request.java)",
+        "Create2Response -> CreateExtResponse (class + file src/java/generated/org/apache/zookeeper/proto/Create2Response.java)",
+        "Create2Callback -> CreateExtCallback (AsyncCallback inner interface)",
+        "Create2CB -> CreateExtCB (test helper in AsyncOps)",
+        "testAsyncCreate2* -> testAsyncCreateExt* (test method names)"
+      ]
+    }
+  ],
+  "jira_quoted_text_redaction": {
+    "applicable": false,
+    "note": "ZOOKEEPER-1851's report quotes no log output and attaches no stack trace - only a prose description and the patch. There is therefore nothing to redact in the reproduction log; it is used exactly as the (renamed) binaries emitted it."
+  },
+  "kept_unchanged": [
+    "package names org.apache.zookeeper.*",
+    "all class names except the two renamed proto classes",
+    "leader / follower / observer / quorum / znode / session / zxid / txn terminology",
+    "FollowerRequestProcessor, ObserverRequestProcessor, CommitProcessor, FinalRequestProcessor, ZKDatabase, PrepRequestProcessor, Learner, WorkerService, ...",
+    "the log format and every log message text",
+    "the version string 3.5.0-SNAPSHOT"
+  ],
+  "regeneration": "private/anonymize.sh rebuilds everything deterministically: clone at pre_fix_commit -> apply private/deps-fix.patch -> apply the renames above (sed over src/java/**/*.java + src/zookeeper.jute, plus the two file renames) -> `ant jar` -> copy src/java/main + src/java/generated into source/ -> re-run reproduce.sh against the renamed build to regenerate logs/symptom.log.",
+  "applies_to": ["source/", "logs/symptom.log", "symptom.md"]
+}

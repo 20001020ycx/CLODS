@@ -1,7 +1,7 @@
-connect=OK connectString=127.0.0.1:21851
+connect=OK connectString=127.0.0.1:24551
 plain_create=OK elapsed_ms=8
-create_with_stat=EXCEPTION org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /app/failing/with-stat elapsed_ms=6768
+create_with_stat=EXCEPTION org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /app/failing/with-stat elapsed_ms=6770
 target_path=/app/failing/with-stat
 state_after_create_with_stat=CONNECTED
-post_op=EXCEPTION org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /app/failing/control-15111920361242150 elapsed_ms=8527
+post_op=EXCEPTION org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /app/failing/control-15112489493053945 elapsed_ms=7805
 final_state=CONNECTED

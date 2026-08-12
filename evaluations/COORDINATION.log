@@ -32,3 +32,4 @@
 2026-08-12T01:27:52Z Zookeeper-1851 M1 DONE success
 2026-08-12T01:29:20Z Zookeeper-1851 M2 DONE success (ant jar, JDK8)
 2026-08-12T01:36:00Z Zookeeper-1851 M3 DONE success (follower pipeline dies on create-with-stat)
+2026-08-12T01:45:00Z Zookeeper-1851 M4 DONE success (anonymized; rebuilt + re-reproduced)

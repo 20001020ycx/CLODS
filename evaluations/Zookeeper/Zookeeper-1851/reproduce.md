@@ -20,18 +20,19 @@ docker run --rm -v "$PWD:/work" --entrypoint bash clods-eval:Zookeeper-Zookeeper
     -lc 'bash /work/evaluations/Zookeeper/Zookeeper-1851/reproduce.sh'
 ```
 
-`REPO=` overrides the source tree (M4 re-runs it against the anonymized rebuild).
-Exit code 0 = reproduced, 1 = not reproduced.
+`REPO=` overrides the source tree and `OUT_LOG=` the destination log; M4's
+`private/anonymize.sh` re-runs this same script against the renamed rebuild to produce
+`logs/symptom.log`. Exit code 0 = reproduced, 1 = not reproduced.
 
 ## Scenario
 
 1. **Real 3-node ensemble**, built from the pre-fix tree (`ant jar`, ZooKeeper
    3.5.0-SNAPSHOT), started as three `QuorumPeerMain` JVMs on client ports
-   21851/21852/21853 (quorum 21861-3, election 21871-3, admin 21881-3), each with the
+   24551/24552/24553 (quorum 24561-3, election 24571-3, admin 24581-3), each with the
    **root logger at DEBUG** on the console.
 2. The script asks the servers themselves who leads, using the server's own `srvr`
-   four-letter-word command. In the captured run: leader = `21853` (myid 3),
-   followers = `21851` (myid 1) and `21852` (myid 2). **F1 = 21851** is the member the
+   four-letter-word command. In the captured run: leader = `24553` (myid 3),
+   followers = `24551` (myid 1) and `24552` (myid 2). **F1 = 24551** is the member the
    failing client talks to.
 3. **Real client traffic** through the real APIs, concurrently:
    - `Workload normal` — 120 iterations of create / getData / setData / exists /
@@ -56,8 +57,8 @@ handed to the final processor as if it were a read, with no transaction attached
 server's own log records the whole thing (`server_1.log`, myid 1):
 
 ```
-DEBUG [FollowerRequestProcessor:1:CommitProcessor@338] - Processing request:: sessionid:0x19ff39a82220001 type:create2 cxid:0x4 zxid:0xfffffffffffffffe txntype:unknown reqpath:/app/failing/with-stat
-DEBUG [CommitProcWorkThread-2:FinalRequestProcessor@91]  - Processing request:: sessionid:0x19ff39a82220001 type:create2 cxid:0x4 zxid:0xfffffffffffffffe txntype:unknown reqpath:/app/failing/with-stat
+DEBUG [FollowerRequestProcessor:1:CommitProcessor@338] - Processing request:: sessionid:0x19ff3a0dfd10001 type:createExt cxid:0x4 zxid:0xfffffffffffffffe txntype:unknown reqpath:/app/failing/with-stat
+DEBUG [CommitProcWorkThread-2:FinalRequestProcessor@91]  - Processing request:: sessionid:0x19ff3a0dfd10001 type:createExt cxid:0x4 zxid:0xfffffffffffffffe txntype:unknown reqpath:/app/failing/with-stat
 WARN  [CommitProcWorkThread-2:WorkerService$ScheduledWorkRequest@163] - Unexpected exception
 java.lang.NullPointerException
         at org.apache.zookeeper.server.ZKDatabase.addCommittedProposal(ZKDatabase.java:251)
@@ -69,9 +70,11 @@ ERROR [CommitProcWorkThread-2:CommitProcessor$CommitWorkRequest@286] - Exception
 INFO  [CommitProcessor:1:CommitProcessor@191] - CommitProcessor exited loop!
 ```
 
+(`type:createExt` is the M4-renamed name of the opcode — see `private/anonymization_map.json`.)
+
 Contrast in the same log, three lines earlier: the *plain* create on the same session shows
-a `Committing request::` line (it went to the leader and came back committed, `zxid:0x1000002cd`,
-`txntype:1`) before `FinalRequestProcessor` ran. The create-with-stat has no such line —
+a `Committing request::` line (it went to the leader and came back committed, with a real
+`zxid` and `txntype:1`) before `FinalRequestProcessor` ran. The create-with-stat has no such line —
 `zxid:0xfffffffffffffffe` (the "no zxid assigned" sentinel) and `txntype:unknown`.
 
 After `CommitProcessor exited loop!` the follower answers nothing: sessions time out,
@@ -84,10 +87,10 @@ reconnect to the same member, get revalidated, and time out again.
 | assertion | observed |
 |---|---|
 | control plain create on the follower succeeds | `plain_create=OK elapsed_ms=8` |
-| create-with-stat does **not** complete | `create_with_stat=EXCEPTION org.apache.zookeeper.KeeperException$ConnectionLossException ... elapsed_ms=6768` |
+| create-with-stat does **not** complete | `create_with_stat=EXCEPTION org.apache.zookeeper.KeeperException$ConnectionLossException ... elapsed_ms=6772` |
 | the node was never created | leader-side check prints `Node does not exist: /app/failing/with-stat` |
 | the follower's pipeline died | `server_1.log` contains `unable to continue` |
-| other clients on that member are hit too | `collateral_ok=20 collateral_failed=5`, each `ConnectionLossException` |
+| other clients on that member are hit too | `collateral_ok=20 collateral_failed=5`, every one a `ConnectionLossException` |
 
 `Workload.java` **never writes to stdout or stderr** — its observations go to
 `private/result_<name>.txt`, which are not part of the symptom log. The assertion verdicts
@@ -95,8 +98,9 @@ are printed by `reproduce.sh` to its own stdout only.
 
 ## The captured log
 
-- Path: `private/symptom.orig.log` (anonymized copy at `logs/symptom.log`), **19 037 lines**,
-  15 615 `DEBUG` / 474 `INFO` / 18 `WARN`+`ERROR`.
+- Path: `logs/symptom.log` (the M4 run, from the renamed build) — **19 014 lines**, 15 618
+  `DEBUG`. `private/symptom.orig.log` is the equivalent pre-anonymization capture
+  (19 009 lines). Both are gitignored and regenerable.
 - Contents: `server_1.log`, `server_2.log`, `server_3.log` (all three members' own DEBUG
   output) followed by the six client session logs (`client_leaderwl`, `client_followerwl`,
   `client_shell`, `client_collateral`, `client_failing`, `client_check`) — the ZooKeeper

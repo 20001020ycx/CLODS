@@ -61,7 +61,7 @@ commit/push happens on the host.
 | **fix commit** | The upstream commit that fixed the bug. |
 | **pre-fix commit** | The parent of the fix commit (the last commit where the bug exists). This is what you check out. |
 | **failure path** | The chain of code locations from the logged symptom down to the root cause (the call stack visible in the symptom log + the lines the fix changed). |
-| **symptom** | The externally visible failure (error message / exception / wrong behavior) the user sees. |
+| **symptom** | The **externally visible** failure an operator observes — a wrong value, an error message, an exception, or a hang. It is **only what is observed**, never the trigger or mechanism that causes it. `symptom.md` states only this observable plus a pointer to where it shows up in `logs/symptom.log` (see M5). Stating the cause/trigger in `symptom.md` is **cheating** — it hands the diagnosis LLM the answer and the run is invalid. |
 | **symptom log** | The log file produced when the bug is triggered. It is the *real* reproduction log — keep system identifiers as-is; only redact case-identifying strings (see anonymization). |
 | **anonymization** | The **minimal** redaction that stops the LLM from recognizing the *specific JIRA case* (and recalling its known fix from memory). It is **not** about hiding the system. Concretely: (1) never expose the **JIRA bug id** (e.g. `HDFS-11896`) in any LLM-facing artifact; (2) replace any **log/stack-trace text that is quoted or attached in the JIRA report itself** with neutral tokens (if the ticket attaches no logs, no log redaction is needed); (3) rename the **one or few distinctive terms** that name the bug (e.g. the `nonDfsUsed` metric) to a neutral equivalent. General system identifiers (class names, `datanode`, `namenode`, `block`, `FSNamesystem`, …) are **kept** — it is fine for the LLM to know it is HDFS. |
 | **ground truth** | The exact line(s) and branch condition(s) the real fix touched. Derived from the fix-commit diff. Used only for grading, **never** shown to the diagnosis LLM. |
@@ -298,7 +298,11 @@ per-stage probe) hands the model the answer and invalidates the run.
    surface** (JMX / an admin report / the web UI / metrics endpoint) — that is real system
    output, not an injected log — and/or state it in `symptom.md`. What you state is the
    *observable* (the final wrong value the user sees), **never** the per-stage internal
-   breakdown that reveals the mechanism.
+   breakdown that reveals the mechanism. **This is the same anti-cheat rule M5 step 1 +
+   step 3 enforce on `symptom.md`** (the "bare observable + log pointer, nothing else" gate):
+   when you later write `symptom.md` at M5, a non-log symptom is stated as the single wrong
+   value the operator reads (e.g. "the other-used metric is doubled") — never the trigger,
+   the mechanism, or a "what stays correct" comparison.
 6. Run it. Confirm the symptom reproduced (via the assertion / the reporting surface). Keep
    the full verbose log as `private/symptom.orig.log` (M4 anonymizes it into
    `logs/symptom.log`).
@@ -344,17 +348,80 @@ reproduction log; the LLM may know it is HDFS. See §6 for the full procedure.
 4. Mark M4 `DONE`, `success: true`.
 
 ### M5 — Prepare diagnosis inputs & ground truth
-1. Write `symptom.md`: a 2–6 line plain-English description of the symptom **only**.
-   Do **not** mention the fix, the **JIRA bug id**, or any root-cause hint. Naming the
-   system (HDFS) or general terms (datanode, block) is fine; use the neutral name for any
-   distinctive term you renamed in M4 (e.g. `otherUsed`).
+1. Write `symptom.md` = **the bare observable + a pointer to the log, nothing else.**
+   This is the most validity-critical artifact: if `symptom.md` already explains the cause,
+   the diagnosis run is a **cheat**, not a measurement of the LLM's reasoning.
+
+   **It must contain only:**
+   - (a) the externally-visible failure an operator sees (a wrong value / error string /
+     exception / hang), in **≤2 sentences**; and
+   - (b) a pointer to where it shows up in `logs/symptom.log` (a line reference, or a marker
+     token you inserted at M4 such as `>>> SYMPTOM`, or "the log for this run is
+     `logs/symptom.log`" when the symptom is not itself a single log line).
+
+   **It must NOT contain:** the trigger; the mechanism/causal chain; the at-fault
+   component, class, method, or branch; the buggy overload/operation/path that selects the
+   failure; the fix or any hint toward it; the JIRA bug id; or any **narrowing comparison
+   that implies the cause** (e.g. "only the other-used metric is wrong; capacity and
+   dfs-used stay correct" — that tells the LLM exactly which metric to blame).
+
+   The LLM is given `source/` + the log + this `symptom.md` and must derive the root cause
+   itself. Naming the system (HDFS) or general structural terms (datanode, block) is fine;
+   use the neutral name for any distinctive term you renamed in M4 (e.g. `otherUsed`) *only
+   if that term is itself the observable surface* (e.g. the metric an operator reads).
+
+   **Self-audit before marking M5 done** — re-read `symptom.md` and ask, sentence by
+   sentence: *"does this state the **cause/trigger**, or only the **observable**?"* Delete
+   any sentence that states or implies the cause.
+
+   **Correct (minimal) examples — `symptom.md` is the ONE thing an operator would paste to
+   a colleague to say "something is wrong":**
+   - *Wrong-value bug (HDFS-11896):* "The NameNode's other-used space metric is **doubled**
+     (reported ~2× the true value). The log for this run is `logs/symptom.log`. Identify the
+     root cause from the source code and the log. Do not assume any known fix."
+     (Use the **renamed** term — `other-used` — that appears in the anonymized `source/` +
+     log, not the real `non-dfs` term, so the LLM can map it without recognizing the JIRA
+     case. "Doubled" is the *observable*; it does not reveal *why* it doubles.)
+   - *Exception/error bug (Zookeeper-1851):* paste the **exact exception/stack trace as the
+     log prints it** (the `ConnectionLoss` + its stack from `logs/symptom.log`), and nothing
+     else — no "three-member ensemble," no "the `create(...,Stat)` overload," no "the
+     follower then stops serving everyone" timeline. Those are the cause.
+
+   **Rule of thumb:** `symptom.md` = a wrong number, or a pasted stack trace. **Do not
+   throw the JIRA case's information into the symptom** — not the trigger, not the sequence
+   of events, not the "what stays correct" comparison, not the failing overload/path. All
+   of that is the *cause* and belongs only in `private/ground_truth.md`.
+
+   **Forbidden (cheating) version of the HDFS case — do NOT write this:**
+   > A DataNode stops heartbeating, is declared dead, then comes back and **re-registers**.
+   > From that point the metric is too high… Capacity and DFS-used totals remain correct;
+   > only the other-used metric is wrong.
+
+   "re-registers" / "dead node" / "only other-used is wrong" are the **trigger and the
+   location** — the root cause — not the symptom. (This was the real failure in the first
+   HDFS-11896 run; do not repeat it. The Zookeeper equivalent — naming the
+   `create(...,Stat)` overload as the failing call — is the same anti-pattern: that
+   overload is the trigger path, i.e. the cause.)
 2. Derive `private/ground_truth.md` from `private/fix.diff`: list the **exact file:line(s)**
    the fix changed and the **exact branch/condition** that was wrong (before the fix), using
    the real class/method names (they are kept in `source/`) and the renamed distinctive term.
    This is the answer key. It lives only in `private/`.
-3. Verify the LLM-facing artifacts (`source/`, `logs/symptom.log`, `symptom.md`) contain
-   **no JIRA bug id** and none of the distinctive terms you renamed (grep for the bug id and
-   each renamed term; expect zero hits). General system identifiers are expected and fine.
+3. **Cause-leak verification (the anti-cheat gate).** This is separate from the anonymization
+   grep and is the one that actually catches the HDFS-11896 / Zookeeper-1851 failure mode.
+   Re-read `symptom.md` and assert **all** of:
+   - **Anonymization grep:** `source/`, `logs/symptom.log`, and `symptom.md` contain **no
+     JIRA bug id** and none of the distinctive terms you renamed (grep the bug id and each
+     renamed term; expect zero hits). General system identifiers are expected and fine.
+   - **No cause-leak:** `symptom.md` states only the observable (a wrong value or a pasted
+     stack) + the log pointer. It contains **no** trigger, no mechanism/timeline, no
+     at-fault component/class/branch, no buggy overload/path, and no "what stays correct"
+     narrowing comparison. If it does, **delete that content** — the run is invalid until it
+     is gone (this is exactly the cheat the first HDFS-11896 / Zookeeper-1851 runs hit).
+   - **No JIRA-case narrative:** nothing in `symptom.md` was copied from the JIRA ticket's
+     description/timeline/attachments beyond the bare observable. (For an exception bug the
+     pasted stack comes from `logs/symptom.log`, **not** from the JIRA attachment — the log
+     is the system's own output, the JIRA text is the author's analysis.)
+   If any check fails, fix `symptom.md` and re-run this step before marking M5 done.
 4. Mark M5 `DONE`, `success: true`.
 
 ### M6 — Run LLM diagnosis ×5 (network locked, single prompt, no follow-ups)

@@ -141,17 +141,42 @@
     },
     {
       "id": "M8",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
       "started": null,
-      "finished": null,
+      "finished": "2026-08-12T20:38:31Z",
       "attempts": 0,
       "by": "agent-run-e47cfc21",
-      "artifacts": [],
-      "note": "Reset: symptom.md was rewritten under the updated M5 specification, so the previous runs/grades/summary are invalid and were deleted."
+      "artifacts": [
+        "summary.md"
+      ],
+      "note": "4/5 PASS under the updated M5 symptom specification (unchanged headline score from the superseded narrative-symptom run, but a different failing run: run 2 here, run 3 before). Runs 1, 3, 4, 5 named both required sites with their branch conditions and prescribed the upstream fix at both lines, having first had to locate the failing operation themselves - symptom.md now gives only a ConnectionLoss timeout line, so each run worked backwards from the client timeout to the one request carrying the unset-zxid sentinel with no preceding 'Committing request' line. Run 2 stopped at the first switch that explains the NPE (needCommit), never identified the forwarding switch, and invented a timing race with a leader COMMIT that could never arrive; its one-line fix would convert the crash into a hang. summary.md records both caveats: the DEBUG log prints request type + zxid at every processor hop (a well-signposted search), and the rename removes ticket recognition but not the model's general familiarity with the ZooKeeper wire protocol (run 3 glossed createExt as 'create2, OpCode = 15'; run 2 guessed wrongly that it was the TTL/container create)."
     }
   ],
-  "result": null,
+  "result": {
+    "successes": 4,
+    "total": 5,
+    "per_run": [
+      "PASS",
+      "FAIL",
+      "PASS",
+      "PASS",
+      "PASS"
+    ],
+    "symptom_spec": "M5 v2 (bare observable + log pointer)",
+    "superseded_result": {
+      "successes": 4,
+      "total": 5,
+      "per_run": [
+        "PASS",
+        "PASS",
+        "FAIL",
+        "PASS",
+        "PASS"
+      ],
+      "symptom_spec": "M5 v1 (narrative symptom; invalidated by the updated specification)"
+    }
+  },
   "source_version": "trunk @ 2014-07 (3.5.0-dev)"
 }

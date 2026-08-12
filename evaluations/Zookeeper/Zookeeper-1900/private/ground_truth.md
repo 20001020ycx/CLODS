@@ -43,7 +43,7 @@ if (input == null) {
   empty and the `for` loop adds nothing, so `storedFiles` stays empty.
 * `goToNextLog()` (lines 601-608) therefore takes its `if (storedFiles.size() > 0)` branch
   as false and returns `false` **without** calling `createInputArchive()` — and
-  `createInputArchive()` (line 632ff, `if (inputStream == null) { inputStream = new
+  `createInputArchive()` (lines 633-639, `if (inputStream == null) { inputStream = new
   PositionInputStream(...) }`) is the only place `inputStream` is ever assigned.
 * So `inputStream` is still `null` when `rollBack()` reads it at line 380.
 

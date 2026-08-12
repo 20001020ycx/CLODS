@@ -92,15 +92,18 @@
     },
     {
       "id": "M5",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-12T19:14:00Z",
+      "finished": "2026-08-12T19:20:00Z",
+      "attempts": 1,
+      "by": "agent-run-ea3110e6",
+      "artifacts": [
+        "symptom.md",
+        "private/ground_truth.md"
+      ],
+      "note": "symptom.md = 13-line operator-level description: a 4-member 3.5.0 ensemble was rebuilt (three participants re-provisioned on empty storage, the observer left alone except that its transaction-log directory now points at a replacement volume); since the restart the quorum is healthy and serves clients, but the observer never rejoins - every attempt to join the leader ends in an unhandled exception, it falls back to leader election and retries many times a second indefinitely, it reports that it is not serving requests, a client pointed at it never gets a session, and its open sockets keep growing (~1 per attempt) into CLOSE_WAIT. No bug id, no fix hint, no internal mechanism: following the 1851 precedent the exception type and the stack frames are NOT named in symptom.md - they are left for the LLM to find in the log. ground_truth.md derived from private/fix.diff: the trunk fix changes exactly two production lines, both on the reproduced path. REQUIRED SITE A = FileTxnLog.rollBack (upstream truncate) lines 380-381: 'PositionInputStream input = itr.inputStream; long pos = input.getPosition();' is dereferenced with no null guard (the fix inserts 'if (input == null) throw new IOException(...)'); the exact condition is that FileTxnIterator.init() (566-582) finds no log.* file in the configured txnlog dir, so storedFiles stays empty, goToNextLog() (601-608) returns false without calling createInputArchive() (633-639), the only assignment of inputStream. REQUIRED SITE B = Observer.observeLeader line 85 'catch (IOException e)': the NPE is a RuntimeException so the handler does not apply - sock.close() (88) and pendingRevalidations.clear() (94) never run (one leaked leader connection per attempt, CLOSE_WAIT; Learner.shutdown() does not close sock either) and the exception unwinds to QuorumPeer.run's case OBSERVING catch(Exception)/finally updateServerState() (957-969) -> LOOKING -> re-elect -> OBSERVING -> same failure forever. The fix widens it to catch (Exception e). Credit-neutral supporting context (not required): LearnerHandler.syncFollower's 'peerLastZxid > maxCommittedLog && !isPeerNewEpochZxid' -> queueOpPacket(Leader.ROLLBACK, maxCommittedLog) (708-714), Learner.syncWithLeader's ROLLBACK branch (344-348), and ZKDatabase.clear() setting initialized=false so the next attempt reloads the same old snapshot zxid. PASS requires BOTH A (line + the null-ness condition) and B; naming Follower.followLeader instead of Observer does not satisfy B (trunk's Follower already catches Exception). Grading rule fixed before any run was read. Leakage re-verified across source/ + logs/symptom.log + symptom.md: 0 hits for ZOOKEEPER-1900, bare 1900, [Tt]runcat and TRUNC."
     },
     {
       "id": "M6",

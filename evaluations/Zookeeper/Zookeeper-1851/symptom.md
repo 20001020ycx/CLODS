@@ -1,10 +1,7 @@
-A three-member ZooKeeper 3.5.0 ensemble (one leader, two followers) is serving ordinary traffic.
-A client connected to one of the followers calls the create overload that also returns the new
-node's Stat — `create(path, data, acl, createMode, Stat)`; a plain `create(path, data, acl, createMode)`
-on the very same connection had succeeded 8 ms earlier.
-The call never completes: it fails with ConnectionLoss after the client's read timeout, and the
-znode is never created anywhere in the ensemble.
-From that moment on that follower answers nothing at all — every other client connected to it also
-starts failing with ConnectionLoss, and their sessions are re-established with the same member only
-to time out again — even though its process stays up, it keeps accepting connections, and the
-leader and the other follower continue serving normally.
+Client calls against this ZooKeeper 3.5.0 ensemble stop completing and fail with
+`KeeperException.ConnectionLoss`. The log for this run is `logs/symptom.log`, where the
+affected sessions report:
+
+```
+2026-08-12 01:41:58,930 [myid:] - INFO  [main-SendThread(127.0.0.1:24551):ClientCnxn$SendThread@1207] - Client session timed out, have not heard from server in 6670ms for sessionid 0x19ff3a1f9800001, closing socket connection and attempting reconnect
+```

@@ -94,76 +94,52 @@
       "outcome": "success",
       "success": true,
       "started": null,
-      "finished": "2026-08-12T01:46:36Z",
+      "finished": "2026-08-12T20:21:18Z",
       "attempts": 0,
       "by": "agent-run-e47cfc21",
       "artifacts": [
         "symptom.md",
         "private/ground_truth.md"
       ],
-      "note": "symptom.md = 9-line operator-level description: 3-member 3.5.0 ensemble under ordinary traffic; a client on a follower calls create(path,data,acl,mode,Stat); it never completes (ConnectionLoss after the read timeout), the znode is never created, and from then on that member answers nothing (all its clients get ConnectionLoss, sessions re-established with it then time out again) while its process stays up and the rest of the ensemble is fine; a plain create on the same connection succeeded 8ms earlier. No bug id, no fix hint, no internal mechanism (the NPE/stack trace is left for the LLM to find in the log). ground_truth.md derived from private/fix.diff: the fix adds one 'case OpCode.createExt:' label to four switches; the two PRIMARY root-causing sites on the reproduced path are (1) FollowerRequestProcessor.run's forward-to-leader switch at source line 84 - createExt matches no case and there is no default:, so zks.getFollower().request(request) at line 91 is never reached and the leader never sees the write, although line 72 already queued it into the CommitProcessor; and (2) CommitProcessor.needCommit at line 133 - createExt falls to 'default: return false', so run()'s 'if (needCommit(request)) nextPending.set(...) else sendToNextProcessor(...)' guard takes the else arm and dispatches the write as a read to FinalRequestProcessor with request.getHdr()==null. Explanatory consequence (not required in an answer): FinalRequestProcessor:126 isQuorum() -> ZKDatabase.addCommittedProposal:251 -> getHdr().serialize() NPE -> WorkerService runs CommitWorkRequest.cleanup() -> CommitProcessor.halt(). PASS requires BOTH primary sites with their branch conditions (either alone yields a different failure mode); ObserverRequestProcessor (no observer in the ensemble) and TraceFormatter (log formatting only) are credit-neutral. Leakage re-verified across source/ + logs/symptom.log + symptom.md: 0 hits for ZOOKEEPER-1851, bare 1851, create2 and Create2."
+      "note": "REDONE 2026-08-12 under the updated M5 specification (context/METHODOLOGY.md commits 466a79e/ebba23d/8d90c20: symptom.md = bare observable + log pointer, never the JIRA-case narrative). The previous symptom.md violated every clause of the new must-NOT list - it named the failing overload create(path,data,acl,mode,Stat), gave the trigger and the mechanism timeline ('from that moment on that follower answers nothing'), and carried the narrowing comparison 'a plain create on the very same connection had succeeded 8 ms earlier', which hands the LLM the discriminating experiment. It is replaced by the exception form: two sentences of observable (client calls stop completing and fail with KeeperException.ConnectionLoss) + the log pointer + the exact client-side line pasted verbatim from logs/symptom.log ('Client session timed out, have not heard from server in 6670ms for sessionid 0x..., closing socket connection and attempting reconnect', confirmed present in the log). No trigger, no failing operation/overload, no mechanism, no at-fault component/class/branch, no what-stays-correct comparison, no text taken from the JIRA ticket. Verification gate re-run: 0 hits for ZOOKEEPER-1851 / bare 1851 / create2 / Create2 across source/, logs/symptom.log and symptom.md; the renamed term createExt appears only in source/ and the log (never in symptom.md, since it is not the observable surface). private/ground_truth.md is unchanged (M5 step 2 is unchanged): both primary sites plus the PASS rule. All post-M5 artifacts (diagnosis/run_1..5.md, the grade JSONs, summary.md) were deleted and M6-M8 reset to PENDING."
     },
     {
       "id": "M6",
-      "status": "DONE",
-      "outcome": "success",
-      "success": true,
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
       "started": "2026-08-12T01:47:28Z",
-      "finished": "2026-08-12T02:16:04Z",
+      "finished": null,
       "attempts": 1,
       "by": "agent-run-e47cfc21",
-      "artifacts": [
-        "diagnosis/run_1.md",
-        "diagnosis/run_2.md",
-        "diagnosis/run_3.md",
-        "diagnosis/run_4.md",
-        "diagnosis/run_5.md"
-      ],
-      "note": "5 independent single-turn diagnoses, model claude-opus-4-7 effort high, egress iptables-locked to api.anthropic.com:443 (--add-host pins the IP so the lock survives the DNS-killing DROP policy), Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, --safe-mode --no-session-persistence --exclude-dynamic-system-prompt-sections, no follow-up prompts, throwaway staging dir /tmp/clods-diag-XXXX holding ONLY source/ + logs/symptom.log + symptom.md (verified at runtime: no private/ in the stage, and the prompt paths point at the stage, never at /bug). IMPORTANT HARNESS NOTE: the clods-eval image's baked-in /opt/clods/run_diagnosis.sh is STALE (image built 2026-08-10T14:35, context/run_diagnosis.sh updated 15:43) - it prompts with /bug/source and /bug/logs/symptom.log (making /bug/private/ground_truth.md reachable), denies only WebFetch,WebSearch, and pins no model/effort. A first attempt used it via the documented --entrypoint and was DISCARDED (3 runs deleted). The accepted runs mount the tracked context/ read-only and execute context/run_diagnosis.sh instead; context/ and the image were NOT modified. Auth: host CCS OAuth credentials copied into a scratch config dir mounted at /root/.claude with CLAUDE_CONFIG_DIR + IS_SANDBOX=1 (bypassPermissions as root for iptables); run 5 first failed with '401 OAuth access token has been revoked' because the host rotated the token mid-batch, so its empty answer was deleted and run 5 alone was re-run with refreshed credentials (the script skips the 4 existing runs). All 5 stderr files empty; all 5 answers substantive."
+      "artifacts": [],
+      "note": "Reset: symptom.md was rewritten under the updated M5 specification, so the previous runs/grades/summary are invalid and were deleted."
     },
     {
       "id": "M7",
-      "status": "DONE",
-      "outcome": "success",
-      "success": true,
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
       "started": null,
-      "finished": "2026-08-12T02:17:10Z",
+      "finished": null,
       "attempts": 0,
       "by": "agent-run-e47cfc21",
-      "artifacts": [
-        "diagnosis/run_1.grade.json",
-        "diagnosis/run_2.grade.json",
-        "diagnosis/run_3.grade.json",
-        "diagnosis/run_4.grade.json",
-        "diagnosis/run_5.grade.json"
-      ],
-      "note": "4/5 PASS. Runs 1, 2, 4 and 5 each named BOTH required root-causing sites with their exact branch conditions: the missing 'case OpCode.createExt:' in FollowerRequestProcessor.run's forward-to-leader switch (line 84; createExt matches no case and there is no default:, so zks.getFollower().request() at 91 never runs and the znode is created nowhere) AND its absence from CommitProcessor.needCommit (line 133; 'default: return false' makes run()'s 'if (needCommit(request)) nextPending.set(...) else sendToNextProcessor(...)' guard take the else arm, delivering a hdr==null request to FinalRequestProcessor). All four also derived the downstream chain (Request.isQuorum()==true -> ZKDatabase.addCommittedProposal:251 NPE -> WorkerService -> CommitWorkRequest.cleanup -> CommitProcessor.halt) and why the member stays up while answering nothing; runs 2, 4 and 5 stated the fix as adding the case at exactly the two lines the upstream patch touches, and run 5 additionally spotted the identical omission in ObserverRequestProcessor (credit-neutral). Run 3 FAILED: it never mentions FollowerRequestProcessor at all (0 occurrences), attributes the non-forwarding to the needCommit misclassification - which is wrong, forwarding is decided by an independent switch executed before the CommitProcessor sees the request - and concludes 'the root cause is a one-line omission in CommitProcessor.needCommit', a fix that would leave the member broken (it would stall in nextPending waiting for a commit that can never arrive instead of crashing). Under the no-partial-credit rule that is a FAIL. Minor imprecision noted but not penalised in runs 2 and 5: both claim in an aside that fixing either switch alone would suffice."
+      "artifacts": [],
+      "note": "Reset: symptom.md was rewritten under the updated M5 specification, so the previous runs/grades/summary are invalid and were deleted."
     },
     {
       "id": "M8",
-      "status": "DONE",
-      "outcome": "success",
-      "success": true,
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
       "started": null,
-      "finished": "2026-08-12T02:17:59Z",
+      "finished": null,
       "attempts": 0,
       "by": "agent-run-e47cfc21",
-      "artifacts": [
-        "summary.md"
-      ],
-      "note": "4/5 PASS. Runs 1, 2, 4, 5 each named both required sites (the missing 'case OpCode.createExt:' in FollowerRequestProcessor.run's forward-to-leader switch and in CommitProcessor.needCommit) with their exact branch conditions, and three of them prescribed precisely the upstream one-line-per-switch fix. Run 3 stopped at needCommit, never mentioned FollowerRequestProcessor, and inverted the causality by deriving the missing leader-forwarding from the needCommit defect; its prescribed fix would have converted the crash into an indefinite stall, leaving the follower equally unusable. summary.md records the honest caveats: the DEBUG log signposts the search (request type + zxid printed at every processor hop) and the model still calls the opcode by its real upstream name despite the rename, i.e. general ZooKeeper familiarity survives anonymization - though it did not rescue run 3."
+      "artifacts": [],
+      "note": "Reset: symptom.md was rewritten under the updated M5 specification, so the previous runs/grades/summary are invalid and were deleted."
     }
   ],
-  "result": {
-    "successes": 4,
-    "total": 5,
-    "per_run": [
-      "PASS",
-      "PASS",
-      "FAIL",
-      "PASS",
-      "PASS"
-    ]
-  },
+  "result": null,
   "source_version": "trunk @ 2014-07 (3.5.0-dev)"
 }

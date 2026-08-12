@@ -49,3 +49,4 @@
 2026-08-12T18:27:28Z Zookeeper-1900 M7 DONE success (5/5 PASS)
 2026-08-12T18:28:22Z Zookeeper-1900 M8 DONE success
 2026-08-12T18:28:22Z Zookeeper-1900 bug COMPLETE 5/5
+2026-08-12T20:21:18Z Zookeeper-1851 M5 REDONE (updated spec: bare observable symptom.md); M6-M8 reset, re-running

@@ -74,3 +74,26 @@ mounted OAuth credentials; `IS_SANDBOX=1` is needed because the script passes
 - 2026-08-12T02:20Z M6 DONE success=true — 5 single-turn diagnoses (`claude-opus-4-7`, effort high, network locked, staged inputs only). Run 5 was re-run once after the host rotated the OAuth token mid-batch (`401 ... revoked`); its failed placeholder was deleted first so the script would not skip it. See the harness-deviation section above.
 - 2026-08-12T02:22Z M7 DONE success=true — **4/5 PASS** (runs 1, 2, 4, 5). Run 3 FAIL: it names only `CommitProcessor.needCommit()`, never mentions `FollowerRequestProcessor` (0 occurrences), and misattributes the missing forward-to-leader step to the `needCommit` defect; its prescribed one-line fix would leave the follower dark (stalling in `nextPending`) rather than repair it.
 - 2026-08-12T02:24Z M8 DONE success=true — `summary.md` written; `state.json.result` = 4/5 PASS (`["PASS","PASS","FAIL","PASS","PASS"]`). Bug complete.
+
+## M5 redone under the updated specification (2026-08-12)
+
+`context/METHODOLOGY.md` M5 was tightened (commits `466a79e`, `ebba23d`, `8d90c20`):
+`symptom.md` must now be **the bare observable + a pointer to the log, nothing else** — no
+trigger, no mechanism/timeline, no at-fault component, no failing overload/path, and no
+"what stays correct" narrowing comparison.
+
+The first `symptom.md` breached all of those: it named the `create(path, data, acl,
+createMode, Stat)` overload, described the ensemble topology and the post-failure timeline,
+and added "a plain create on the very same connection had succeeded 8 ms earlier" — which
+hands the model the discriminating experiment. Under the new rule that is a cheat.
+
+The replacement uses the exception form: two sentences of observable (client calls fail with
+`KeeperException.ConnectionLoss`), the log pointer, and the client-side line pasted verbatim
+from `logs/symptom.log`. Verification gate re-run: 0 hits for the ticket id or the original
+distinctive term across `source/`, `logs/symptom.log`, `symptom.md`; sentence-by-sentence
+audit finds no cause statement. `private/ground_truth.md` is unchanged.
+
+All post-M5 results (`diagnosis/*`, `summary.md`) were deleted and M6–M8 reset to PENDING;
+the experiment is re-run from M6 against the new `symptom.md`.
+
+- 2026-08-12T20:30Z M5 REDONE success=true — new `symptom.md`; M6–M8 reset.

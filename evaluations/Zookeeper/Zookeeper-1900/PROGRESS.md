@@ -78,3 +78,22 @@ iptables requires root. The scratch credential copy was deleted after the run.
 - 2026-08-12T21:00Z M6 DONE success=true (re-run) — 5 single-turn diagnoses against the rewritten `symptom.md` (`claude-opus-4-7`, effort high, network locked, staged inputs only, no follow-ups). All 5 completed first time; all stderr empty. `source/` and `logs/symptom.log` unchanged from M4.
 - 2026-08-12T21:08Z M7 DONE success=true — **0/5 PASS** under the pre-registered two-site bar. Every run hit site A (`FileTxnLog.rollBack:380-381` + the exact null-ness chain), and three derived a correct second route to the same null; **no** run named site B (`Observer.observeLeader`'s `catch (IOException e)`, line 85) — all credited the repetition to `QuorumPeer.run`'s broad `catch (Exception e)` instead. Each grade JSON carries `site_a`/`site_b`, so the root-causing-line-only bar (5/5) is auditable.
 - 2026-08-12T21:15Z M8 DONE success=true — `summary.md` written; `state.json.result` = 0/5 PASS (`["FAIL"×5]`, `site_a_only_successes: 5`). Bug complete.
+
+## Open item for the next agent/operator: M4 predates the newer M4 spec
+
+This bug's M4 (committed 2026-08-12 14:11 EDT) satisfies the M4 rules as they stood then:
+scrub the bug id, rename the distinctive bug-naming vocabulary (`truncate*`/`TRUNC` →
+`rollBack*`/`ROLLBACK`), and rewrite the log literals the JIRA report quotes.
+
+`context/METHODOLOGY.md` was tightened again at **17:00 EDT** (commit `88b447e`, "M4:
+anonymize failure-path file/type names + log statements"). M4 now *additionally* requires
+renaming the **file/type names on the failure path** (for Java, the file and its public
+class, with every import/call and every `at pkg.Cls.method(File.java:NN)` frame in the
+symptom log updated) and rewriting the rest of the failure-path log literals.
+
+The current `source/` + `logs/symptom.log` do **not** satisfy that: `FileTxnLog`,
+`FileTxnSnapLog`, `ZKDatabase`, `Learner`, `Observer` and `QuorumPeer` keep their real
+names, and non-quoted failure-path log literals are untouched. Bringing this bug up to the
+new M4 means: rename those types/files in the tree, rebuild, re-run `reproduce.sh` to
+regenerate the log, re-paste the new stack into `symptom.md`, and re-run M6–M8 a third time.
+Not done here — the operator's request covered the M5 change only.

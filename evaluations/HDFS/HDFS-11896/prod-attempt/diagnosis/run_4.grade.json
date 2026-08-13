@@ -1,0 +1,21 @@
+{
+  "verdict": "FAIL",
+  "target_bug": "HDFS-11896",
+  "justification": "FAIL for HDFS-11896. Diagnosed a DIFFERENT phenomenon: the ~110TB absolute magnitude of CapacityUsedOther, attributed to a shared host filesystem across the ~50 containerized DataNodes each reporting the same non-service bytes (summed N x). That is a plausible real artifact of this Docker-compose cluster, but it is NOT the bug. The run never noticed the 172.25.0.38 dead->re-register event (log:107831/114118) nor the ~2.5TB jump across it (log:89776->121401), and never named resetBlocks() or the register() add-before-reset ordering. Anchored on the dominant benign explanation of the 'abnormally high' symptom and missed the target bug entirely.",
+  "claimed_root_cause": "10 DNs Docker-compose share host disk; NN sums same non-DFS N x",
+  "claimed_lines": [
+    "HeartbeatManager.Stats.add L409 (unconditional capacityUsedOther +=)",
+    "DatanodeDescriptor.updateHeartbeatState L427/436",
+    "DatanodeInfo.getOtherUsed L190",
+    "FSNamesystem.getCapacityUsedOther L4849"
+  ],
+  "identified_reregistration": false,
+  "named_resetBlocks": false,
+  "gt_lines": [
+    "DatanodeDescriptor.resetBlocks() L313-319 (omits setOtherUsed(0)) \u2014 THE root-causing line",
+    "HeartbeatManager.register() L189-196 (addDatanode/stats.add of stale otherUsed before updateHeartbeatState(EMPTY))"
+  ],
+  "gt_branches": [
+    "dead datanode 172.25.0.38 (log:107831) re-registers (log:114118) -> stale otherUsed re-added to capacityUsedOther -> +~2.5TB jump (109.85T@log:89776 -> 112.36T@log:121401)"
+  ]
+}

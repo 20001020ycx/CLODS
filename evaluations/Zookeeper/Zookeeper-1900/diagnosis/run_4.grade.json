@@ -1,0 +1,25 @@
+{
+  "run": 4,
+  "verdict": "FAIL",
+  "justification": "Site A: fully correct and tightly evidenced \u2014 quotes the member's own 'Opening datadir:.../txnlog-vol2 snapDir:.../data' line, notes the txnlog dir has zero log.* files while the snapshot dir still holds snapshot.100000f3e, then gives the same exact chain (empty list -> zero-iteration for-loop -> storedFiles empty -> goToNextLog() false, no createInputArchive, inputStream left at its 522 default -> next()'s 'ia == null' guard -> fast-forward guard false -> NPE at 381). Closes with the defect statement: rollBack assumes itr.inputStream is non-null even though init() legitimately leaves it null when the log directory has no log.* files. Site B is absent: the run never mentions ObserverPeer.java:85, the 'catch (IOException e)' in observeLeader, or the fact that a NullPointerException is a RuntimeException the handler cannot match (grep for 'catch (IOException' / 'ObserverPeer.java:85' over the answer: 0 hits). Every run instead credits the repetition to EnsembleMember.run's broad 'catch (Exception e)' at 962-963 \u2014 correct as far as it goes, but not a line the fix changed. Under the pre-registered rule (both sites required; METHODOLOGY \u00a710 requires every site the fix touched and \u00a78 forbids partial credit) this is a FAIL.",
+  "site_a": "HIT",
+  "site_b": "MISS",
+  "claimed_lines": [
+    "TxnJournal.java:376-395, esp. 380-381",
+    "TxnJournal.java:513-608 (iterator), 522, 557-559, 568, 569-578, 601-608, 657-660",
+    "PeerSynchronizer.java:344-348, ZKStateStore.java:500-504, JournalSnapStore.java:311-317 (credit-neutral chain)",
+    "ObserverPeer.observeLeader:79 and EnsembleMember.run:961/963 (as stack frames only)"
+  ],
+  "claimed_branches": [
+    "'if (storedFiles.size() > 0)' false because logDir.listFiles() has no log.* files -> createInputArchive never called -> inputStream stays null -> line 381 NPE",
+    "'if (ia == null) return false;' in next(); 'fastForward && hdr != null' false"
+  ],
+  "gt_lines": [
+    "real FileTxnLog.java:380-381 (method truncate) = anonymized TxnJournal.java:380-381 (method rollBack): 'PositionInputStream input = itr.inputStream; long pos = input.getPosition();' dereferenced with no null guard (the upstream fix inserts 'if (input == null) throw new IOException(...)')",
+    "real Observer.java:85 = anonymized ObserverPeer.java:85: the inner 'catch (IOException e)' of observeLeader() (the upstream fix widens it to 'catch (Exception e)')"
+  ],
+  "gt_branches": [
+    "itr.inputStream == null: FileTxnIterator/TxnJournalIterator.init() (566-582) finds no log.* file in the configured txnlog dir, so storedFiles stays empty; goToNextLog() (601-608) takes 'if (storedFiles.size() > 0)' as false and returns without calling createInputArchive() (633-639), the only assignment of inputStream (declared null at 522)",
+    "the thrown NullPointerException is a RuntimeException, not an IOException, so the catch at ObserverPeer.java:85 does not apply and the exception leaves observeLeader() unhandled (sock.close() at 88 never runs), surfacing at EnsembleMember.run"
+  ]
+}

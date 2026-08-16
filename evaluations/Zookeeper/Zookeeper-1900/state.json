@@ -114,8 +114,8 @@
       "status": "DONE",
       "outcome": "success",
       "success": true,
-      "started": "2026-08-12T20:15:00Z",
-      "finished": "2026-08-12T20:59:30Z",
+      "started": "2026-08-16T05:35:00Z",
+      "finished": "2026-08-16T05:46:30Z",
       "attempts": 1,
       "by": "agent-run-ea3110e6",
       "artifacts": [
@@ -123,17 +123,18 @@
         "diagnosis/run_2.md",
         "diagnosis/run_3.md",
         "diagnosis/run_4.md",
-        "diagnosis/run_5.md"
+        "diagnosis/run_5.md",
+        "private/run_diagnosis.prodlog.sh"
       ],
-      "note": "RE-RUN against the rewritten (bare-observable) symptom.md. 5 independent single-turn diagnoses, model claude-opus-4-7 effort high, egress iptables-locked to api.anthropic.com:443 (--add-host pins 160.79.104.10 so the lock survives the DNS-killing DROP policy), Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, --safe-mode --no-session-persistence --exclude-dynamic-system-prompt-sections, no follow-up prompts, throwaway staging dir holding ONLY source/ + logs/symptom.log + symptom.md (verified at runtime: 'ls -A' on the stage shows exactly logs/ source/ symptom.md, and the prompt's symptom text is the new two-sentence + pasted-stack version). Same harness deviation as before and as recorded for Zookeeper-1851: the image's baked-in /opt/clods/run_diagnosis.sh is stale, so context/ was mounted read-only and the tracked context/run_diagnosis.sh executed instead; context/ and the image were NOT modified. Host CCS OAuth credentials were copied into a scratch config dir (CLAUDE_CONFIG_DIR + IS_SANDBOX=1 + CLAUDE_PURITY_FLAG=--safe-mode) and deleted afterwards. All 5 runs completed first time, all 5 stderr files empty, answers 3.5-4.8 kB. source/ and logs/symptom.log are byte-identical to the M4 artifacts - only the symptom text differs from the discarded batch."
+      "note": "Third batch: 5 independent single-turn diagnoses against the MERGED 1.6 GB production log, model claude-opus-4-7 effort high, egress iptables-locked to api.anthropic.com:443, Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, --safe-mode --no-session-persistence --exclude-dynamic-system-prompt-sections, no follow-ups, throwaway staging dir holding ONLY source/ + logs/symptom.log + symptom.md (verified at runtime: 'ls -A' shows exactly logs/ source/ symptom.md, the staged log is the 1.6 GB merged one, and the prompt is the new \u00a75/M6 text 'the production log at <STAGE>/logs/symptom.log (this is a large, realistic production log - grep it for the symptom rather than reading it whole)'). HARNESS: context/ is read-only for agents and the tracked context/run_diagnosis.sh has not caught up with two current requirements, so private/run_diagnosis.prodlog.sh is a copy of it with EXACTLY two deltas and nothing else - (1) the \u00a75/M6 prompt text, (2) \u00a77's hardlink-not-copy staging of the GB-scale log (falls back to a copy across filesystems, which is what happens here since the stage is in /tmp). Every isolation/pinning property is byte-identical; the diff is two hunks. context/ and the image were NOT modified. All 5 runs completed first time, all 5 stderr files empty, answers 3.6-6.5 kB."
     },
     {
       "id": "M7",
       "status": "DONE",
       "outcome": "success",
       "success": true,
-      "started": "2026-08-12T21:00:00Z",
-      "finished": "2026-08-12T21:08:00Z",
+      "started": "2026-08-16T05:47:00Z",
+      "finished": "2026-08-16T05:55:00Z",
       "attempts": 1,
       "by": "agent-run-ea3110e6",
       "artifacts": [
@@ -143,21 +144,21 @@
         "diagnosis/run_4.grade.json",
         "diagnosis/run_5.grade.json"
       ],
-      "note": "0/5 PASS under the pre-registered two-site rule. The five runs are remarkably uniform: EVERY run nailed site A - the unguarded 'PositionInputStream input = itr.inputStream; long pos = input.getPosition();' at FileTxnLog.rollBack 380-381 - together with the exact branch condition that makes it null (no log.* file in the txnlog dir -> FileTxnIterator.init leaves storedFiles empty -> goToNextLog()'s 'if (storedFiles.size() > 0)' is false -> createInputArchive(), the only assignment of inputStream, is never called), and four of them stated the missing guard or the one-line fix explicitly. Runs 1, 3 and 5 additionally derived a correct SECOND route to the same null (fast-forward hitting EOF, where next() nulls inputStream and goToNextLog() then returns false) that the upstream patch's own null check also covers. NONE of the five named site B: not one mentions Observer.java:85, the 'catch (IOException e)' in Observer.observeLeader, or the fact that a NullPointerException is a RuntimeException the handler cannot match. All five instead credit the repetition to QuorumPeer.run's broad 'catch (Exception e)' (962-963) - a correct account of the repetition (the peer re-enters OBSERVING even with a widened handler) but not a line the fix changed. This is a direct consequence of the tightened M5 symptom: the discarded batch, whose symptom.md mentioned sockets piling up in CLOSE_WAIT, scored 5/5 with every run naming Observer.java:85; with the socket observable removed, nothing in the stated symptom motivates the exception-handling site and no run went looking for it. Recorded verdicts follow METHODOLOGY \u00a710 ('the fix touches multiple files/branches: ... a run must name all to PASS') and \u00a78 (no partial credit). Each grade JSON carries site_a/site_b fields so the alternative bar - root-causing line only - is auditable: that bar would score 5/5."
+      "note": "0/5 PASS under the pre-registered two-site rule. ALL FIVE runs found the crash site - the unguarded 'PositionInputStream input = itr.inputStream; long pos = input.getPosition();' at TxnJournal.java:380-381 - inside the 1.6 GB merged log, under class names they had never seen. THREE (runs 3, 4, 5) also gave the exact branch chain that makes the stream null (no log.* file in the txnlog dir -> init()'s for-loop adds nothing -> storedFiles empty -> goToNextLog()'s 'if (storedFiles.size() > 0)' false -> createInputArchive never called -> inputStream stays at its 522 default), and runs 3 and 4 recovered the TRIGGER from the merged log itself (the member restarted with dataLogDir pointed at a fresh volume while its snapshot dir was retained) - which symptom.md never states. TWO (runs 1, 2) picked the wrong route: the fast-forward/EOF path that nulls inputStream at line 681. Checked against the reproduction: the log has ZERO 'Opened journal segment for reading' and ZERO 'EOF excepton' lines, so createInputArchive never ran and the EOF path never executed. Run 2 justified its choice with 'myid=4 has a real log segment log.100000001 - see line 1788380 of symptom.log', which is a PRODUCTION line from a different host that shares the myid, 23 minutes and one host-section away from the incident - the first case in three batches of a run being actively misled by the merged noise rather than merely incomplete. NONE of the five named site B (ObserverPeer.observeLeader's 'catch (IOException e)' at line 85): 0 hits for 'catch (IOException' or 'ObserverPeer.java:85' across all five answers; all credited the repetition to EnsembleMember.run's broad catch(Exception) at 962-963 instead. That is now 0/15 across the two bare-observable batches, versus 5/5 in the batch whose symptom mentioned the CLOSE_WAIT growth. Verdicts follow \u00a710 (every site the fix touched) and \u00a78 (no partial credit). Each grade JSON carries site_a (HIT/PARTIAL) and site_b so the alternative bars are auditable."
     },
     {
       "id": "M8",
       "status": "DONE",
       "outcome": "success",
       "success": true,
-      "started": "2026-08-12T21:08:00Z",
-      "finished": "2026-08-12T21:15:00Z",
+      "started": "2026-08-16T05:55:00Z",
+      "finished": "2026-08-16T06:00:00Z",
       "attempts": 1,
       "by": "agent-run-ea3110e6",
       "artifacts": [
         "summary.md"
       ],
-      "note": "0/5 PASS under the two-site bar; 5/5 on the root-causing line alone. summary.md records the comparison that makes this re-run informative: the discarded batch's symptom.md still mentioned the CLOSE_WAIT socket growth and all five of those runs found Observer.java:85; with that single observable removed - source/ and logs/symptom.log byte-identical - no run looked at exception handling at all. The model's search is symptom-driven, not fix-driven: it explains exactly what it is asked to explain and does not audit surrounding code for related defects. summary.md also keeps the standing caveat that this is a fail-stop bug whose stack trace names the guilty frame 6058 times, so it is weak evidence for the CLODS argument either way, and states plainly that a two-site bar on a patch whose second site the symptom does not exhibit measures the symptom's coverage as much as the model's reasoning - both numbers are recorded so the operator can choose the bar."
+      "note": "0/5 PASS under the two-site bar; 5/5 named the root-causing line and 3/5 also gave its exact condition. summary.md records what the merged production log changed and what it did not: it cost the model nothing on the part of the task it does well (every run found the crash site by grepping 8.5M lines under unfamiliar class names, and runs 3-4 additionally recovered the trigger - the transaction-log directory repointed at a fresh volume while the snapshot dir was kept - which symptom.md never states), but it produced one clean failure mode: run 2 justified the wrong mechanism with a PRODUCTION line belonging to a different host that shares the myid, the first case of a run being actively misled by evidence rather than merely incomplete. It also records that site B has now been missed by 15/15 runs across the two bare-observable batches while the batch whose symptom mentioned CLOSE_WAIT found it 5/5, so a two-site bar on this bug measures symptom coverage as much as reasoning - both numbers are in state.json.result and in every grade JSON so either bar can be applied without a re-run. Standing caveat kept: fail-stop bug whose stack trace names the guilty frame."
     }
   ],
   "result": {
@@ -170,8 +171,10 @@
       "FAIL",
       "FAIL"
     ],
-    "site_a_only_successes": 5,
-    "note": "0/5 under the pre-registered two-site bar (both lines the fix changed). All 5 runs identified the root-causing line and its branch condition (site A); none identified the catch-widening site (Observer.java:85). Under a root-causing-line-only bar the score would be 5/5. The earlier 5/5 batch was produced against a cause-leaking symptom.md and is discarded."
+    "site_a_line_successes": 5,
+    "site_a_full_successes": 3,
+    "site_b_successes": 0,
+    "note": "0/5 under the pre-registered two-site bar (both lines the fix changed). All 5 runs named the root-causing line (TxnJournal.java:380-381 = FileTxnLog.truncate) inside the 1.6 GB merged production log; 3 of them also gave the exact branch condition, and 2 of those recovered the trigger from the log itself. None named the catch-widening site (ObserverPeer.java:85 = Observer.java:85). Runs 1 and 2 chose the fast-forward/EOF route, which the reproduction rules out (zero createInputArchive and zero EOF lines); run 2 justified it with a production-noise line belonging to a different host with the same myid. Earlier batches (5/5 with a cause-leaking symptom, 0/5 with the pre-rewrite M4 artifacts) are discarded."
   },
   "source_version": "trunk @ 2014-06-30 (3.5.0-dev)"
 }

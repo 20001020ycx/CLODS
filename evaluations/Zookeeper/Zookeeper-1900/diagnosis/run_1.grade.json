@@ -1,0 +1,25 @@
+{
+  "run": 1,
+  "verdict": "FAIL",
+  "justification": "Site A line: HIT \u2014 quotes TxnJournal.java:376-381 and pins the NPE to the unguarded 'PositionInputStream input = itr.inputStream; long pos = input.getPosition();'. Site A condition: PARTIAL \u2014 it asserts the wrong route for this incident, claiming init() 'opens the last log whose starting zxid < zxid, sets inputStream' and that the fast-forward loop then hits EOF and nulls the stream at line 681. Verified against the reproduction: the whole log contains ZERO 'Opened journal segment for reading' (createInputArchive) and ZERO 'EOF excepton' lines, so the actual route is the empty-log-directory one (Branch A), not the fast-forward/EOF one. It does name the invariant that matters (goToNextLog() returning false with storedFiles empty leaves inputStream null) but attributes the emptiness to init() draining the list rather than to an empty log directory, and never states the empty-dir condition. Site B is absent: the run never mentions ObserverPeer.java:85, the 'catch (IOException e)' in observeLeader, or the fact that a NullPointerException is a RuntimeException the handler cannot match (grep for 'catch (IOException' / 'ObserverPeer.java:85' over the answer: 0 hits). Every run instead credits the repetition to EnsembleMember.run's broad 'catch (Exception e)' at 962-963 \u2014 correct as far as it goes, but not a line the fix changed. Under the pre-registered rule (both sites required; METHODOLOGY \u00a710 requires every site the fix touched and \u00a78 forbids partial credit) this is a FAIL.",
+  "site_a": "PARTIAL",
+  "site_b": "MISS",
+  "claimed_lines": [
+    "TxnJournal.java:380-381 (unguarded itr.inputStream / input.getPosition())",
+    "TxnJournal.java:537-548 (fast-forward ctor), 601-608 (goToNextLog), 678-688 (EOF handler)",
+    "PeerSynchronizer.java:344-354, ZKStateStore.java:500-512, JournalSnapStore.java:311-328 (credit-neutral chain)",
+    "EnsembleMember.run:961-963 (repetition); PeerSynchronizer.java:349-353 (the System.exit(13) path the NPE bypasses)"
+  ],
+  "claimed_branches": [
+    "fast-forward drains the log, next() hits EOFException, inputStream nulled at 681, goToNextLog() false at 686 -> line 381 dereferences null (NOT the route this incident took)",
+    "storedFiles empty -> goToNextLog() returns false"
+  ],
+  "gt_lines": [
+    "real FileTxnLog.java:380-381 (method truncate) = anonymized TxnJournal.java:380-381 (method rollBack): 'PositionInputStream input = itr.inputStream; long pos = input.getPosition();' dereferenced with no null guard (the upstream fix inserts 'if (input == null) throw new IOException(...)')",
+    "real Observer.java:85 = anonymized ObserverPeer.java:85: the inner 'catch (IOException e)' of observeLeader() (the upstream fix widens it to 'catch (Exception e)')"
+  ],
+  "gt_branches": [
+    "itr.inputStream == null: FileTxnIterator/TxnJournalIterator.init() (566-582) finds no log.* file in the configured txnlog dir, so storedFiles stays empty; goToNextLog() (601-608) takes 'if (storedFiles.size() > 0)' as false and returns without calling createInputArchive() (633-639), the only assignment of inputStream (declared null at 522)",
+    "the thrown NullPointerException is a RuntimeException, not an IOException, so the catch at ObserverPeer.java:85 does not apply and the exception leaves observeLeader() unhandled (sock.close() at 88 never runs), surfacing at EnsembleMember.run"
+  ]
+}

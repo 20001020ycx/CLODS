@@ -1,0 +1,26 @@
+{
+  "run": 2,
+  "verdict": "FAIL",
+  "justification": "Site A line: HIT \u2014 'a missing null-check on TxnJournalIterator.inputStream' at TxnJournal.java:380-381. Site A condition: PARTIAL \u2014 it picks the EOF/fast-forward route as 'the one consistent with the log', citing 'myid=4 has a real log segment log.100000001 \u2014 see line 1788380 of symptom.log'. That line is PRODUCTION noise: a different host's myid:4 at 18:46:01 in the production stream, not the failing member. Verified against the reproduction: the whole log contains ZERO 'Opened journal segment for reading' (createInputArchive) and ZERO 'EOF excepton' lines, so the actual route is the empty-log-directory one (Branch A), not the fast-forward/EOF one. It does add the correct route as a parenthetical ('The second, symmetric branch \u2014 an empty storedFiles after init's for-loop ... reaches the same state'), and correctly identifies goToNextLog()'s false branch as what prevents repopulation. Site B is absent: the run never mentions ObserverPeer.java:85, the 'catch (IOException e)' in observeLeader, or the fact that a NullPointerException is a RuntimeException the handler cannot match (grep for 'catch (IOException' / 'ObserverPeer.java:85' over the answer: 0 hits). Every run instead credits the repetition to EnsembleMember.run's broad 'catch (Exception e)' at 962-963 \u2014 correct as far as it goes, but not a line the fix changed. Under the pre-registered rule (both sites required; METHODOLOGY \u00a710 requires every site the fix touched and \u00a78 forbids partial credit) this is a FAIL.",
+  "site_a": "PARTIAL",
+  "site_b": "MISS",
+  "claimed_lines": [
+    "TxnJournal.java:380-381 (no null check)",
+    "TxnJournal.java:522, 543-548, 566-582, 601-608, 633-642, 657-660, 678-687",
+    "PeerSynchronizer.java:344-348, ZKStateStore.java:504, JournalSnapStore.java:317 (credit-neutral chain)",
+    "EnsembleMember.run:961/963 (repetition)"
+  ],
+  "claimed_branches": [
+    "EOF during fast-forward nulls inputStream (681) and goToNextLog() then returns false at 602 (claimed as the actual route, on production-noise evidence)",
+    "alternative named: storedFiles empty after init()'s for-loop, same end state",
+    "fix: gate the work on itr.inputStream != null and treat the empty case as a no-op returning true"
+  ],
+  "gt_lines": [
+    "real FileTxnLog.java:380-381 (method truncate) = anonymized TxnJournal.java:380-381 (method rollBack): 'PositionInputStream input = itr.inputStream; long pos = input.getPosition();' dereferenced with no null guard (the upstream fix inserts 'if (input == null) throw new IOException(...)')",
+    "real Observer.java:85 = anonymized ObserverPeer.java:85: the inner 'catch (IOException e)' of observeLeader() (the upstream fix widens it to 'catch (Exception e)')"
+  ],
+  "gt_branches": [
+    "itr.inputStream == null: FileTxnIterator/TxnJournalIterator.init() (566-582) finds no log.* file in the configured txnlog dir, so storedFiles stays empty; goToNextLog() (601-608) takes 'if (storedFiles.size() > 0)' as false and returns without calling createInputArchive() (633-639), the only assignment of inputStream (declared null at 522)",
+    "the thrown NullPointerException is a RuntimeException, not an IOException, so the catch at ObserverPeer.java:85 does not apply and the exception leaves observeLeader() unhandled (sock.close() at 88 never runs), surfacing at EnsembleMember.run"
+  ]
+}

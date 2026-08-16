@@ -122,12 +122,12 @@
     },
     {
       "id": "M7",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": "2026-08-11T21:02:07Z",
-      "finished": null,
-      "attempts": 1,
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-16T05:21:30Z",
+      "finished": "2026-08-16T05:22:14Z",
+      "attempts": 2,
       "by": "agent-run-57ce8ccf",
       "artifacts": [
         "diagnosis/run_1.grade.json",
@@ -136,7 +136,7 @@
         "diagnosis/run_4.grade.json",
         "diagnosis/run_5.grade.json"
       ],
-      "note": "[SUPERSEDED 2026-08-16 by the METHODOLOGY.md revision \u2014 re-running] 5/5 PASS. Every run named the root-causing pair in the meta branch of processZKCmd (stat = zk.exists(path, watch) at 726 passed unchecked to printNodeMeta at 727 - the exact place the fix inserts its guard), the NPE site at printNodeMeta:132, AND the two required branch conditions: the dispatch branch cmd.equals('meta') && args.length>=2, and the absent 'stat == null' guard justified by exists() returning null instead of throwing NoNodeException. Runs 2-5 additionally quoted the real log evidence (replyHeader -101 NONODE) and/or identified processCmd's catch chain as the reason the NPE is fatal; run 1's unwind explanation misattributes the catch chain to the jline reflection handlers, which is explanatory context only and does not affect its verdict under the ground-truth PASS rule."
+      "note": "5/5 PASS on the v2 inputs. Answers were translated back to real names via private/anonymization_map.json per METHODOLOGY \u00a78 (CliShellMain->ZooKeeperMain, meta->stat, printNodeMeta->printStat) and matched by code identity. Every run: (L) named the unguarded pair at 726/727 in the meta/stat branch of processZKCmd - the exact place the fix inserts its guard - plus the crash line 132; (B) named the dispatch branch cmd.equals(meta) && args.length>=2 AND the absent 'stat == null' check, justified by exists() returning null instead of throwing NoNodeException. Notably all five ALSO recovered the trigger unaided (log line 9546 'meta /app/workers/w4242' + the -101 NoNode reply at 9548), which symptom.md v2 deliberately withholds; four contrasted the sibling branches whose APIs throw NoNodeException. No run referenced a known ticket or upstream fix."
     },
     {
       "id": "M8",

@@ -1,0 +1,28 @@
+{
+  "run": 4,
+  "verdict": "PASS",
+  "inputs_version": "v2 (2026-08-16): failure-path file/type + log literals anonymized; symptom.md = pasted stack trace only",
+  "justification": "Most thorough: trigger from log line 9546 with the -101 reply at 9548, the controlling branch quoted, the exists() null-return contract, and condition 3 stated as 'The branch has no `if (stat != null)` guard and no surrounding try/catch (NoNodeException)' -- contrasting the listquota branch that does have one. Names the NPE site at 132 and the unwind through the declared-throws frames. Fix proposal is the real fix's shape.",
+  "claimed_lines": [
+    "CliShellMain.java:724-727 (meta branch: stat = zk.exists(path, watch); printNodeMeta(stat)) -> real ZooKeeperMain.java stat branch",
+    "CliShellMain.java:131-132 (printNodeMeta first dereference stat.getCzxid()) -> real printStat",
+    "CliShellMain.java:743-745 listquota's NoNodeException catch, cited as the contrasting guarded branch"
+  ],
+  "claimed_branches": [
+    "cmd.equals(\"meta\") && args.length >= 2 -> branch at 724",
+    "the path argument does not exist -> zk.exists returns null at 726 (server rc -101, log line 9548)",
+    "no `if (stat != null)` guard and no surrounding try/catch NoNodeException -> printNodeMeta(null) at 727",
+    "printNodeMeta has no null check -> NPE at 132; no frame catches RuntimeException -> exit 1"
+  ],
+  "gt_lines": [
+    "anon CliShellMain.java:726 = real ZooKeeperMain.java:726  stat = zk.exists(path, watch)  (meta/stat branch of processZKCmd)",
+    "anon CliShellMain.java:727 = real ZooKeeperMain.java:727  printNodeMeta(stat) = printStat(stat)  -- null passed unchecked; the fix inserts its guard here",
+    "anon CliShellMain.java:132 = real ZooKeeperMain.java:132  printNodeMeta/printStat first dereference stat.getCzxid()  (NPE site)"
+  ],
+  "gt_branches": [
+    "cmd.equals(\"meta\") [real: cmd.equals(\"stat\")] && args.length >= 2  (line 724) -- the only branch that sources its Stat from ZooKeeper.exists()",
+    "the ABSENT `stat == null` guard between 726 and 727: ZooKeeper.exists() returns null (converting the server's NONODE/-101) instead of throwing NoNodeException, so the failure path is cmd==meta AND zk.exists(path,watch)==null"
+  ],
+  "anonymization_map_used": "private/anonymization_map.json: CliShellMain(.java) -> ZooKeeperMain(.java); meta -> stat; printNodeMeta -> printStat; \"createTxnId = 0x\" -> \"cZxid = 0x\"; \"No such node: \" -> \"Node does not exist: \"",
+  "recovered_trigger_unaided": true
+}

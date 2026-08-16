@@ -1,0 +1,11 @@
+{
+  "Processing request:: ": "Handling submission:: ",
+  "Committing request:: ": "Applying agreed submission:: ",
+  "Exception thrown by downstream processor,": "Downstream stage failed;",
+  " unable to continue.": " cannot continue.",
+  "Configuring CommitProcessor with ": "Configuring request staging with ",
+  "Unexpected exception causing CommitProcessor to exit": "Fatal error in request staging",
+  " exited loop!": " loop terminated",
+  "CommitProcWork": "StageWork",
+  "Client session timed out, have not heard from server in ": "Session inactive - no server traffic for "
+}

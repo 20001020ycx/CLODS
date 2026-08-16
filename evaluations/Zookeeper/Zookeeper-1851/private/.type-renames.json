@@ -1,0 +1,14 @@
+{
+  "FollowerRequestProcessor": "FollowerIngressProcessor",
+  "ObserverRequestProcessor": "ObserverIngressProcessor",
+  "CommitProcessor": "StagedRequestProcessor",
+  "FinalRequestProcessor": "TerminalRequestProcessor",
+  "ZKDatabase": "ZKStateStore",
+  "WorkerService": "TaskExecutorPool",
+  "TraceFormatter": "OpNameFormatter",
+  "commitProcessor": "stagedRequestProcessor",
+  "CommitWorkRequest": "StageWorkRequest",
+  "commitWorkRequest": "stageWorkRequest",
+  "zkDatabase": "zkStateStore",
+  "zkdatabase": "zkstatestore"
+}

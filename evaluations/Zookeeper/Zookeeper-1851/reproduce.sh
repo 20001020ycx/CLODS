@@ -218,7 +218,8 @@ grep -q '^create_with_stat=EXCEPTION' "$RES_FAIL" \
     || { echo "[reproduce] ASSERT FAIL: create-with-stat completed normally"; FAILED=1; }
 grep -q 'Node does not exist: /app/svc4/item-9137' "$RUN/client_check.log" \
     || { echo "[reproduce] ASSERT FAIL: the node was created after all"; FAILED=1; }
-grep -q 'unable to continue' "$RUN/server_$f1_idx.log" \
+# M4 rewrites failure-path log literals, so accept the original wording or the anonymized one
+grep -qE 'unable to continue|cannot continue' "$RUN/server_$f1_idx.log" \
     || { echo "[reproduce] ASSERT FAIL: follower's request pipeline did not report a fatal downstream error"; FAILED=1; }
 grep -q '^collateral_failed\|^collateral_ok' "$RUN/result_c2.txt" \
     || { echo "[reproduce] ASSERT FAIL: collateral client produced no result"; FAILED=1; }

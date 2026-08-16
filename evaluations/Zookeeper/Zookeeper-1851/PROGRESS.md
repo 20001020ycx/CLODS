@@ -21,7 +21,7 @@ milestone carries `status` + `success` + `outcome`.
 | M1 | From JIRA: fix commit + pre-fix commit | DONE | true | success |
 | M2 | Check out pre-fix, build from source, fix deps | DONE | true | success |
 | M3 | Reproduce the failure + merge into production log | DONE | true | success |
-| M4 | Anonymize, rebuild, re-confirm reproduction | DONE | true | success |
+| M4 | Anonymize failure path (file/type + log literals), rebuild, re-reproduce, re-merge | DONE | true | success |
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true | success |
 | M6 | Run LLM diagnosis x5 (network locked) | DONE | true | success |
 | M7 | Grade each run vs ground truth | DONE | true | success |
@@ -110,3 +110,4 @@ and rewrites **failure-path log statements**, with both logs regenerated from th
 source.
 
 - 2026-08-16T04:05Z M3 REDONE success=true — neutral repro naming (`/app/svcN/item-9137`, `c1..c4`, production-style collection headers) because the old `/app/failing/with-stat` named the failing session and the at-fault operation. Log A `private/symptom.orig.log` (19 049 lines); Log B `private/merged.orig.log` (8 068 887 lines, 1.5 GB) via `private/merge_logs.py`. Merge deviation (per-host-bundle production log ⇒ position interleaving) documented in `reproduce.md`.
+- 2026-08-16T04:25Z M4 REDONE success=true — failure-path **file/type renames** (`FollowerRequestProcessor`→`FollowerIngressProcessor`, `CommitProcessor`→`StagedRequestProcessor`, `FinalRequestProcessor`→`TerminalRequestProcessor`, `ZKDatabase`→`ZKStateStore`, `WorkerService`→`TaskExecutorPool`, `ObserverRequestProcessor`→`ObserverIngressProcessor`, `TraceFormatter`→`OpNameFormatter`) and **log-statement rewrites** (`Processing request:: `→`Handling submission:: `, `… unable to continue.`→`Downstream stage failed; cannot continue.`, `Client session timed out, have not heard from server in `→`Session inactive - no server traffic for `, …). Tree rebuilt and re-reproduced; `logs/repro.log` (18 991 lines) and the merged `logs/symptom.log` (8 072 681 lines, 1.5 GB) regenerated from it. The same map is applied to the production stream of the merged log — the real production noise mentions `CommitProcessor` 5.5 M times. All leakage checks zero.

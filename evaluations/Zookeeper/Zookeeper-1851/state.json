@@ -77,17 +77,18 @@
       "status": "DONE",
       "outcome": "success",
       "success": true,
-      "started": "2026-08-12T01:37:26Z",
-      "finished": "2026-08-12T01:45:00Z",
-      "attempts": 1,
+      "started": "2026-08-16T04:03:30Z",
+      "finished": "2026-08-16T04:26:39Z",
+      "attempts": 2,
       "by": "agent-run-e47cfc21",
       "artifacts": [
         "source/ (gitignored; regen via private/anonymize.sh)",
-        "logs/symptom.log (gitignored; regen via private/anonymize.sh)",
+        "logs/repro.log (Log A, gitignored)",
+        "logs/symptom.log (Log B, LLM-facing, gitignored)",
         "private/anonymize.sh",
         "private/anonymization_map.json"
       ],
-      "note": "Minimal, case-targeted anonymization. Renamed exactly one distinctive term and its CamelCase forms: create2 -> createExt, Create2 -> CreateExt (covering Create2Request/Create2Response - which the Jute compiler generates from src/zookeeper.jute at build time, not tracked files - plus Create2Callback, Create2CB and the test method names). That is the token the JIRA title string-matches on. Everything else stays real: packages, all other class names, leader/follower/observer/quorum/znode/zxid terminology, every log message, version 3.5.0-SNAPSHOT. The ticket quotes no log or stack trace, so no JIRA-quoted-text redaction applies. The renamed tree was REBUILT ('ant jar', BUILD SUCCESSFUL) at the NEUTRAL path repos/zookeeper-quorum-src (the JVM prints user.dir + the classpath into the log, so the earlier zk-anon-Zookeeper-1851 path leaked the ticket number and was discarded) and reproduce.sh was re-run against it, so logs/symptom.log (19014 lines, 15618 DEBUG) is the genuine output of the renamed binaries, not a rewritten log; the failure still reproduces identically (create-with-stat ConnectionLoss after 6772ms, follower's CommitProcessor halted, node absent, collateral client 20 ok then 5 ConnectionLoss). Reproduction ports also moved 2185x -> 2455x so that no bare '1851' substring can occur in the log. source/ = the full renamed pre-fix Java tree (297 files: src/java/main + src/java/generated), not a hand-curated subset, so no file-selection hint is given to the LLM. Verified on the host: 0 hits for ZOOKEEPER-1851, 1851, create2/Create2/CREATE2 across source/ + logs/symptom.log."
+      "note": "REDONE under the paper-revision M4: on top of the create2->createExt term rename, the failure path's FILE/TYPE names are renamed and its LOG PRINTING STATEMENTS rewritten, and BOTH logs are regenerated from the anonymized build. Type renames (file + public type + every reference, so log tags and stack frames follow): FollowerRequestProcessor->FollowerIngressProcessor, ObserverRequestProcessor->ObserverIngressProcessor, CommitProcessor->StagedRequestProcessor (+ inner CommitWorkRequest->StageWorkRequest and the 20 lower-case field spellings), FinalRequestProcessor->TerminalRequestProcessor, ZKDatabase->ZKStateStore (+ zkDatabase/zkdatabase spellings incl. 9 javadoc occurrences), WorkerService->TaskExecutorPool, TraceFormatter->OpNameFormatter. Log-statement rewrites: 'Processing request:: '->'Handling submission:: ', 'Committing request:: '->'Applying agreed submission:: ', 'Exception thrown by downstream processor, unable to continue.'->'Downstream stage failed; cannot continue.', ' exited loop!'->' loop terminated' (tree-wide, so the failure-path lines do not become the only differently-worded ones), 'CommitProcWork'->'StageWork' (thread tags), 'Client session timed out, have not heard from server in '->'Session inactive - no server traffic for ' (the client-visible observable), plus two CommitProcessor-embedding literals. The anonymized tree REBUILT (ant jar) and re-reproduced: the failure is identical (plain create OK, create-with-Stat ConnectionLoss, node absent, pipeline halted, collateral client fails). logs/repro.log = 18991 lines (Log A); logs/symptom.log = 8072681 lines / 1.5GB (Log B) = Log A merged into the shared production log with the SAME map applied to the production stream - necessary because the real production noise mentions CommitProcessor 5.5M times, FinalRequestProcessor 2.6M and FollowerRequestProcessor 350k, which would otherwise re-expose every renamed name and leave the reproduction as the only differently-worded lines. The shared production log is read-only and untouched. Verification (case-insensitive, over source/ + both logs incl. the whole 1.5GB): bug id, create2, the seven original type names and the original log literals all ZERO hits. Findability in the merged log: 'Session inactive' 10 hits, 'NullPointerException' 1, 'Downstream stage failed' 1."
     },
     {
       "id": "M5",

@@ -1,23 +1,24 @@
 {
   "verdict": "FAIL",
   "claimed_lines": [
-    "CommitProcessor.java:131-148 - needCommit() missing `case OpCode.createExt`, returns false via default",
-    "CommitProcessor.java:169-177 else branch; Request.java:170; FinalRequestProcessor.java:126-128; ZKDatabase.java:251; CommitProcessor.java:284-290/346-353"
+    "StagedRequestProcessor.java:131-148 - needCommit() missing `case OpCode.createExt`, returns false via default",
+    "StagedRequestProcessor.java:169-177 else-arm; Request.java:170; TerminalRequestProcessor.java:126-128; ZKStateStore.java:251; TaskExecutorPool.java:154-166; StagedRequestProcessor.java:283-290/346-353"
   ],
   "claimed_branches": [
-    "needCommit() returns false -> run()'s else arm calls sendToNextProcessor(request), scheduling FinalRequestProcessor 'before the leader's Leader.COMMIT packet has installed the TxnHeader'",
-    "isQuorum()==true -> addCommittedProposal -> null-hdr NPE -> cleanup() -> halt()"
+    "needCommit(createExt)==false -> the else arm calls sendToNextProcessor, so the request reaches TerminalRequestProcessor with hdr==null and zxid 0xfffffffffffffffe",
+    "isQuorum()==true -> addCommittedProposal -> null-hdr NPE -> cleanup() -> halt() -> every later request dropped -> client read-timeout -> ConnectionLoss"
   ],
-  "justification": "Misses the FollowerRequestProcessor site. The file is mentioned exactly once, in step 7, and only as the component that keeps enqueuing requests into the halted CommitProcessor - never as a defect, and its forward-to-leader switch and the missing `case OpCode.createExt:` are never identified. The stated fix is a single edit: 'Add case OpCode.createExt: ... in CommitProcessor.needCommit()'. The omission also produces a wrong causal account: the answer explains the null header as a timing problem ('before the leader's Leader.COMMIT packet has installed the TxnHeader', 'it never waited for the leader COMMIT'), which presumes the request reached the leader at all. It never did - that is the other half of the defect, and it is why the znode is created nowhere in the ensemble. Its one-line fix would not repair the failure: with needCommit() corrected but the forwarding case still absent, the request is parked in nextPending awaiting a commit that can never arrive, and the member goes dark by stalling instead of by NPE. No partial credit -> FAIL. (Its opening line also misidentifies createExt as the TTL/container-node create; that guess is not part of the verdict.)",
+  "justification": "Names required site 2 with its exact branch condition and reconstructs the whole downstream chain correctly from the merged log, but misses required site 1. FollowerIngressProcessor appears exactly once, as the log tag on the ingress line, never as a defect; its forward-to-leader switch and the missing `case OpCode.createExt:` there are never identified. The prescribed fix is the single edit to needCommit(), which would leave the member broken: with forwarding still absent the request would park in nextPending awaiting a commit that can never arrive, so the member goes dark by stalling instead of by NPE. No partial credit -> FAIL.",
   "gt_lines": [
-    "FollowerRequestProcessor.java:79-92 - run()'s forward-to-leader switch (missing `case OpCode.createExt:` at line 84, so `zks.getFollower().request(request)` at line 91 is never reached)",
-    "CommitProcessor.java:131-147 - needCommit() (missing `case OpCode.createExt:` at line 133, so it returns false via `default:` at 145-146)"
+    "FollowerIngressProcessor.java:79-92 (real: FollowerRequestProcessor) - run()'s forward-to-leader switch, missing `case OpCode.createExt:` at line 84, so zks.getFollower().request(request) at line 91 is never reached",
+    "StagedRequestProcessor.java:131-147 (real: CommitProcessor) - needCommit(), missing `case OpCode.createExt:` at line 133, so it returns false via `default:`"
   ],
   "gt_branches": [
-    "`switch (request.type)` in FollowerRequestProcessor.run(): OpCode.createExt matches no case and there is no `default:` arm -> the write is never forwarded to the leader (znode created nowhere)",
-    "`needCommit(request)` returns false for OpCode.createExt -> in CommitProcessor.run() the guard `if (needCommit(request)) nextPending.set(request); else sendToNextProcessor(request);` takes the ELSE arm -> the write is handed to FinalRequestProcessor as a read with request.getHdr()==null"
+    "switch (request.type) in FollowerIngressProcessor.run(): OpCode.createExt matches no case and there is no default: arm -> the write is never forwarded to the leader, so no proposal/commit can ever return (and the znode is created nowhere)",
+    "needCommit(request) returns false for OpCode.createExt -> run()'s guard `if (needCommit(request)) nextPending.set(request); else sendToNextProcessor(request);` takes the ELSE arm -> the write reaches TerminalRequestProcessor with request.getHdr()==null"
   ],
-  "run": "run_2.md",
   "graded_against": "private/ground_truth.md",
-  "symptom_spec": "M5 v2 (bare observable + log pointer only)"
+  "symptom_spec": "M5 v2 (bare observable + merged-log pointer)",
+  "log_setting": "M3/M4 v2 (LLM given the 1.5 GB merged production log, 8.07M lines)",
+  "run": "run_2.md"
 }

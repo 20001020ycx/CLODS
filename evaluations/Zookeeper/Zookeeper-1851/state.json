@@ -111,9 +111,9 @@
       "status": "DONE",
       "outcome": "success",
       "success": true,
-      "started": "2026-08-12T20:21:33Z",
-      "finished": "2026-08-12T20:37:31Z",
-      "attempts": 2,
+      "started": "2026-08-16T04:28:21Z",
+      "finished": "2026-08-16T05:49:26Z",
+      "attempts": 3,
       "by": "agent-run-e47cfc21",
       "artifacts": [
         "diagnosis/run_1.md",
@@ -122,7 +122,7 @@
         "diagnosis/run_4.md",
         "diagnosis/run_5.md"
       ],
-      "note": "RE-RUN against the rewritten (bare-observable) symptom.md. 5 independent single-turn diagnoses, model claude-opus-4-7 effort high, egress iptables-locked to api.anthropic.com:443 (--add-host pins the IP), Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, --safe-mode --no-session-persistence --exclude-dynamic-system-prompt-sections, no follow-up prompts, throwaway staging dir /tmp/clods-diag-Fp3J holding ONLY source/ + logs/symptom.log + symptom.md. As before, the clods-eval image's baked-in /opt/clods/run_diagnosis.sh is stale, so the tracked context/run_diagnosis.sh was mounted read-only and executed instead (context/ and the image unmodified). This batch ran clean: all 5 runs completed on the first attempt, every stderr empty, no auth interruption. The prompt now embeds only the two-sentence observable + the pasted client-side timeout line, so each run had to locate the failing operation in the log by itself."
+      "note": "5 single-turn diagnoses against the MERGED production log (1.5GB / 8,072,681 lines), model claude-opus-4-7 effort high, network iptables-locked to api.anthropic.com, tools restricted, throwaway staging holding only source/ + logs/symptom.log + symptom.md (never logs/repro.log, never private/). Ran private/run_diagnosis.prodlog.sh - a copy of the tracked context/run_diagnosis.sh differing by exactly one line (verified by diff): the M6 prompt updated to the production-log wording METHODOLOGY \u00a75/M6 now specifies ('the production log at ... - grep it for the symptom rather than reading it whole'), which the tracked script has not yet adopted. Runtime rose from ~4 min/run on the 19k-line log to 13-27 min/run on the 1.5GB log. Two false starts before the accepted batch, both auth-only, no partial answers kept: (1) the scratch config dir was root-owned from an earlier container so the credential copy silently failed -> all 5 'Not logged in'; (2) the copied OAuth token expired 45s after the copy -> all 5 '401 expired'. Fixed by removing the dir via a container, re-copying, and asserting the token has >60 min left before launching. Accepted batch: all 5 completed, every stderr empty."
     },
     {
       "id": "M7",
@@ -130,7 +130,7 @@
       "outcome": "success",
       "success": true,
       "started": null,
-      "finished": "2026-08-12T20:37:31Z",
+      "finished": "2026-08-16T05:49:26Z",
       "attempts": 0,
       "by": "agent-run-e47cfc21",
       "artifacts": [
@@ -140,7 +140,7 @@
         "diagnosis/run_4.grade.json",
         "diagnosis/run_5.grade.json"
       ],
-      "note": "4/5 PASS under the stricter symptom. Runs 1, 3, 4 and 5 each named BOTH required root-causing sites with their exact branch conditions - the missing 'case OpCode.createExt:' in FollowerRequestProcessor.run's forward-to-leader switch (createExt matches no label, so zks.getFollower().request() never runs and no proposal/commit can return) AND its absence from CommitProcessor.needCommit (default: return false, so run()'s 'if (needCommit(request)) nextPending.set(...) else sendToNextProcessor(...)' takes the else arm and delivers a hdr==null request to FinalRequestProcessor) - and all four prescribed the fix at both lines. Each had to find the createExt request unaided: symptom.md no longer names the operation, so every run located it in the log via the 'zxid:0xfffffffffffffffe / txntype:unknown' fingerprint and the absent 'Committing request' line. Run 2 FAILED: it names only CommitProcessor.needCommit, mentions FollowerRequestProcessor exactly once and only as the component still enqueuing into the halted processor, never identifies the forwarding switch or its missing case, and prescribes a single-line fix. Its causal account is also wrong - it explains the null header as a timing race ('before the leader's Leader.COMMIT packet has installed the TxnHeader'), which presumes the request reached the leader; it never did. That fix would leave the member dark, stalling in nextPending instead of crashing. No partial credit -> FAIL."
+      "note": "0/5 PASS - down from 4/5 on the standalone reproduction log with the identical ground truth and grading rule. Two failure modes. (i) Runs 2, 4, 5 found the real chain in the 8M-line log - the createExt request with the unset-zxid sentinel, the NPE at ZKStateStore:251, cleanup()->halt(), dropped pings, client read timeout - and named required site 2 (needCommit's missing case) with its exact branch condition, but none of them named required site 1: FollowerIngressProcessor is mentioned once as a log tag in run 2 and zero times in runs 4 and 5. Establishing site 1 means proving a negative (no proposal/commit for cxid 0x4 ever appears) across 8M lines interleaved with ten unrelated ZooKeeper hosts emitting exactly those lines; in the standalone log the same inference was adjacent-line-visible. All three prescribed the one-line needCommit fix, which would leave the member dark by stalling instead of crashing. (ii) Runs 1 and 3 never found the NullPointerException at all (1 occurrence in 8,072,681 lines) and reconstructed a fictitious stall-behind-pending-commit mechanism; run 1 explicitly asserts the request WAS forwarded to the leader, the opposite of site 1. Their reasoning leans on multi-minute silences that are a MERGE ARTIFACT: the specified retiming warps the 64-second reproduction onto the 44-minute production span (x42), so the log's timestamps contradict its own '6666ms' message text. The 0/5 headline does not depend on that artifact - runs 2, 4, 5 failed for an unrelated reason - but the 'invented a stall' half is confounded and should be re-measured with private/merge_logs.py --span-mode natural (shift instead of scale)."
     },
     {
       "id": "M8",
@@ -148,38 +148,52 @@
       "outcome": "success",
       "success": true,
       "started": null,
-      "finished": "2026-08-12T20:38:31Z",
+      "finished": "2026-08-16T05:49:26Z",
       "attempts": 0,
       "by": "agent-run-e47cfc21",
       "artifacts": [
         "summary.md"
       ],
-      "note": "4/5 PASS under the updated M5 symptom specification (unchanged headline score from the superseded narrative-symptom run, but a different failing run: run 2 here, run 3 before). Runs 1, 3, 4, 5 named both required sites with their branch conditions and prescribed the upstream fix at both lines, having first had to locate the failing operation themselves - symptom.md now gives only a ConnectionLoss timeout line, so each run worked backwards from the client timeout to the one request carrying the unset-zxid sentinel with no preceding 'Committing request' line. Run 2 stopped at the first switch that explains the NPE (needCommit), never identified the forwarding switch, and invented a timing race with a leader COMMIT that could never arrive; its one-line fix would convert the crash into a hang. summary.md records both caveats: the DEBUG log prints request type + zxid at every processor hop (a well-signposted search), and the rename removes ticket recognition but not the model's general familiarity with the ZooKeeper wire protocol (run 3 glossed createExt as 'create2, OpCode = 15'; run 2 guessed wrongly that it was the TTL/container create)."
+      "note": "0/5 PASS under the production-log setting; summary.md records the three-way comparison (4/5 narrative+standalone, 4/5 bare-observable+standalone, 0/5 bare-observable+merged-production), both failure modes, and four caveats: the position-interleaving deviation (the production log is a 10-section per-host bundle, not a timeline), the x42 time-dilation artifact and the --span-mode natural remedy, the need to rewrite the production stream's class names (5.5M CommitProcessor mentions), and the version skew between production sections and source/."
     }
   ],
   "result": {
-    "successes": 4,
+    "successes": 0,
     "total": 5,
     "per_run": [
-      "PASS",
       "FAIL",
-      "PASS",
-      "PASS",
-      "PASS"
+      "FAIL",
+      "FAIL",
+      "FAIL",
+      "FAIL"
     ],
-    "symptom_spec": "M5 v2 (bare observable + log pointer)",
-    "superseded_result": {
-      "successes": 4,
-      "total": 5,
-      "per_run": [
-        "PASS",
-        "PASS",
-        "FAIL",
-        "PASS",
-        "PASS"
-      ],
-      "symptom_spec": "M5 v1 (narrative symptom; invalidated by the updated specification)"
-    }
+    "setting": "M3/M4 v2 - LLM given the 1.5GB merged production log (8,072,681 lines); M5 v2 bare-observable symptom; M4 file/type + log-literal anonymization",
+    "superseded_results": [
+      {
+        "successes": 4,
+        "total": 5,
+        "per_run": [
+          "PASS",
+          "FAIL",
+          "PASS",
+          "PASS",
+          "PASS"
+        ],
+        "setting": "M5 v2 bare-observable symptom, standalone 19k-line reproduction log"
+      },
+      {
+        "successes": 4,
+        "total": 5,
+        "per_run": [
+          "PASS",
+          "PASS",
+          "FAIL",
+          "PASS",
+          "PASS"
+        ],
+        "setting": "M5 v1 narrative symptom, standalone 19k-line reproduction log"
+      }
+    ]
   },
   "source_version": "trunk @ 2014-07 (3.5.0-dev)"
 }

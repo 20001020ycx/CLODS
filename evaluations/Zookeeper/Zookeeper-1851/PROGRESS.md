@@ -121,3 +121,6 @@ still carries the older "*symptom logs located at …*" wording. `context/` is r
 agent, so this bug runs `private/run_diagnosis.prodlog.sh` — a copy whose **only** difference
 (verified by `diff`: exactly one line) is that prompt. Operator: please fold the new prompt
 into `context/run_diagnosis.sh`.
+- 2026-08-16T05:50Z M6 DONE success=true — 5 diagnoses against the 1.5 GB merged production log (13–27 min each). Two auth-only false starts discarded; accepted batch clean.
+- 2026-08-16T05:52Z M7 DONE success=true — **0/5 PASS**. Runs 2/4/5 found the real chain but named only `needCommit()`; runs 1/3 never found the NPE and invented a stall mechanism.
+- 2026-08-16T05:54Z M8 DONE success=true — `summary.md`; `state.json.result` = 0/5, with both standalone-log results kept under `result.superseded_results`.

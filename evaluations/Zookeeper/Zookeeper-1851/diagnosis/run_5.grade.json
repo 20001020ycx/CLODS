@@ -1,24 +1,24 @@
 {
-  "verdict": "PASS",
+  "verdict": "FAIL",
   "claimed_lines": [
-    "FollowerRequestProcessor.java:79-100 - forwarding switch has no `case OpCode.createExt`, so `zks.getFollower().request(request)` is never called",
-    "CommitProcessor.java:131-147 - needCommit() has no case for createExt, falls to `default: return false`",
-    "(consequence) Request.java:170, FinalRequestProcessor.java:126-128, ZKDatabase.java:251, CommitProcessor.java:284-290"
+    "StagedRequestProcessor.java:131-148 - needCommit() missing createExt -> default: return false",
+    "StagedRequestProcessor.java:169-177 else-arm (line 175) -> 267 sendToNextProcessor; Request.java:161-185; TerminalRequestProcessor.java:126-128; ZKStateStore.java:251; TaskExecutorPool.java:161-165; StagedRequestProcessor.java:284-290/346-353/333-343; ClientCnxn.java:1150-1161"
   ],
   "claimed_branches": [
-    "no switch label matches createExt in the forwarding switch, so the request never becomes a leader proposal, although line 72 has already enqueued it into the local CommitProcessor",
-    "needCommit() falls through to default: return false -> the loop skips nextPending.set(request) and takes sendToNextProcessor(request) at line 175, so hdr/txn/zxid are never populated"
+    "needCommit(createExt)==false -> sendToNextProcessor at line 175, so the write reaches TerminalRequestProcessor with hdr==null and zxid==-2",
+    "isQuorum()==true -> addCommittedProposal -> NPE -> cleanup()'s !stopped arm -> halt() -> processRequest's `if (stopped) return;` drops pings -> client's `to <= 0` branch -> ConnectionLoss"
   ],
-  "justification": "Names both required sites with their exact branch conditions and states the defect as a single sentence naming both omissions ('omitted from both ... needCommit() ... and ... FollowerRequestProcessor.run() forwarding switch'), contrasted against the three places that do list createExt (isValid, isQuorum, op2String). Correctly ties the client-visible ConnectionLoss back through the halted CommitProcessor to the pasted timeout line. Matches ground truth.",
+  "justification": "The most complete of the three needCommit answers: correct site 2 with its branch condition, the full downstream chain, and the observation that both fatal log messages occur exactly once in the whole 8.07M-line log and only on myid=1. Still misses required site 1 - FollowerIngressProcessor is mentioned zero times - and its stated defect ('Precise defect: OpCode.createExt is missing from needCommit()') plus one-line fix would leave the member dark by stalling. FAIL.",
   "gt_lines": [
-    "FollowerRequestProcessor.java:79-92 - run()'s forward-to-leader switch (missing `case OpCode.createExt:` at line 84, so `zks.getFollower().request(request)` at line 91 is never reached)",
-    "CommitProcessor.java:131-147 - needCommit() (missing `case OpCode.createExt:` at line 133, so it returns false via `default:` at 145-146)"
+    "FollowerIngressProcessor.java:79-92 (real: FollowerRequestProcessor) - run()'s forward-to-leader switch, missing `case OpCode.createExt:` at line 84, so zks.getFollower().request(request) at line 91 is never reached",
+    "StagedRequestProcessor.java:131-147 (real: CommitProcessor) - needCommit(), missing `case OpCode.createExt:` at line 133, so it returns false via `default:`"
   ],
   "gt_branches": [
-    "`switch (request.type)` in FollowerRequestProcessor.run(): OpCode.createExt matches no case and there is no `default:` arm -> the write is never forwarded to the leader (znode created nowhere)",
-    "`needCommit(request)` returns false for OpCode.createExt -> in CommitProcessor.run() the guard `if (needCommit(request)) nextPending.set(request); else sendToNextProcessor(request);` takes the ELSE arm -> the write is handed to FinalRequestProcessor as a read with request.getHdr()==null"
+    "switch (request.type) in FollowerIngressProcessor.run(): OpCode.createExt matches no case and there is no default: arm -> the write is never forwarded to the leader, so no proposal/commit can ever return (and the znode is created nowhere)",
+    "needCommit(request) returns false for OpCode.createExt -> run()'s guard `if (needCommit(request)) nextPending.set(request); else sendToNextProcessor(request);` takes the ELSE arm -> the write reaches TerminalRequestProcessor with request.getHdr()==null"
   ],
-  "run": "run_5.md",
   "graded_against": "private/ground_truth.md",
-  "symptom_spec": "M5 v2 (bare observable + log pointer only)"
+  "symptom_spec": "M5 v2 (bare observable + merged-log pointer)",
+  "log_setting": "M3/M4 v2 (LLM given the 1.5 GB merged production log, 8.07M lines)",
+  "run": "run_5.md"
 }

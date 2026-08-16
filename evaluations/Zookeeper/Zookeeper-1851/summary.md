@@ -6,77 +6,87 @@
 | system | Apache ZooKeeper, trunk @ 2014-07 (3.5.0-SNAPSHOT) |
 | fix commit | `bcf09c846` (pre-fix `25ea38a87`) |
 | subject | Claude Opus 4.7, effort `high`, single turn, no internet |
-| symptom spec | M5 v2 — bare observable + log pointer only |
-| **result** | **4 / 5 PASS** |
+| inputs | anonymized `source/` (297 files) + `logs/symptom.log` = **1.5 GB merged production log** (8 072 681 lines) + bare-observable `symptom.md` |
+| **result** | **0 / 5 PASS** |
 
-## Symptom given to the model
+Prior settings, same bug, same ground truth and grading rule:
 
-The whole of `symptom.md`: client calls fail with `KeeperException.ConnectionLoss`, a
-pointer to `logs/symptom.log`, and the one client-side line the log prints —
-`Client session timed out, have not heard from server in 6670ms for sessionid 0x…,
-closing socket connection and attempting reconnect`. No trigger, no operation, no
-component, no comparison. Every run had to find the failing operation itself.
+| setting | LLM-facing log | result |
+|---|---|---|
+| narrative symptom, standalone repro log (19 k lines) | reproduction only | 4/5 |
+| bare-observable symptom, standalone repro log | reproduction only | 4/5 |
+| **bare-observable symptom, merged production log** | **reproduction hidden in 8.07 M lines** | **0/5** |
 
-## Ground truth (the two sites on the failure path)
+## What changed in this run
 
-The upstream fix adds one `case OpCode.create2:` label to four opcode switches
-(anonymized here as `createExt`). Two are on the reproduced failure path:
-
-1. `FollowerRequestProcessor.run()`'s forward-to-leader `switch (request.type)` (line 84) —
-   `createExt` matches no case and there is no `default:`, so
-   `zks.getFollower().request(request)` never runs: **the leader never sees the write**.
-2. `CommitProcessor.needCommit()` (line 133) — `createExt` falls to `default: return false`,
-   so `run()`'s `if (needCommit(request)) … else sendToNextProcessor(request)` guard takes
-   the **else** arm and hands the write to `FinalRequestProcessor` as if it were a read,
-   with `request.getHdr() == null`.
-
-Downstream (not required in an answer): `Request.isQuorum()` *does* list `createExt`, so
-`FinalRequestProcessor` calls `ZKDatabase.addCommittedProposal()`, whose
-`request.getHdr().serialize(...)` throws NPE; `WorkerService` runs
-`CommitWorkRequest.cleanup()`, which halts the `CommitProcessor` for good.
-`ObserverRequestProcessor` (no observer in the ensemble) and `TraceFormatter` (log text
-only) are credit-neutral.
+Per the updated methodology: M4 now also renames the **failure-path file/type names**
+(`FollowerRequestProcessor`→`FollowerIngressProcessor`, `CommitProcessor`→
+`StagedRequestProcessor`, `FinalRequestProcessor`→`TerminalRequestProcessor`,
+`ZKDatabase`→`ZKStateStore`, `WorkerService`→`TaskExecutorPool`, …) and rewrites the
+**failure-path log statements** (`Processing request:: `→`Handling submission:: `,
+`… unable to continue.`→`Downstream stage failed; cannot continue.`, `Client session timed
+out, have not heard from server in `→`Session inactive - no server traffic for `), with both
+logs regenerated from the anonymized build; and M3 merges the reproduction into the shared
+1.5 GB `production-logs/Zookeeper/production.log`, which is what the LLM now greps.
 
 ## Per-run verdicts
 
-| run | verdict | notes |
+| run | verdict | what it concluded |
 |---|---|---|
-| 1 | **PASS** | Both switches + both branch conditions; fix at both. Located the request via the `zxid:0xfffffffffffffffe` / `txntype:unknown` fingerprint and reconstructed the client arithmetic (`readTimeout = 2/3 × 10 000 ms`) that produces the pasted line. |
-| 2 | **FAIL** | Names only `CommitProcessor.needCommit()`; `FollowerRequestProcessor` appears once, purely as the component still enqueuing into the dead processor. Explains the null header as a *timing race* with a COMMIT that was in fact never requested, and prescribes a single-line fix that would leave the member dark — stalling in `nextPending` instead of crashing. |
-| 3 | **PASS** | Both sites as defects, with the correct framing: three opcode classifications that disagree, `isQuorum()` on one side and the two follower-path switches on the other. Lists both edits. |
-| 4 | **PASS** | Both sites + branches, plus an explicit enumeration of the full conjunction the failure needs (op is `createExt`; client is on a follower so no `PrepRequestProcessor` sets `hdr`; `isQuorum()` true; both switches missing; `cleanup()`'s `!stopped` arm). |
-| 5 | **PASS** | Both sites + branches, stated as one defect — omitted from both switches while `isValid()`, `isQuorum()` and `op2String()` all list it. |
+| 1 | **FAIL** | Wrong mechanism. A transient stall behind a pending commit (`!isWaitingForCommit()` guard). Never found the NPE (0 mentions); asserted the request **was** forwarded to the leader — the opposite of site 1. |
+| 2 | **FAIL** | Correct chain (`needCommit` → header-less dispatch → `isQuorum` → NPE → `halt`), but names only site 2. `FollowerIngressProcessor` appears once, as a log tag. One-line fix. |
+| 3 | **FAIL** | Wrong mechanism. Same stall theory plus an invented local-session-upgrade story. Never found the NPE. |
+| 4 | **FAIL** | Correct chain, site 2 only. `FollowerIngressProcessor`: 0 mentions. |
+| 5 | **FAIL** | Correct chain, most complete of the three, site 2 only. `FollowerIngressProcessor`: 0 mentions. |
 
 ## Discussion
 
-With the symptom reduced to a bare `ConnectionLoss` timeout line, four of five runs still
-isolated both root-causing switches and prescribed exactly the upstream fix. The reasoning
-was genuinely reconstructive: nothing in the prompt named the operation, the member role, or
-even that a write was involved, so each run had to work backwards from a client-side timeout
-through the server logs, spot the one request carrying the unset-zxid sentinel with no
-preceding `Committing request` line, and then find the two switches that omit that opcode.
-The crash site is two components away from either root cause and the stack trace points at
-neither. Tightening the symptom did not lower the score — it changed which run failed
-(previously run 3, now run 2), which suggests the variance is in the model's search, not in
-how much the prompt gave away.
+Moving the same bug from a 19 k-line reproduction log to a 1.5 GB production log took the
+score from 4/5 to 0/5, and it did so in two distinct ways.
 
-The failure is the informative case, and its shape repeated across both specs: a run walks
-the chain correctly from the crash backwards, reaches the *first* switch that explains the
-NPE, declares it the root cause, and stops. Run 2 then had to explain away the null header
-and invented a plausible-sounding race with a leader COMMIT — a commit its own analysis
-should have shown could never arrive, since nothing forwarded the request. One missing site
-became one confident wrong mechanism, and the resulting one-line patch would have converted
-a crash into a hang without curing the outage. Nothing in the run flags the gap; it reads as
-confidently as the four correct ones. That is the practical problem for single-pass
-diagnosis: the model is right most of the time, wrong occasionally, and equally sure either
-way, so the operator cannot tell run 2 from run 4 without the answer key — which is what a
-grounding tool like CLODS is meant to supply.
+Three runs (2, 4, 5) still found the real failure. They located the `createExt` request among
+8 M lines, saw the unset-zxid sentinel, followed the NPE stack into `ZKStateStore:251`, and
+traced `cleanup()` → `halt()` → dropped pings → the client's read timeout. What none of them
+did was establish the *other* half of the defect: that the write was never forwarded to the
+leader. In the standalone log that inference was cheap — the failing session's records sat
+adjacent, and the absence of an `Applying agreed submission` line for `cxid:0x4` was visible
+by eye. In the merged log it requires proving a negative across 8 M lines of interleaved
+traffic from ten unrelated ZooKeeper hosts that are themselves emitting those very lines. All
+three stopped at the first switch that fully explained the crash, and prescribed the one-line
+`needCommit()` fix that would leave the member dark — stalling instead of crashing.
 
-Two honest caveats. First, the DEBUG log is well signposted for this bug: the request type
-and zxid are printed at every processor hop, which narrows the search to a few dozen lines,
-and a missing enum case is the most searchable kind of defect there is. Second, the
-anonymization renames `create2` to `createExt` but does not erase the model's background
-knowledge — run 3 spontaneously wrote "`createExt` (i.e. `create2`, OpCode = 15)", and run 2
-guessed (wrongly) that it was the TTL/container-node create. General familiarity with the
-ZooKeeper wire protocol survives the rename; recognition of *this ticket* is what the rename
-removes, and that familiarity did not save run 2.
+Two runs (1, 3) went further wrong: they never noticed the `NullPointerException` at all —
+one occurrence in 8 072 681 lines — and reconstructed a plausible, internally consistent, and
+entirely fictitious stall mechanism instead. This is the noise-scaling failure mode the merge
+exists to test, and it is worth noting how confident both answers read.
+
+**A confound the operator must weigh (see the caveat below).** Part of what runs 1 and 3
+reasoned from is an artifact of the merge, not of the system: the specified retiming warps the
+reproduction's 64-second span onto the production log's 44-minute span, a ×42 dilation, so
+events 27 ms apart appear ~1.1 s apart and the client's `6666ms` idle timeout is surrounded by
+minutes of apparent server silence. Run 1 quotes "nothing at all for 5m43s" as its central
+evidence. The log therefore contradicts its own message text, and the two wrong-mechanism runs
+built stall theories on exactly that inconsistency. The 0/5 headline is sound — runs 2, 4 and 5
+failed for a reason wholly unrelated to timing — but "2 of 5 invented a stall" should not be
+read as a clean measurement until the merge preserves the incident's real duration.
+`private/merge_logs.py --span-mode natural` implements that (shift instead of scale, keeping
+~12 production lines per reproduction line); it was **not** used for this run because the
+literal methodology specifies the full-span warp.
+
+## Caveats
+
+- **Merge deviation (interleaving).** The shared production log is not a single sorted
+  timeline but 10 concatenated per-host sections. A literal timestamp merge collapsed 80 % of
+  the reproduction into the first 500 k lines as one contiguous block — the outcome the
+  methodology forbids — so `merge_logs.py` interleaves by proportional record position
+  instead, keeping the specified retiming rule. See `reproduce.md`.
+- **Merge artifact (timing).** The ×42 time dilation described above.
+- **Production-noise rewriting.** The real production log mentions `CommitProcessor`
+  5.5 M times, so the anonymization map is applied to the production stream of this bug's
+  merged log; otherwise the renamed names would be contradicted by the noise. The shared log
+  itself is read-only and untouched.
+- **Version skew.** Production sections come from a different ZooKeeper build than `source/`,
+  so their `Class@line` numbers do not match the source tree. Inherent to sharing one
+  production log across bugs.
+- The ensemble has no observer, so the `ObserverIngressProcessor` half of the fix is not
+  exercised; it is credit-neutral in grading, as is `OpNameFormatter`.

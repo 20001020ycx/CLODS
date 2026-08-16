@@ -1,63 +1,90 @@
 ## Root cause
 
-`OpCode.createExt` is an intended write op (server treats it as a quorum op — `Request.isQuorum()` returns `true` for it at `source/src/java/main/org/apache/zookeeper/server/Request.java:170`), but two switch statements on the *follower* request pipeline forgot to enumerate it. As a result a `createExt` request never leaves the follower to reach the leader, and is executed locally with `hdr == null`, causing an NPE that kills the follower's `CommitProcessor`. Once `CommitProcessor` exits, the follower answers nothing (not even pings), and every client bound to that server times out with `ConnectionLoss`.
+`OpCode.createExt` is treated as a quorum operation by `Request.isQuorum()` but is **not listed in `StagedRequestProcessor.needCommit()`**, so a `createExt` request is sent through the terminal processor without ever going through the leader-commit path. When the terminal processor then tries to record it as a committed proposal, it dereferences the still-null `request.hdr`, throws NPE, and the executor-pool's exception handler halts the entire request processor on that peer. All in-flight client sessions on that peer stop receiving anything (including pings), so the client's read-timeout fires with the observed "Session inactive – no server traffic" message and every outstanding call fails `ConnectionLoss`.
 
-## Exact code path
+Evidence in `logs/symptom.log`:
 
-Log evidence, follower `myid:1`:
-```
-CommitProcessor@338 - Processing request:: ... type:createExt cxid:0x4 zxid:0xfffffffffffffffe txntype:unknown reqpath:/app/failing/with-stat
-FinalRequestProcessor@91 - Processing request:: ... type:createExt ... zxid:0xfffffffffffffffe ...
-WorkerService$ScheduledWorkRequest@163 - Unexpected exception
-java.lang.NullPointerException
-    at org.apache.zookeeper.server.ZKDatabase.addCommittedProposal(ZKDatabase.java:251)
-    at org.apache.zookeeper.server.FinalRequestProcessor.processRequest(FinalRequestProcessor.java:127)
-    at org.apache.zookeeper.server.quorum.CommitProcessor$CommitWorkRequest.doWork(CommitProcessor.java:294)
-CommitProcessor$CommitWorkRequest@286 - Exception thrown by downstream processor, unable to continue.
-CommitProcessor@191 - CommitProcessor exited loop!
-```
+- L910170/L910671 – ingress of the offending request on `myid:1`:
+  `type:createExt cxid:0x4 zxid:0xfffffffffffffffe txntype:unknown reqpath:/app/svc4/item-9137` (note the sentinel zxid `0xfffffffffffffffe` — it has not been committed yet).
+- L911172-L911180 – the NPE thrown from the same StageWorkThread:
+  `java.lang.NullPointerException at ZKStateStore.addCommittedProposal(ZKStateStore.java:251) at TerminalRequestProcessor.processRequest(TerminalRequestProcessor.java:127) at StagedRequestProcessor$StageWorkRequest.doWork(StagedRequestProcessor.java:294) at TaskExecutorPool$ScheduledWorkRequest.run(TaskExecutorPool.java:161)`.
+- L911681 – `Downstream stage failed; cannot continue.` from `StagedRequestProcessor$StageWorkRequest@286`.
+- L912182 – `StagedRequestProcessor loop terminated`.
 
-Note `zxid:0xfffffffffffffffe` (= -2, the "unset" sentinel) and `txntype:unknown` — the request never got a `TxnHeader`.
+That is 18:49:25 on `myid:1`. Port `24551` is `myid:1`'s client port (L16058 `binding to port 0.0.0.0/0.0.0.0:24551`). Session `0x1a008cd5e440000` is a client on `/127.0.0.1:40846` served by `myid:1` (L88263, L92271). From 18:53:56 onward that same session repeatedly logs the client-side timeout in `ClientCnxn.java` (log line matches `ClientCnxn$SendThread@1207`) — i.e. it stops seeing traffic *after* `myid:1`'s pipeline is halted.
 
-Step-by-step through the source:
+## The exact branches that produce it
 
-1. **`FollowerRequestProcessor.run()` — `source/src/java/main/org/apache/zookeeper/server/quorum/FollowerRequestProcessor.java:79-100`.** The switch that decides which types to ship to the leader lists `create/delete/setData/reconfig/setACL/multi/check` (and `sync`, `createSession`, `closeSession`) but **not** `OpCode.createExt`. The request therefore falls through the switch's default (no case) and `zks.getFollower().request(request)` at line 91 is never called. The line-72 `nextProcessor.processRequest(request)` still queues it into the local `CommitProcessor`. Because there is no PrepRequestProcessor on a follower, no one has set the request's header, so `request.hdr` is still `null` and `request.zxid` is still `-2`.
-
-2. **`CommitProcessor.needCommit()` — `source/src/java/main/org/apache/zookeeper/server/quorum/CommitProcessor.java:131-148`.** This switch also omits `OpCode.createExt`, so `needCommit()` hits the `default` at line 145 and returns `false`. In `run()` at line 169-177, the branch taken is line 175 `sendToNextProcessor(request)` — the request is dispatched to the next processor immediately, without ever waiting for a matching COMMIT from the leader.
-
-3. **`FinalRequestProcessor.processRequest()` — `source/src/java/main/org/apache/zookeeper/server/FinalRequestProcessor.java:126-128`.** Inside the `outstandingChanges` monitor:
+1. **`needCommit` mis-classification** – `StagedRequestProcessor.needCommit(Request)` at `source/src/java/main/org/apache/zookeeper/server/quorum/StagedRequestProcessor.java:131-148`:
    ```java
-   if (request.isQuorum()) {                              // true for createExt (Request.java:170)
-       zks.getZKDatabase().addCommittedProposal(request); // hdr is null here
+   switch (request.type) {
+       case OpCode.create:
+       case OpCode.delete:
+       case OpCode.setData:
+       case OpCode.reconfig:
+       case OpCode.multi:
+       case OpCode.setACL:
+           return true;
+       ...
+       default:
+           return false;         // <-- createExt falls here (line 145-146)
    }
    ```
-   The `isQuorum()` branch is taken, so `addCommittedProposal` is called on a request whose `hdr` field is `null`. The earlier `zks.processTxn(request)` on line 104 also skips its work because the header is null, but does not throw — the NPE happens next.
+   Meanwhile `Request.isQuorum()` at `source/src/java/main/org/apache/zookeeper/server/Request.java:161-185` explicitly returns **true** for `OpCode.createExt` at line 170. That mismatch is the seed of the bug.
 
-4. **`ZKDatabase.addCommittedProposal()` — `source/src/java/main/org/apache/zookeeper/server/ZKDatabase.java:235-269`.** Line 251:
+2. **Ingress dispatches immediately, without commit** – `StagedRequestProcessor.run()` at `source/src/java/main/org/apache/zookeeper/server/quorum/StagedRequestProcessor.java:169-177`:
    ```java
-   request.getHdr().serialize(boa, "hdr");
+   while (!stopped && !isWaitingForCommit() && !isProcessingCommit()
+          && (request = queuedRequests.poll()) != null) {
+       if (needCommit(request)) {
+           nextPending.set(request);        // would wait for leader commit → hdr/txn filled in
+       } else {
+           sendToNextProcessor(request);    // <-- createExt takes THIS branch, request.hdr is still null
+       }
+   }
    ```
-   `request.getHdr()` is `null`, so a `NullPointerException` is thrown. This is exactly the frame at the top of the stack trace.
 
-5. **`CommitProcessor$CommitWorkRequest` — `source/src/java/main/org/apache/zookeeper/server/quorum/CommitProcessor.java:276-290`.** `doWork()` calls `nextProcessor.processRequest(request)` at line 294 and the NPE propagates out. `WorkerService$ScheduledWorkRequest` catches it and invokes `cleanup()`, which enters the `if (!stopped)` branch at line 285-289 and executes `CommitProcessor.this.halt()`. The `run()` loop then breaks out and logs `"CommitProcessor exited loop!"` at line 191.
-
-6. **Downstream effect on the client.** With `CommitProcessor` halted, follower `myid:1` no longer forwards *any* request to `FinalRequestProcessor`, including pings. `ClientCnxn` heartbeats therefore go unanswered; after `2/3 * sessionTimeout` (~6.6 s of the 10 s negotiated timeout observed in the log at `ZooKeeperServer@619`), `ClientCnxn$SendThread` at line 1207 emits the exact message quoted in the report:
+3. **Terminal processor blindly records it as a proposal** – `TerminalRequestProcessor.processRequest()` at `source/src/java/main/org/apache/zookeeper/server/TerminalRequestProcessor.java:126-128`:
+   ```java
+   if (request.isQuorum()) {                                  // true for createExt
+       zks.getZKStateStore().addCommittedProposal(request);   // line 127
+   }
    ```
-   Client session timed out, have not heard from server in 6670ms ... closing socket ... reconnect
+   The gating condition disagrees with the gating condition in step 1.
+
+4. **NPE inside `addCommittedProposal`** – `source/src/java/main/org/apache/zookeeper/server/ZKStateStore.java:251`:
+   ```java
+   request.getHdr().serialize(boa, "hdr");   // getHdr() == null → NPE
    ```
-   which is surfaced to the caller as `KeeperException.ConnectionLoss`. The subsequent log lines confirm the pattern repeats: the client reconnects, re-sends its outstanding write, the follower re-hits the same trap on the next `createExt`, and times out again.
 
-## The specific triggering conditions (branches)
+5. **Executor-pool catch-all fires cleanup()** – `TaskExecutorPool$ScheduledWorkRequest.run()` at `source/src/java/main/org/apache/zookeeper/server/TaskExecutorPool.java:154-166`:
+   ```java
+   } catch (Exception e) {
+       LOG.warn("Unexpected exception", e);   // line 163  → the log at 18:49:25,284
+       workRequest.cleanup();                 // line 164
+   }
+   ```
 
-The failure requires **all** of the following to hold simultaneously:
+6. **`cleanup()` halts the processor** – `StagedRequestProcessor$StageWorkRequest.cleanup()` at `source/src/java/main/org/apache/zookeeper/server/quorum/StagedRequestProcessor.java:284-290`:
+   ```java
+   public void cleanup() {
+       if (!stopped) {                        // true here → branch taken
+           LOG.error("Downstream stage failed; cannot continue.");  // line 286
+           StagedRequestProcessor.this.halt();                      // line 288
+       }
+   }
+   ```
+   `halt()` at lines 346-353 sets `stopped = true`, wakes the main loop (which then exits at line 191, "StagedRequestProcessor loop terminated"), clears `queuedRequests`, and stops the `TaskExecutorPool`. Crucially, `processRequest()` at line 333-344 begins with `if (stopped) return;`, so from this point onward **every** incoming request on this peer — including pings and commits fed by the leader — is silently dropped.
 
-- Request type is `OpCode.createExt` (client used the extended create op — path `/app/failing/with-stat` in the log).
-- The client is connected to a **follower** (so `FollowerRequestProcessor` is the head of the chain and no `PrepRequestProcessor` sets `hdr`).
-- `Request.isQuorum()` returns `true` for the type (`Request.java:161-185`, case at line 170), which drives `FinalRequestProcessor.java:126` into calling `addCommittedProposal`.
-- `FollowerRequestProcessor.java:79-100` switch has **no `case OpCode.createExt`**, so the request is not shipped to the leader.
-- `CommitProcessor.needCommit()` at `CommitProcessor.java:131-148` also has **no `case OpCode.createExt`**, so it falls to `default → false` and the request is not held for a commit.
-- `CommitProcessor$CommitWorkRequest.cleanup()` at `CommitProcessor.java:283-290` takes the `if (!stopped)` branch on the resulting NPE and calls `halt()`, permanently disabling request processing on this follower.
+7. **Client-side symptom** – with no responses (including pings) coming back, `ClientCnxn$SendThread.run()` at `source/src/java/main/org/apache/zookeeper/ClientCnxn.java:1150-1160` computes `to = readTimeout − clientCnxnSocket.getIdleRecv();` and takes the branch `if (to <= 0)`:
+   ```java
+   throw new SessionTimeoutException(
+       "Session inactive - no server traffic for "
+       + clientCnxnSocket.getIdleRecv() + "ms for sessionid 0x"
+       + Long.toHexString(sessionId));
+   ```
+   That exception is caught by the outer loop, the socket is closed, pending packets are surfaced as `ConnectionLoss`, and reconnect attempts to the same broken peer keep hitting the same 6666 ms timeout — exactly the pattern the log shows every ~5-6 minutes for session `0x1a008cd5e440000`.
 
 ## Fix
 
-Add `case OpCode.createExt:` alongside `case OpCode.create:` in both switches: `FollowerRequestProcessor.java:84` (so the follower forwards the write to the leader) and `CommitProcessor.needCommit()` at `CommitProcessor.java:133` (so the follower waits for the resulting COMMIT before running `FinalRequestProcessor`). With those two cases present, the leader's `PrepRequestProcessor.pRequest2Txn` (line 366) will set the `TxnHeader`, the COMMIT-side path will populate `request.hdr`, and `ZKDatabase.addCommittedProposal:251` will no longer NPE.
+Add `case OpCode.createExt: return true;` to `StagedRequestProcessor.needCommit()` (StagedRequestProcessor.java:131-148) so `createExt` is held in `nextPending` until the leader commits it, giving the request its `hdr`/`txn` before `TerminalRequestProcessor` reaches `addCommittedProposal`. The bug is a missing case, not anything in `ZKStateStore` or `TaskExecutorPool`; those merely faithfully propagate the resulting NPE into a full-processor halt.

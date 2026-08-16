@@ -131,6 +131,19 @@ def main():
     ap.add_argument("--production", required=True)
     ap.add_argument("--repro", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--span-mode", choices=("full", "natural"), default="full",
+                    help="full (spec): warp the reproduction span onto the WHOLE production "
+                         "span - preserves relative gaps but scales them (here x42), so the "
+                         "reproduction's own timestamps stop agreeing with its message text "
+                         "(a '6666ms' client timeout ends up surrounded by minutes of "
+                         "apparent silence). natural: keep the reproduction's real duration "
+                         "and only SHIFT it to --offset-frac of the production window, so "
+                         "elapsed times in the log are physically true; the reproduction is "
+                         "still interleaved among production noise, just within the window it "
+                         "actually occupied (~2.4% of the file, ~12 production lines per "
+                         "reproduction line) rather than smeared over all of it.")
+    ap.add_argument("--offset-frac", type=float, default=0.35,
+                    help="natural mode: where in the production window the incident starts")
     ap.add_argument("--interleave", choices=("position", "timestamp"), default="position",
                     help="position (default): spread by proportional file position - required "
                          "for a per-host-bundle production log; timestamp: the spec's literal "
@@ -155,12 +168,19 @@ def main():
     print(f"[merge] repro span      {fmt_ms(r0).decode()} .. {fmt_ms(r1).decode()} "
           f"({n_repro} records)")
 
+    # natural mode: pure shift (no scaling) to --offset-frac of the production window
+    shift = p0 + int((p1 - p0) * a.offset_frac) - r0
+    lo_frac = a.offset_frac
+    hi_frac = a.offset_frac + (r1 - r0) / max(1, p1 - p0)
+
     def retimed():
         i = 0
         for ts, lines, ti in records(a.repro):
             if ts is None:
                 continue
-            if r1 > r0:
+            if a.span_mode == "natural":
+                t = ts + shift
+            elif r1 > r0:
                 t = p0 + (ts - r0) * (p1 - p0) // (r1 - r0)
             else:
                 t = p0 + (p1 - p0) * i // max(1, n_repro - 1)
@@ -173,12 +193,21 @@ def main():
     if a.interleave == "position":
         n_prod = sum(1 for _ in records(a.production))
         print(f"[merge] production records: {n_prod}")
-        step = n_prod / max(1, n_repro)          # target spacing, in production records
+        if a.span_mode == "natural":
+            # confine the insertion to the slice of the file matching the incident's real
+            # duration, so timestamps stay physically consistent with their neighbourhood
+            lo, hi = int(n_prod * lo_frac), int(n_prod * min(1.0, hi_frac))
+            step = max(1e-9, (hi - lo) / max(1, n_repro))
+            base = lo
+        else:
+            step, base = n_prod / max(1, n_repro), 0
+        print(f"[merge] span-mode={a.span_mode} "
+              f"insertion window = records {int(base)}..{int(base + step * n_repro)}")
         rep = retimed()
         with open(a.out, "wb") as out:
             rt, rl = next(rep, (None, None))
             for i, (_, pl, _i) in enumerate(records(a.production)):
-                while rl is not None and nr * step <= i:
+                while rl is not None and base + nr * step <= i:
                     out.writelines(rl)
                     nr += 1
                     rt, rl = next(rep, (None, None))

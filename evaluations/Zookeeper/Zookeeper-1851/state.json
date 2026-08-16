@@ -96,14 +96,15 @@
       "outcome": "success",
       "success": true,
       "started": null,
-      "finished": "2026-08-12T20:21:18Z",
+      "finished": "2026-08-16T04:28:07Z",
       "attempts": 0,
       "by": "agent-run-e47cfc21",
       "artifacts": [
         "symptom.md",
-        "private/ground_truth.md"
+        "private/ground_truth.md",
+        "private/run_diagnosis.prodlog.sh"
       ],
-      "note": "REDONE 2026-08-12 under the updated M5 specification (context/METHODOLOGY.md commits 466a79e/ebba23d/8d90c20: symptom.md = bare observable + log pointer, never the JIRA-case narrative). The previous symptom.md violated every clause of the new must-NOT list - it named the failing overload create(path,data,acl,mode,Stat), gave the trigger and the mechanism timeline ('from that moment on that follower answers nothing'), and carried the narrowing comparison 'a plain create on the very same connection had succeeded 8 ms earlier', which hands the LLM the discriminating experiment. It is replaced by the exception form: two sentences of observable (client calls stop completing and fail with KeeperException.ConnectionLoss) + the log pointer + the exact client-side line pasted verbatim from logs/symptom.log ('Client session timed out, have not heard from server in 6670ms for sessionid 0x..., closing socket connection and attempting reconnect', confirmed present in the log). No trigger, no failing operation/overload, no mechanism, no at-fault component/class/branch, no what-stays-correct comparison, no text taken from the JIRA ticket. Verification gate re-run: 0 hits for ZOOKEEPER-1851 / bare 1851 / create2 / Create2 across source/, logs/symptom.log and symptom.md; the renamed term createExt appears only in source/ and the log (never in symptom.md, since it is not the observable surface). private/ground_truth.md is unchanged (M5 step 2 is unchanged): both primary sites plus the PASS rule. All post-M5 artifacts (diagnosis/run_1..5.md, the grade JSONs, summary.md) were deleted and M6-M8 reset to PENDING."
+      "note": "REDONE for the merged production log + the new anonymized names. symptom.md keeps the exception form but now uses the MERGED-LOG pointer required by M5 step 1(b) ('The log for this run is logs/symptom.log') with NO exact line number and NO '>>> SYMPTOM' marker, so the LLM must grep 8.07M lines to find the observable itself; the pasted line is the client-visible one exactly as the anonymized build now prints it ('Session inactive - no server traffic for 6666ms for sessionid 0x..., closing socket connection and attempting reconnect'), with the volatile date prefix dropped. Still only the observable: no trigger, no failing operation/overload, no mechanism, no at-fault component, no what-stays-correct comparison, nothing from the JIRA text. ground_truth.md gains the METHODOLOGY-\u00a78 name cross-reference table (real <-> anonymized for all seven renamed types, the create2 term and the five rewritten log literals) and now states both primary sites in anonymized form with the real name in parentheses, so the grader can translate a run's answer either way; the PASS rule is unchanged (both FollowerIngressProcessor.run's forward-to-leader switch and StagedRequestProcessor.needCommit, each with its branch condition). Also prepared private/run_diagnosis.prodlog.sh: a copy of context/run_diagnosis.sh whose ONLY difference (verified by diff: one line) is the M6 prompt, updated to the production-log wording that METHODOLOGY \u00a75/M6 now specifies but the tracked script has not yet adopted. M5 gate: symptom.md has 0 hits for the bug id, create2, and every original type name."
     },
     {
       "id": "M6",

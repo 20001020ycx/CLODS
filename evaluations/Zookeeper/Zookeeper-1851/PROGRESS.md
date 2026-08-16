@@ -111,3 +111,13 @@ source.
 
 - 2026-08-16T04:05Z M3 REDONE success=true — neutral repro naming (`/app/svcN/item-9137`, `c1..c4`, production-style collection headers) because the old `/app/failing/with-stat` named the failing session and the at-fault operation. Log A `private/symptom.orig.log` (19 049 lines); Log B `private/merged.orig.log` (8 068 887 lines, 1.5 GB) via `private/merge_logs.py`. Merge deviation (per-host-bundle production log ⇒ position interleaving) documented in `reproduce.md`.
 - 2026-08-16T04:25Z M4 REDONE success=true — failure-path **file/type renames** (`FollowerRequestProcessor`→`FollowerIngressProcessor`, `CommitProcessor`→`StagedRequestProcessor`, `FinalRequestProcessor`→`TerminalRequestProcessor`, `ZKDatabase`→`ZKStateStore`, `WorkerService`→`TaskExecutorPool`, `ObserverRequestProcessor`→`ObserverIngressProcessor`, `TraceFormatter`→`OpNameFormatter`) and **log-statement rewrites** (`Processing request:: `→`Handling submission:: `, `… unable to continue.`→`Downstream stage failed; cannot continue.`, `Client session timed out, have not heard from server in `→`Session inactive - no server traffic for `, …). Tree rebuilt and re-reproduced; `logs/repro.log` (18 991 lines) and the merged `logs/symptom.log` (8 072 681 lines, 1.5 GB) regenerated from it. The same map is applied to the production stream of the merged log — the real production noise mentions `CommitProcessor` 5.5 M times. All leakage checks zero.
+- 2026-08-16T04:30Z M5 REDONE success=true — `symptom.md` re-pasted from the anonymized log and switched to the **merged-log pointer form** (no line number, no marker: the LLM greps 8.07 M lines for the observable). `private/ground_truth.md` gains the §8 real↔anonymized cross-reference table. Prepared `private/run_diagnosis.prodlog.sh` (one-line prompt difference from the tracked script — see below).
+
+### Harness note 2 — the M6 prompt
+
+METHODOLOGY §5/M6 now specifies a production-log prompt ("*the production log at … — grep it
+for the symptom rather than reading it whole*"), but the tracked `context/run_diagnosis.sh`
+still carries the older "*symptom logs located at …*" wording. `context/` is read-only for an
+agent, so this bug runs `private/run_diagnosis.prodlog.sh` — a copy whose **only** difference
+(verified by `diff`: exactly one line) is that prompt. Operator: please fold the new prompt
+into `context/run_diagnosis.sh`.

@@ -1,50 +1,76 @@
 {
   "bug_id": "Zookeeper-1900",
-  "principle": "Minimal, case-targeted anonymization (METHODOLOGY.md §6). The real ZooKeeper source and the real reproduction log are kept; package names, class names, log format and all domain terminology (leader/follower/observer, learner, quorum, znode, session, zxid, epoch, snapshot, txnlog, DIFF/SNAP, FileTxnLog, FileTxnSnapLog, ZKDatabase, Learner, QuorumPeer, ...) are UNCHANGED. Only the vocabulary that names the JIRA case is renamed, the two log messages the ticket quotes are rewritten, and the ticket id is scrubbed.",
-  "bug_id_scrub": {
+  "spec": "METHODOLOGY.md M4 / §6 (paper revision plan): (a) bug-id scrub, (b) distinctive-term rename, (c) failure-path FILE/TYPE rename, (d) failure-path LOG-STATEMENT rewrite. Both logs are then regenerated from the anonymized build so their literals and stack frames match source/. Generic system identifiers in code bodies (znode, session, zxid, quorum, leader/follower/observer roles, snapshot/txnlog vocabulary, package paths) are KEPT — the LLM may know it is ZooKeeper.",
+  "regeneration": "private/anonymize.sh (deterministic: clone at pre_fix_commit -> deps-fix.patch -> one single-pass substitution of (b)+(c)+(d) over src/java + src/zookeeper.jute -> file renames -> ant jar -> source/ -> reproduce.sh => logs/repro.log -> private/merge_logs.py => logs/symptom.log). All substitutions come from ONE map applied in a SINGLE pass, longest key first, so a replacement is never re-replaced and every key matches the pristine upstream spelling.",
+
+  "a_bug_id_scrub": {
     "patterns": ["ZOOKEEPER-1900", "\\b1900\\b"],
-    "note": "The ticket id must appear nowhere in source/, logs/symptom.log or symptom.md. The pre-fix tree's CHANGES.txt is not part of source/ (source/ is src/java only). Two incidental sources of a bare 1900 in the log were removed: the build tree is checked out at the NEUTRAL path repos/zookeeper-ensemble-src (the JVM prints user.dir and the whole classpath into every server and client log, so a path containing the bug id would leak it 40+ times), and each reproduction client is kept under ~1500 requests so that no client's request xid reaches 1900. TCP ports are 2461x/2462x/2463x, none of which contains the substring."
+    "note": "Zero hits across source/, logs/repro.log and the 1.6 GB logs/symptom.log. The build tree is checked out at the neutral path repos/zookeeper-ensemble-src (the JVM prints user.dir + the classpath into every log line block), reproduction ports are 2461x/2462x/2463x, and each reproduction client stays under ~1500 requests so no client's request xid reaches 1900. The shared production log contains no bare 1900 either (checked whole)."
   },
-  "distinctive_term_renames": [
+
+  "b_distinctive_term_renames": [
     {
-      "original": "truncate / truncateLog / truncated / truncating / truncation / TRUNC",
-      "anonymized": "rollBack / rollBackLog / rolledBack / rolling back / roll-back / ROLLBACK",
-      "why": "The JIRA title is 'NullPointerException in truncate' and the report quotes the frame 'org.apache.zookeeper.server.persistence.FileTxnLog.truncate(FileTxnLog.java:352)'. The word 'truncate' next to 'FileTxnLog' is exactly the token a reader would grep to recall this ticket, so the whole truncation vocabulary is renamed to a neutral synonym with the same meaning (roll the transaction log back to a zxid). The semantics, the call graph and the line numbers are unchanged.",
-      "sites": [
-        "TxnLog.truncate(long) -> TxnLog.rollBack(long) (interface)",
-        "FileTxnLog.truncate(long) -> FileTxnLog.rollBack(long)  <-- the root-cause method",
-        "FileTxnSnapLog.truncateLog(long) -> FileTxnSnapLog.rollBackLog(long)",
-        "ZKDatabase.truncateLog(long) -> ZKDatabase.rollBackLog(long)",
-        "ZooKeeperServer.truncateLog(long) -> ZooKeeperServer.rollBackLog(long)",
-        "Leader.TRUNC constant (int 14) -> Leader.ROLLBACK, and Leader.getPacketType's \"TRUNC\" string -> \"ROLLBACK\" (this is what the leader prints as 'Sending TRUNC/ROLLBACK to follower')",
-        "local variables truncated/truncLog and all doc comments containing the word",
-        "src/java/test/.../TruncateTest.java -> RollBackTest.java (not part of source/, renamed so the tree stays self-consistent)"
-      ]
+      "original": "truncate / truncateLog / truncated / truncating / truncation / TRUNC / Truncate*",
+      "anonymized": "rollBack / rollBackLog / rolledBack / rewinding / rewind / ROLLBACK / RollBack*",
+      "why": "The JIRA title is 'NullPointerException in truncate' and the report quotes the frame 'FileTxnLog.truncate(FileTxnLog.java:352)'. The word 'truncate' next to the transaction-log class is the token a reader would grep to recall the ticket.",
+      "sites": "TxnLog.truncate (interface), FileTxnLog.truncate (the root-cause method), FileTxnSnapLog.truncateLog, ZKDatabase.truncateLog, ZooKeeperServer.truncateLog, the Leader.TRUNC constant (int 14) and its \"TRUNC\" packet-name literal, local variables truncated/truncLog, every doc comment, and the test class TruncateTest -> RollBackTest."
     }
   ],
-  "jira_quoted_text_redaction": {
-    "applicable": true,
-    "items": [
-      {
-        "quoted_in_ticket": "java.lang.NullPointerException at org.apache.zookeeper.server.persistence.FileTxnLog.truncate(FileTxnLog.java:352)",
-        "in_the_artifacts": "The reproduction log carries the real stack trace of the real failure, but the frame reads 'org.apache.zookeeper.server.persistence.FileTxnLog.rollBack(FileTxnLog.java:381)' — the method is renamed, and the line number is the pre-fix trunk one (the ticket's 352 is the 3.4.5 line). The exception type itself is genuine system output and is kept.",
-        "why_not_deleted": "Deleting the exception would mean fabricating the log. The rename is enough to stop a string match against the ticket."
-      },
-      {
-        "quoted_in_ticket": "Truncating log to get in sync with the leader",
-        "in_the_artifacts": "Rewritten at the source (Learner.java) to 'Rolling back the transaction log to get in sync with the leader', so the log emitted by the renamed binaries never contains the reported string."
-      }
+
+  "c_failure_path_type_renames": {
+    "why": "Blocks 'I recognize FileTxnLog.truncate / Observer.observeLeader -> this is ZOOKEEPER-1900' mapping from parametric memory. The set is exactly the fix-diff files plus every file named in the symptom-log stack trace. File name and public type are renamed together; every reference (imports, calls, log tags, stack frames, the Jute record) follows. The grader translates the LLM's anonymized answer back through this table (§8).",
+    "renames": [
+      {"original": "FileTxnLog", "anonymized": "TxnJournal", "role": "root-cause site 1 (fix diff) + top stack frame"},
+      {"original": "FileTxnIterator", "anonymized": "TxnJournalIterator", "role": "inner class of site 1; its init()/goToNextLog() is the branch chain that leaves inputStream null"},
+      {"original": "FileTxnSnapLog", "anonymized": "JournalSnapStore", "role": "stack frame"},
+      {"original": "ZKDatabase", "anonymized": "ZKStateStore", "role": "stack frame (also zkDatabase/zkdatabase field + comment spellings)"},
+      {"original": "Learner", "anonymized": "PeerSynchronizer", "role": "stack frame (syncWithLeader); carries the whole Learner* family (LearnerType, LearnerInfo, LearnerZooKeeperServer, LearnerSessionTracker, LearnerSyncRequest, LearnerCnxAcceptor, LearnerSnapshotThrottler, SyncedLearnerTracker)"},
+      {"original": "LearnerHandler", "anonymized": "PeerSyncHandler", "role": "leader-side counterpart that selects the roll-back branch; named explicitly so it does not become PeerSynchronizerHandler"},
+      {"original": "Observer", "anonymized": "ObserverPeer", "role": "root-cause site 2 (fix diff) + stack frame; carries ObserverBean/ObserverMXBean/ObserverRequestProcessor/ObserverZooKeeperServer"},
+      {"original": "QuorumPeer", "anonymized": "EnsembleMember", "role": "stack frame (run()); carries QuorumPeerMain/QuorumPeerConfig/QuorumPeerListener and the 'QuorumPeer[myid=N]' thread-name literal in every log tag"}
+    ],
+    "note": "src/zookeeper.jute is substituted too: the Jute compiler generates LearnerInfo from it at build time, so without that the generated class keeps the original name and the tree does not compile. Renaming QuorumPeerMain moves the entry point, so reproduce.sh takes MAIN_CLASS from the environment (org.apache.zookeeper.server.quorum.EnsembleMemberMain for the anonymized tree)."
+  },
+
+  "d_failure_path_log_statement_rewrites": {
+    "why": "So the symptom-log strings cannot be string-matched to the JIRA report or recognized from parametric memory. Wording changes; the kind of information (level, subsystem tag, the zxid/sid fields) is preserved, so the log still reads like real system output.",
+    "rewrites": [
+      {"original": "Truncating log to get in sync with the leader", "anonymized": "Rewinding the transaction journal to match the leader", "note": "quoted verbatim in the JIRA report"},
+      {"original": "Not able to truncate the log", "anonymized": "Unable to rewind the transaction journal"},
+      {"original": "Unable to truncate {}", "anonymized": "Unable to discard {}"},
+      {"original": "Sending TRUNC to follower zxidToSend=0x", "anonymized": "Instructing peer to rewind to zxid=0x"},
+      {"original": "Sending TRUNC zxid=0x", "anonymized": "Instructing peer to rewind to zxid=0x"},
+      {"original": "Cannot send TRUNC to peer sid: ", "anonymized": "Cannot rewind peer sid: "},
+      {"original": "Synchronizing with Follower sid: ", "anonymized": "Bringing peer up to date, sid: "},
+      {"original": "Getting a diff from the leader 0x", "anonymized": "Receiving a delta from the leader 0x"},
+      {"original": "Received NEWLEADER-ACK message from ", "anonymized": "Got NEWLEADER acknowledgement from "},
+      {"original": "Unexpected exception", "anonymized": "Unhandled error in the peer state machine", "note": "the WARN that prints the NullPointerException — the symptom line itself"},
+      {"original": "PeerState set to ", "anonymized": "Peer state changed to "},
+      {"original": "Exception when observing the leader", "anonymized": "Error while following the current leader", "note": "the message the too-narrow catch would have logged had it fired"},
+      {"original": "shutdown called", "anonymized": "role shutdown requested"},
+      {"original": "Created new input stream", "anonymized": "Opened journal segment for reading"},
+      {"original": "Created new input archive", "anonymized": "Journal segment reader ready"},
+      {"original": "Creating new log file: ", "anonymized": "Starting new journal segment: "},
+      {"original": "Snapshotting: 0x", "anonymized": "Writing state snapshot: 0x"}
     ]
   },
+
+  "production_log_handling": {
+    "shared_log": "production-logs/Zookeeper/production.log (1.5 GB, 8 052 741 records, 7-node ensemble under YCSB + chaos monkey) — READ-ONLY, never modified.",
+    "problem": "It is real ZooKeeper output, so it contains the very names (c) renames and the (d) wording: 2 193 202 lines mention LearnerHandler, 1 902 726 carry the 'QuorumPeer[myid=' thread tag, plus FileTxnLog (47), FileTxnSnapLog (60), QuorumPeerConfig (28), QuorumPeerMain (21), 'Synchronizing with Follower sid' (6), 'Snapshotting:' (32), 'Creating new log file' (33), 'Getting a diff from the leader' (6), 'Received NEWLEADER-ACK' (6).",
+    "resolution": "The same map is applied to the production stream while building THIS bug's merged logs/symptom.log (merge_logs.py --rename). Without it the merged log would contradict source/, re-expose every original name in the noise, and make the reproduction lines stand out as the only differently-worded ones. METHODOLOGY M4 step 1 sanctions rewriting such occurrences in the production noise. The shared file itself is untouched."
+  },
+
   "kept_unchanged": [
     "package names org.apache.zookeeper.*",
-    "every class name except the renamed test class",
-    "leader / follower / observer / learner / quorum / znode / session / zxid / epoch / snapshot terminology",
-    "FileTxnLog, FileTxnIterator, PositionInputStream, FileTxnSnapLog, ZKDatabase, Learner, Observer, LearnerHandler, QuorumPeer, ...",
-    "the log format and every other log message text (including 'Sending DIFF', 'Synchronizing with Follower sid:', 'Snapshotting:', 'PeerState set to LOOKING', 'shutdown called', ...)",
+    "every class not on the failure path (ZooKeeperServer, Follower, Leader, PrepRequestProcessor, CommitProcessor, FinalRequestProcessor, NIOServerCnxn, ClientCnxn, Request, DataTree, FileSnap, Util, ...)",
+    "the lower-case role words leader / follower / observer / learner (they appear in zoo.cfg as peerType=observer and server.N=...:observer, so renaming them would break the configuration), and LearnerType.OBSERVER",
+    "znode / session / zxid / epoch / quorum / snapshot / txnlog vocabulary in code bodies",
+    "the log format, levels and thread-tag structure",
     "the version string 3.5.0-SNAPSHOT",
-    "the java.lang.NullPointerException type and the full stack trace shape"
+    "the java.lang.NullPointerException type and the full stack shape"
   ],
-  "regeneration": "private/anonymize.sh rebuilds everything deterministically: clone at pre_fix_commit into repos/zookeeper-ensemble-src (neutral path) -> apply private/deps-fix.patch -> apply the renames above (sed over src/java/**/*.java + the test-file rename) -> `ant jar` (the renamed tree must compile) -> copy src/java/main + src/java/generated into source/ -> re-run reproduce.sh against the renamed build so logs/symptom.log is genuine output of the renamed binaries, not a rewritten log file -> verify zero hits for ZOOKEEPER-1900, \\b1900\\b, [Tt]runcat and TRUNC.",
-  "applies_to": ["source/", "logs/symptom.log", "symptom.md"]
+
+  "verification": "private/anonymize.sh step 7, over source/ + logs/repro.log + the whole 1.6 GB logs/symptom.log: the bug id, bare 1900, [Tt]runcat, TRUNC, and every original failure-path type name (FileTxnLog, FileTxnSnapLog, FileTxnIterator, ZKDatabase, Learner, LearnerHandler, QuorumPeer, Observer) → all zero hits. symptom.md is verified by M5's own gate.",
+  "applies_to": ["source/", "logs/repro.log", "logs/symptom.log", "symptom.md"]
 }

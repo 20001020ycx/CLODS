@@ -1,8 +1,8 @@
-t=  5s observer_open_fds=73 observer_sockets=35 close_wait_sockets=0
-t= 10s observer_open_fds=93 observer_sockets=54 close_wait_sockets=0
-t= 15s observer_open_fds=98 observer_sockets=61 close_wait_sockets=0
-t= 20s observer_open_fds=124 observer_sockets=54 close_wait_sockets=0
-t= 25s observer_open_fds=118 observer_sockets=81 close_wait_sockets=4
-t= 30s observer_open_fds=122 observer_sockets=83 close_wait_sockets=9
-t= 35s observer_open_fds=129 observer_sockets=92 close_wait_sockets=21
-t= 40s observer_open_fds=152 observer_sockets=113 close_wait_sockets=32
+t=  5s observer_open_fds=72 observer_sockets=35 close_wait_sockets=0
+t= 10s observer_open_fds=55 observer_sockets=18 close_wait_sockets=0
+t= 15s observer_open_fds=62 observer_sockets=23 close_wait_sockets=0
+t= 20s observer_open_fds=108 observer_sockets=69 close_wait_sockets=0
+t= 25s observer_open_fds=102 observer_sockets=63 close_wait_sockets=0
+t= 30s observer_open_fds=113 observer_sockets=76 close_wait_sockets=6
+t= 35s observer_open_fds=149 observer_sockets=110 close_wait_sockets=15
+t= 40s observer_open_fds=146 observer_sockets=107 close_wait_sockets=35

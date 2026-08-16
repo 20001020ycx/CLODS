@@ -178,7 +178,9 @@ for pat in 'ZOOKEEPER-1900' '\b1900\b' '[Tt]runcat' '\bTRUNC\b' \
     hits=""
     for f in "$BUG_DIR/source" "$BUG_DIR/logs/repro.log" "$BUG_DIR/logs/symptom.log" "$BUG_DIR/symptom.md"; do
         [ -e "$f" ] || continue
-        c="$(LC_ALL=C grep -rEc -- "$pat" "$f" 2>/dev/null | grep -v ':0$' || true)"
+        # NB: `grep -c` on a single file prints just the count, so pass /dev/null too and
+        # keep the filename:count form for both files and directories.
+        c="$(LC_ALL=C grep -rEc -- "$pat" "$f" /dev/null 2>/dev/null | grep -v ':0$' || true)"
         [ -n "$c" ] && hits="$hits $f"
     done
     if [ -n "$hits" ]; then echo "[anonymize] LEAK for /$pat/ in:$hits"; bad=1

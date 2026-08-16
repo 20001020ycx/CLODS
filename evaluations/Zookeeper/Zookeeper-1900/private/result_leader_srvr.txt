@@ -1,9 +1,9 @@
-Zookeeper version: 3.5.0-SNAPSHOT--1, built on 08/12/2026 18:08 GMT
-Latency min/avg/max: 0/5/22
-Received: 1118
-Sent: 1117
+Zookeeper version: 3.5.0-SNAPSHOT--1, built on 08/16/2026 05:18 GMT
+Latency min/avg/max: 0/5/288
+Received: 1105
+Sent: 1104
 Connections: 1
 Outstanding: 0
-Zxid: 0x1000003b2
+Zxid: 0x1000003aa
 Mode: leader
 Node count: 169

@@ -32,9 +32,9 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
 | M3 | Reproduce the failure | DONE | true | success | real server + 4 real zkCli sessions; uncaught NPE, exit 1 |
 | M4 | Anonymize failure path (file/type + log literals) | DONE | true | success | v2: class + all its log statements renamed; log regenerated |
 | M5 | Diagnosis inputs & ground truth | DONE | true | success | v2: symptom.md = pasted stack only; GT cross-referenced |
-| M6 | LLM diagnosis ×5 (network locked) | DONE | true | success | 5 substantive single-turn answers |
-| M7 | Grade runs | DONE | true | success | 5/5 PASS |
-| M8 | Summary & finalize | DONE | true | success | summary.md written; result 5/5 |
+| M6 | LLM diagnosis ×5 (network locked) | DONE | true | success | v2: re-run on the v2 anonymized log |
+| M7 | Grade runs | DONE | true | success | v2: 5/5 PASS, all recovered the trigger unaided |
+| M8 | Summary & finalize | DONE | true | success | v2 summary; result 5/5 |
 
 ## Log
 
@@ -153,3 +153,6 @@ find the triggering line in the log itself. `private/ground_truth.md` gained a
 real↔anonymized cross-reference table for grading.
 
 - 2026-08-16T05:17:00Z — M5 REDONE (success). Verification gate passed.
+- 2026-08-16T05:23:00Z — M6/M7/M8 REDONE (success). 5/5 PASS on the v2 inputs; all five runs
+  located the triggering operation themselves in the 9555-line log (symptom.md no longer
+  supplies it). v1 artifacts remain in git history.

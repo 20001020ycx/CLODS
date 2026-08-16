@@ -69,3 +69,4 @@
 2026-08-16T05:19:51Z Zookeeper-1900 M3 EXTENDED (repro merged into production log, 8.05M+392k records)
 2026-08-16T05:23:02Z Zookeeper-1434 bug COMPLETE 5/5 (v2: revised-methodology anonymization + bare-observable symptom)
 2026-08-16T05:25:01Z Zookeeper-1900 M4 REDONE (failure-path type+log renames; merged 1.6GB symptom.log)
+2026-08-16T05:27:33Z Zookeeper-1900 M5 REDONE (anonymized symptom + merged-log pointer)

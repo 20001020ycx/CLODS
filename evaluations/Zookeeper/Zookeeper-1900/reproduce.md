@@ -156,3 +156,45 @@ leader-side syncs with sid 4, `srvr` again "not currently serving requests", cli
 Two assertions in this script were made vocabulary-agnostic after the M3 run so that they
 match either wording (`FileTxnLog.(truncate|rollBack)`, `(Truncating|Rolling back the
 transaction) log to get in sync with the leader`); nothing else about the detection changed.
+
+## M3 step 8 — merging the reproduction into the shared production log
+
+`context/METHODOLOGY.md` §5/M3 step 8 requires the LLM-facing log to be the reproduction
+**inside** the system's real production noise. The shared, read-only
+`production-logs/Zookeeper/production.log` (1.5 GB, 8 052 741 records, 7-node ensemble under
+YCSB + chaos monkey, 2026-08-14 18:44:25,716 → 19:28:51,007) is merged with this bug's
+reproduction by `private/merge_logs.py`:
+
+```bash
+python3 private/merge_logs.py \
+    --production production-logs/Zookeeper/production.log \
+    --repro      private/symptom.orig.log \
+    --out        private/merged.orig.log \
+    --interleave position
+```
+
+* **Retime, don't rewrite.** Only each reproduction record's leading timestamp changes; it is
+  linearly warped from the reproduction span (2026-08-12 18:01:31,351 → 18:02:52,935) onto the
+  full production span, so the reproduction keeps its relative ordering and gaps but is spread
+  across the whole production timeline. Every other character of every line — reproduction and
+  production alike — is carried verbatim.
+* **`--interleave position`, not `timestamp`.** The shared ZooKeeper production log is not one
+  sorted timeline: it is 10 concatenated per-host sections (`zk1`…`zk7` plus rotations), each
+  restarting the clock over the same ~44-minute window. A literal timestamp merge degenerates
+  on such a bundle — every reproduction record is "later" than the head of each new section, so
+  the whole reproduction collapses into the first section as one contiguous foreign block,
+  exactly what the methodology's "spread across the production timeline" rule forbids. Position
+  interleaving keeps the retiming rule and only changes the insertion key: record *k* is placed
+  at production-record index *f_k × N*, so the reproduction is distributed across all ten
+  sections. (`merge_logs.py` is `Zookeeper-1851`'s tool, copied unmodified, so both ZooKeeper
+  bugs merge identically.)
+* **Result (M3, pre-anonymization):** `private/merged.orig.log` — 8 052 741 production +
+  392 149 reproduction records, 1.6 GB. The standalone `private/symptom.orig.log` is kept
+  unchanged as the reference (Log A).
+
+M4 regenerates both logs from the anonymized build: `logs/repro.log` (Log A, anonymized) and
+`logs/symptom.log` (Log B, the merged log the LLM is given). Because the production log is real
+ZooKeeper output, it contains the very class names and log wording M4 rewrites — so the same
+substitution map is applied to the production stream *while building this bug's merged log*
+(`--rename`), keeping the merged log self-consistent with `source/`. The shared production log
+itself is never modified.

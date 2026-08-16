@@ -97,3 +97,5 @@ names, and non-quoted failure-path log literals are untouched. Bringing this bug
 new M4 means: rename those types/files in the tree, rebuild, re-run `reproduce.sh` to
 regenerate the log, re-paste the new stack into `symptom.md`, and re-run M6–M8 a third time.
 Not done here — the operator's request covered the M5 change only.
+
+- 2026-08-16T05:20Z **M3 EXTENDED** success=true — the methodology now requires the reproduction to be merged into the system's real production log (§5/M3 step 8). The reproduction is unchanged; added `private/merge_logs.py` (Zookeeper-1851's tool, copied verbatim) and produced `private/merged.orig.log` (Log B) = the shared 1.5 GB `production-logs/Zookeeper/production.log` (8 052 741 records) with this bug's 392 149 reproduction records retimed onto the production span and spread across all ten per-host sections (`--interleave position`; a literal timestamp merge collapses the reproduction into the first section because the production log is a per-host bundle, not one sorted timeline). Write-up in `reproduce.md`.

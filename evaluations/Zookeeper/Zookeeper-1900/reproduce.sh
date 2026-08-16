@@ -56,6 +56,9 @@ PREV_CLIENTS="${PREV_CLIENTS:-6}"   # how many concurrent clients drive the prev
 NEW_OPS="${NEW_OPS:-120}"           # iterations per client in the re-provisioned cluster
 WATCH_SECS="${WATCH_SECS:-40}"      # how long we watch the observer trying to rejoin
 OUT_LOG="${OUT_LOG:-$BUG_DIR/private/symptom.orig.log}"   # where the collected log lands
+# M4 renames the failure-path types, including QuorumPeerMain; the anonymized tree is run
+# with MAIN_CLASS pointing at the renamed entry point.
+MAIN_CLASS="${MAIN_CLASS:-org.apache.zookeeper.server.quorum.QuorumPeerMain}"
 
 RUN="$(mktemp -d /tmp/zk-repro-XXXX)"   # neutral: the JVM prints paths into the log
 mkdir -p "$BUG_DIR/private" "$BUG_DIR/logs"
@@ -97,7 +100,7 @@ start_node() { # start_node <idx> <cfgpath> <logfile>
     local i="$1" cfg="$2" log="$3"
     mkdir -p "$(dirname "$log")"
     java "${JVM_LOG_OPTS[@]}" -Dzookeeper.admin.serverPort=$((APORT_BASE + i - 1)) \
-         -cp "$CP" org.apache.zookeeper.server.quorum.QuorumPeerMain "$cfg" \
+         -cp "$CP" "$MAIN_CLASS" "$cfg" \
          >> "$log" 2>&1 &
     PIDS[$i]=$!
 }
@@ -339,10 +342,10 @@ OBS_LOG="$RUN/logs/server_4.log"
 
 NPES=$(grep -c 'java.lang.NullPointerException' "$OBS_LOG" || true)
 # the M4 rename swaps this vocabulary (truncate -> rollBack), so accept either wording
-TRUNC_FRAMES=$(grep -cE 'FileTxnLog\.(truncate|rollBack)' "$OBS_LOG" || true)
-SYNC_ATTEMPTS=$(grep -cE '(Truncating|Rolling back the transaction) log to get in sync with the leader' "$OBS_LOG" || true)
+TRUNC_FRAMES=$(grep -cE '\.(truncate|rollBack)\((FileTxnLog|TxnJournal)\.java:' "$OBS_LOG" || true)
+SYNC_ATTEMPTS=$(grep -cE '(Truncating log to get in sync with the leader|Rolling back the transaction log to get in sync with the leader|Rewinding the transaction journal to match the leader)' "$OBS_LOG" || true)
 OBSERVING=$(grep -c '^.*OBSERVING' "$OBS_LOG" || true)
-LEADER_SYNCS=$(grep -c 'Synchronizing with Follower sid: 4' "$RUN/logs/server_"*.log || true)
+LEADER_SYNCS=$(grep -cE '(Synchronizing with Follower sid: 4|Bringing peer up to date, sid: 4)' "$RUN/logs/server_"*.log || true)
 
 [ "$NPES" -ge 3 ] \
     || { echo "[reproduce] ASSERT FAIL: observer did not report repeated NullPointerExceptions (saw $NPES)"; FAILED=1; }

@@ -20,7 +20,7 @@ milestone carries `status` + `success` + `outcome`.
 | M0 | Scaffold & claim the bug folder | DONE | true | success |
 | M1 | From JIRA: fix commit + pre-fix commit | DONE | true | success |
 | M2 | Check out pre-fix, build from source, fix deps | DONE | true | success |
-| M3 | Reproduce the failure | DONE | true | success |
+| M3 | Reproduce the failure + merge into production log | DONE | true | success |
 | M4 | Anonymize, rebuild, re-confirm reproduction | DONE | true | success |
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true | success |
 | M6 | Run LLM diagnosis x5 (network locked) | DONE | true | success |
@@ -100,3 +100,13 @@ the experiment is re-run from M6 against the new `symptom.md`.
 - 2026-08-12T20:33Z M6 DONE success=true (re-run) — 5 fresh single-turn diagnoses against the new `symptom.md`; all 5 completed first try, every stderr empty.
 - 2026-08-12T20:35Z M7 DONE success=true (re-run) — **4/5 PASS** (runs 1, 3, 4, 5). Run 2 FAIL: names only `CommitProcessor.needCommit()`, never identifies the forwarding switch, and explains the null header as a timing race with a COMMIT that was in fact never requested.
 - 2026-08-12T20:37Z M8 DONE success=true (re-run) — `summary.md` rewritten; `state.json.result` = 4/5 PASS (`["PASS","FAIL","PASS","PASS","PASS"]`) under M5 v2, with the superseded M5 v1 result retained under `result.superseded_result`. Bug complete.
+
+## M3/M4 redone under the updated methodology (2026-08-16)
+
+`context/METHODOLOGY.md` now requires (a) two M3 logs — the standalone reproduction **and**
+that reproduction merged into the shared GB-scale `production-logs/<SYSTEM>/production.log`,
+which is what the LLM is given; and (b) an M4 that renames **failure-path file/type names**
+and rewrites **failure-path log statements**, with both logs regenerated from the anonymized
+source.
+
+- 2026-08-16T04:05Z M3 REDONE success=true — neutral repro naming (`/app/svcN/item-9137`, `c1..c4`, production-style collection headers) because the old `/app/failing/with-stat` named the failing session and the at-fault operation. Log A `private/symptom.orig.log` (19 049 lines); Log B `private/merged.orig.log` (8 068 887 lines, 1.5 GB) via `private/merge_logs.py`. Merge deviation (per-host-bundle production log ⇒ position interleaving) documented in `reproduce.md`.

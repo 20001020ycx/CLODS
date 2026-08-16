@@ -58,18 +58,19 @@
       "status": "DONE",
       "outcome": "success",
       "success": true,
-      "started": "2026-08-12T01:32:57Z",
-      "finished": "2026-08-12T01:36:00Z",
-      "attempts": 1,
+      "started": "2026-08-16T03:54:16Z",
+      "finished": "2026-08-16T04:01:37Z",
+      "attempts": 2,
       "by": "agent-run-e47cfc21",
       "artifacts": [
         "reproduce.sh",
         "reproduce.md",
         "private/repro/Workload.java",
-        "private/symptom.orig.log (gitignored)",
-        "private/result_*.txt"
+        "private/merge_logs.py",
+        "private/symptom.orig.log (Log A, gitignored)",
+        "private/merged.orig.log (Log B, gitignored)"
       ],
-      "note": "Reproduced on the real system: a 3-node ZooKeeper 3.5.0-SNAPSHOT ensemble built from the pre-fix tree, all three members with root logger AND console appender at DEBUG, roles discovered with the servers' own 'srvr' 4lw (leader=21853/myid3, followers=21851/myid1 and 21852/myid2). Real traffic: two 120-iteration create/getData/setData/exists/getChildren/delete workloads (leader + follower2) through the public ZooKeeper client API, a real zkCli shell session on the leader (40x create/get/set/stat + 20 deletes), and a client pinned to follower myid1 doing ephemeral create/read/delete every 200ms for 45s. The failing session (also pinned to myid1) does a plain create (OK, 8ms) then one create-with-Stat: it never completes (ConnectionLoss after 6768ms), the node is never created, follower myid1 logs NPE at ZKDatabase.addCommittedProposal:251 <- FinalRequestProcessor:127 <- CommitProcessor$CommitWorkRequest.doWork:294, then 'Exception thrown by downstream processor, unable to continue.' + 'CommitProcessor exited loop!', after which that member answers nothing (collateral client: 20 ops OK then 5 straight ConnectionLoss). Detection is silent: assertions read the clients' result files and the servers' own logs and print only to reproduce.sh stdout. Workload.java writes nothing to stdout/stderr; NO log or print statement added to ZooKeeper anywhere. private/symptom.orig.log = 19037 lines (15615 DEBUG, 474 INFO, 18 WARN/ERROR) = 3 server logs + 6 client session logs, one '===== file: X =====' header each."
+      "note": "REDONE under the updated methodology (two logs + production merge + neutral repro naming). Neutral naming: the previous run's znode path /app/failing/with-stat and the client_failing.log collection header named both the failing session and the at-fault operation inside an LLM-facing artifact; paths are now /app/svcN/item-9137 + /app/cfg-N, workloads are c1..c4, and collection headers follow the production log's own host__path convention (zk11.., app5..). Reproduced again on the real 3-node ensemble (leader 24553/myid3, followers 24551/myid1 + 24552/myid2): plain create OK 8ms, create-with-Stat ConnectionLoss, node absent, follower's pipeline dead, collateral client 20 ok then 5 ConnectionLoss. Log A = private/symptom.orig.log, 19049 lines. Log B = private/merged.orig.log, 8068887 lines / 1.5GB = Log A merged into the shared read-only production-logs/Zookeeper/production.log (8052741 records, 2026-08-14 18:44-19:32, YCSB+chaos). MERGE DEVIATION (documented in reproduce.md): the spec's literal timestamp merge assumes a globally sorted production log, but this one is 10 concatenated per-host sections each restarting the clock over the same window, so a timestamp merge collapsed 80% of the reproduction into the first 500k of 8.07M lines - one contiguous foreign block, exactly what the methodology forbids. private/merge_logs.py keeps the specified retiming (linear warp preserving relative order and gaps) and changes only the interleaving key to proportional record position (--interleave position; --interleave timestamp still implements the literal rule). Reproduction is now spread across all 10 sections (per 1M lines: 820/509/379/18/62/0/0/1512/93). Findability: 'Client session timed out' 10 hits, 'NullPointerException' 1, 'unable to continue' 1."
     },
     {
       "id": "M4",

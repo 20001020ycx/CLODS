@@ -1,0 +1,7 @@
+connect=OK connectString=127.0.0.1:24551
+plain_create=OK elapsed_ms=8
+create_with_stat=EXCEPTION org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /app/svc4/item-9137 elapsed_ms=6767
+target_path=/app/svc4/item-9137
+state_after_create_with_stat=CONNECTED
+post_op=EXCEPTION org.apache.zookeeper.KeeperException$ConnectionLossException: KeeperErrorCode = ConnectionLoss for /app/svc4/entry-15465962257640540 elapsed_ms=8640
+final_state=CONNECTED

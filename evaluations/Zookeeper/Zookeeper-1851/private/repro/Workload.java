@@ -122,20 +122,20 @@ public class Workload {
      * the same create but ask for the resulting Stat back.
      */
     private static void createStat(ZooKeeper zk, String root, PrintWriter res) throws Exception {
-        String control = root + "/control-" + System.nanoTime();
+        String control = root + "/entry-" + System.nanoTime();
         long t0 = System.currentTimeMillis();
         try {
-            zk.create(control, "control".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            zk.create(control, "entry".getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             res.println("plain_create=OK elapsed_ms=" + (System.currentTimeMillis() - t0));
         } catch (Exception e) {
             res.println("plain_create=EXCEPTION " + e.getClass().getName() + ": " + e.getMessage());
         }
 
-        String target = root + "/with-stat";
+        String target = root + "/item-9137";
         Stat stat = new Stat();
         t0 = System.currentTimeMillis();
         try {
-            String created = zk.create(target, "with-stat".getBytes(), Ids.OPEN_ACL_UNSAFE,
+            String created = zk.create(target, "item".getBytes(), Ids.OPEN_ACL_UNSAFE,
                     CreateMode.PERSISTENT, stat);
             res.println("create_with_stat=OK path=" + created + " czxid=" + stat.getCzxid()
                     + " elapsed_ms=" + (System.currentTimeMillis() - t0));

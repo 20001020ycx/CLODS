@@ -132,47 +132,47 @@ workload() {  # workload <name> <connect> <root> <n> <mode>
 }
 
 # 4a. a client pinned to follower #1 that keeps doing ordinary work for the whole window
-workload collateral "127.0.0.1:$F1" /app/collateral 45 collateral &
-COLLATERAL_PID=$!
+workload c2 "127.0.0.1:$F1" /app/svc2 45 collateral &
+C2_PID=$!
 
 # 4b. ordinary read/write traffic against the leader and against follower #2
-workload leaderwl "127.0.0.1:$LEADER_PORT" /app/leader 120 normal &
-LEADER_WL_PID=$!
-workload followerwl "127.0.0.1:$F2" /app/follower2 120 normal &
-FOLLOWER_WL_PID=$!
+workload c1 "127.0.0.1:$LEADER_PORT" /app/svc1 120 normal &
+C1_PID=$!
+workload c3 "127.0.0.1:$F2" /app/svc3 120 normal &
+C3_PID=$!
 
 # 4c. a real zkCli shell session against the leader, doing shell-level work
 {
   echo "ls /"
   for i in $(seq 1 40); do
-      echo "create /app/shell-$i shell-payload-$i"
-      echo "get /app/shell-$i"
-      echo "set /app/shell-$i shell-payload-$i-v2"
-      echo "stat /app/shell-$i"
+      echo "create /app/cfg-$i cfg-payload-$i"
+      echo "get /app/cfg-$i"
+      echo "set /app/cfg-$i cfg-payload-$i-v2"
+      echo "stat /app/cfg-$i"
   done
   echo "ls /app"
-  for i in $(seq 1 20); do echo "delete /app/shell-$i"; done
+  for i in $(seq 1 20); do echo "delete /app/cfg-$i"; done
   echo "quit"
 } > "$RUN/cmds_shell.txt"
 java "${JVM_LOG_OPTS[@]}" -cp "$CP" org.apache.zookeeper.ZooKeeperMain \
      -server "127.0.0.1:$LEADER_PORT" < "$RUN/cmds_shell.txt" > "$RUN/client_shell.log" 2>&1 || true
 
-wait $LEADER_WL_PID || true
-wait $FOLLOWER_WL_PID || true
+wait $C1_PID || true
+wait $C3_PID || true
 
 # 4d. the failing session: ordinary client on follower #1, plain create then create-with-stat
 set +e
-workload failing "127.0.0.1:$F1" /app/failing 1 createstat
-FAILING_RC=$?
+workload c4 "127.0.0.1:$F1" /app/svc4 1 createstat
+C4_RC=$?
 set -e
-echo "[reproduce] failing session exit code: $FAILING_RC"
+echo "[reproduce] target session exit code: $C4_RC"
 
-wait $COLLATERAL_PID || true
+wait $C2_PID || true
 
 # 4e. from a client on the leader, check whether the node the failing client asked for exists
 {
-  echo "stat /app/failing/with-stat"
-  echo "ls /app/failing"
+  echo "stat /app/svc4/item-9137"
+  echo "ls /app/svc4"
   echo "quit"
 } > "$RUN/cmds_check.txt"
 java "${JVM_LOG_OPTS[@]}" -cp "$CP" org.apache.zookeeper.ZooKeeperMain \
@@ -186,13 +186,22 @@ sleep 1
 OUT="$OUT_LOG"
 mkdir -p "$(dirname "$OUT")"
 : > "$OUT"
-for f in server_1.log server_2.log server_3.log \
-         client_leaderwl.log client_followerwl.log client_shell.log \
-         client_collateral.log client_failing.log client_check.log; do
-    [ -f "$RUN/$f" ] || continue
-    printf '===== file: %s =====\n' "$f" >> "$OUT"
-    cat "$RUN/$f" >> "$OUT"
-done
+# Collection headers use the same host__path convention as the shared production log, so
+# the merged log reads as one collection. No header names a session "failing".
+emit() {  # emit <file> <header-label>
+    [ -f "$RUN/$1" ] || return 0
+    printf '===== %s =====\n' "$2" >> "$OUT"
+    cat "$RUN/$1" >> "$OUT"
+}
+emit server_1.log      zk11__var_log_zookeeper__zookeeper.log
+emit server_2.log      zk12__var_log_zookeeper__zookeeper.log
+emit server_3.log      zk13__var_log_zookeeper__zookeeper.log
+emit client_c1.log     app1__var_log_app__client.log
+emit client_c3.log     app2__var_log_app__client.log
+emit client_shell.log  app3__var_log_app__admin.log
+emit client_c2.log     app4__var_log_app__client.log
+emit client_c4.log     app5__var_log_app__client.log
+emit client_check.log  app6__var_log_app__admin.log
 echo "[reproduce] wrote $OUT ($(wc -l < "$OUT") lines)"
 cp -a "$RUN"/result_*.txt "$BUG_DIR/private/" 2>/dev/null || true
 
@@ -201,21 +210,21 @@ f1_idx=$((F1 - CPORT_BASE + 1))
 
 # ---- 6. silent detection (assertion output never enters the symptom log) ---------------
 FAILED=0
-RES_FAIL="$RUN/result_failing.txt"
+RES_FAIL="$RUN/result_c4.txt"
 
 grep -q '^plain_create=OK' "$RES_FAIL" \
     || { echo "[reproduce] ASSERT FAIL: the control plain create did not succeed on the follower"; FAILED=1; }
 grep -q '^create_with_stat=EXCEPTION' "$RES_FAIL" \
     || { echo "[reproduce] ASSERT FAIL: create-with-stat completed normally"; FAILED=1; }
-grep -q 'Node does not exist: /app/failing/with-stat' "$RUN/client_check.log" \
+grep -q 'Node does not exist: /app/svc4/item-9137' "$RUN/client_check.log" \
     || { echo "[reproduce] ASSERT FAIL: the node was created after all"; FAILED=1; }
 grep -q 'unable to continue' "$RUN/server_$f1_idx.log" \
     || { echo "[reproduce] ASSERT FAIL: follower's request pipeline did not report a fatal downstream error"; FAILED=1; }
-grep -q '^collateral_failed\|^collateral_ok' "$RUN/result_collateral.txt" \
+grep -q '^collateral_failed\|^collateral_ok' "$RUN/result_c2.txt" \
     || { echo "[reproduce] ASSERT FAIL: collateral client produced no result"; FAILED=1; }
 
 echo "[reproduce] --- failing client result ---"; sed 's/^/[reproduce]   /' "$RES_FAIL"
-echo "[reproduce] --- collateral client result ---"; sed 's/^/[reproduce]   /' "$RUN/result_collateral.txt"
+echo "[reproduce] --- collateral client result ---"; sed 's/^/[reproduce]   /' "$RUN/result_c2.txt"
 
 if [ "$FAILED" -eq 0 ]; then
     echo "[reproduce] REPRODUCED: create-with-stat against the follower never completed, the"

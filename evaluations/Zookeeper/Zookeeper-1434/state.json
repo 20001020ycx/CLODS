@@ -104,12 +104,12 @@
     },
     {
       "id": "M6",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": "2026-08-11T20:57:02Z",
-      "finished": null,
-      "attempts": 1,
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-16T05:16:22Z",
+      "finished": "2026-08-16T05:20:42Z",
+      "attempts": 2,
       "by": "agent-run-57ce8ccf",
       "artifacts": [
         "diagnosis/run_1.md",
@@ -118,7 +118,7 @@
         "diagnosis/run_4.md",
         "diagnosis/run_5.md"
       ],
-      "note": "[SUPERSEDED 2026-08-16 by the METHODOLOGY.md revision \u2014 re-running] 5 independent single-turn diagnoses via context/run_diagnosis.sh in the clods-eval container: egress iptables-locked to api.anthropic.com:443 (plus --add-host pin so the lock does not depend on DNS after the DROP policy), Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, throwaway staging dir holding ONLY symptom.md + source/ + logs/symptom.log (private/ unreachable), model claude-opus-4-7 effort high, --no-session-persistence, --exclude-dynamic-system-prompt-sections, no follow-up prompts. Auth: host OAuth credentials mounted read-write into a scratch config dir; CLAUDE_PURITY_FLAG=--safe-mode instead of --bare (--bare refuses stored credentials -> 'Not logged in'), IS_SANDBOX=1 so bypassPermissions is allowed as root (iptables needs root). All 5 returned substantive answers; every stderr empty."
+      "note": "RE-RUN 2026-08-16 on the v2 inputs (failure-path file/type + log literals anonymized, log regenerated from the anonymized build, symptom.md reduced to the bare pasted stack trace). Same harness as before: egress iptables-locked to api.anthropic.com:443 (+--add-host pin), web/bash/write tools denied, throwaway staging with only symptom.md + source/ + logs/symptom.log, claude-opus-4-7 effort high, --safe-mode + IS_SANDBOX=1, no follow-ups. All 5 returned substantive answers; every stderr empty. The v1 runs (against the weaker anonymization and the cause-leaking symptom.md) are preserved in git history at commit fc6d587."
     },
     {
       "id": "M7",

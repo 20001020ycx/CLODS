@@ -31,7 +31,7 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
 | M2 | Build from source at pre-fix | DONE | true | success | `ant jar` on JDK8 in per-bug image |
 | M3 | Reproduce the failure | DONE | true | success | real server + 4 real zkCli sessions; uncaught NPE, exit 1 |
 | M4 | Anonymize failure path (file/type + log literals) | DONE | true | success | v2: class + all its log statements renamed; log regenerated |
-| M5 | Diagnosis inputs & ground truth | DONE | true | success | symptom.md + ground_truth.md; 0 leaks |
+| M5 | Diagnosis inputs & ground truth | DONE | true | success | v2: symptom.md = pasted stack only; GT cross-referenced |
 | M6 | LLM diagnosis ×5 (network locked) | DONE | true | success | 5 substantive single-turn answers |
 | M7 | Grade runs | DONE | true | success | 5/5 PASS |
 | M8 | Summary & finalize | DONE | true | success | summary.md written; result 5/5 |
@@ -142,3 +142,14 @@ telemetry. The log is **regenerated** by rebuilding the anonymized tree and re-r
 frames match `source/`.
 
 - 2026-08-16T05:15:00Z — M4 REDONE (success) under the revised methodology.
+
+## M5 v2 — symptom.md is now the bare observable (2026-08-16)
+
+The revised methodology forbids stating the trigger, the failing command/path, or any
+"what stays correct" narrowing comparison. The v1 `symptom.md` did all three. v2 is one
+line of framing plus the stack trace exactly as `logs/symptom.log` prints it — so the model
+is no longer told *that* the target path was missing, nor *which* command ran; it has to
+find the triggering line in the log itself. `private/ground_truth.md` gained a
+real↔anonymized cross-reference table for grading.
+
+- 2026-08-16T05:17:00Z — M5 REDONE (success). Verification gate passed.

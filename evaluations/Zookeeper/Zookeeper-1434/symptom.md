@@ -1,7 +1,12 @@
-During an ordinary interactive ZooKeeper command-line shell (zkCli) session against a
-healthy standalone server, the shell process dies with an unhandled
-`java.lang.NullPointerException` (JVM exit code 1) as soon as the operator asks for node
-metadata with the `meta` command on a znode path that does not exist. The server answers
-the request normally; it is the client shell that terminates at the prompt, so the rest of
-the session is lost. The same command against znodes that do exist prints their metadata
-without any problem.
+The command-line shell process terminated with the following uncaught exception (JVM exit
+code 1), printed at the end of `logs/symptom.log`:
+
+```
+Exception in thread "main" java.lang.NullPointerException
+	at org.apache.zookeeper.CliShellMain.printNodeMeta(CliShellMain.java:132)
+	at org.apache.zookeeper.CliShellMain.processZKCmd(CliShellMain.java:727)
+	at org.apache.zookeeper.CliShellMain.processCmd(CliShellMain.java:583)
+	at org.apache.zookeeper.CliShellMain.executeLine(CliShellMain.java:355)
+	at org.apache.zookeeper.CliShellMain.run(CliShellMain.java:313)
+	at org.apache.zookeeper.CliShellMain.main(CliShellMain.java:272)
+```

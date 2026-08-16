@@ -30,7 +30,7 @@ evaluation is `59ac9fa78` (trunk @ 2011-05, 3.4.0-dev), where the `stat` branch 
 | M1 | Identify fix / pre-fix commit | DONE | true | success | fix=7f64942ba (ZOOKEEPER-1059), pre=59ac9fa78 |
 | M2 | Build from source at pre-fix | DONE | true | success | `ant jar` on JDK8 in per-bug image |
 | M3 | Reproduce the failure | DONE | true | success | real server + 4 real zkCli sessions; uncaught NPE, exit 1 |
-| M4 | Anonymize + re-confirm | DONE | true | success | 2 renames; renamed build rebuilt & re-reproduced |
+| M4 | Anonymize failure path (file/type + log literals) | DONE | true | success | v2: class + all its log statements renamed; log regenerated |
 | M5 | Diagnosis inputs & ground truth | DONE | true | success | symptom.md + ground_truth.md; 0 leaks |
 | M6 | LLM diagnosis ×5 (network locked) | DONE | true | success | 5 substantive single-turn answers |
 | M7 | Grade runs | DONE | true | success | 5/5 PASS |
@@ -115,3 +115,30 @@ after the `OUTPUT DROP` policy is installed.
   `diagnosis/run_N.grade.json`.
 - 2026-08-11T21:05:00Z — M8 DONE (success). `summary.md` written; `state.json.result` =
   5/5 PASS. Bug complete.
+
+## M4 v2 — failure-path anonymization (2026-08-16, revised METHODOLOGY §6(a)-(e))
+
+The methodology was revised after this bug's first pass to require **failure-path file/type
+renames** and **failure-path log-statement rewrites**. M4–M8 were reset to `PENDING` and
+redone; the v1 artifacts remain in git history (M4 `ef28864`, diagnoses `fc6d587`).
+
+Failure path = the files in the fix diff ∪ the files in the stack trace = **one file**.
+
+| kind | original | anonymized |
+|---|---|---|
+| file / public type | `ZooKeeperMain.java` / `ZooKeeperMain` | `CliShellMain.java` / `CliShellMain` |
+| CLI command | `stat` | `meta` |
+| printer method | `printStat` | `printNodeMeta` |
+| prompt literal | `[zk: ` | `[client: ` |
+| dispatch debug line | `Processing <cmd>` | `Dispatching command: <cmd>` |
+| metadata labels | `cZxid`,`ctime`,`mZxid`,`mtime`,`pZxid`,`cversion`,`dataVersion`,`aclVersion`,`ephemeralOwner`,`dataLength`,`numChildren` | `createTxnId`,`createTime`,`modifyTxnId`,`modifyTime`,`childTxnId`,`childVersion`,`contentVersion`,`permVersion`,`sessionOwner`,`contentLength`,`childCount` |
+| catch-arm messages | `Node does not exist: `, `Command failed: `, … | `No such node: `, `Command rejected: `, … |
+| banner / connect | `Welcome to ZooKeeper!`, `Connecting to `, `JLine support is …` | `Interactive client ready.`, `Contacting server `, `Line editing …` |
+
+Everything off the failure path stays real: package paths, `ZooKeeper`/`ClientCnxn`/
+`KeeperException`/`Stat`, the whole server-side log, and ClientCnxn's per-request DEBUG
+telemetry. The log is **regenerated** by rebuilding the anonymized tree and re-running
+`reproduce.sh` (still reproduces: exit 1, uncaught NPE), so its literals and all six stack
+frames match `source/`.
+
+- 2026-08-16T05:15:00Z — M4 REDONE (success) under the revised methodology.

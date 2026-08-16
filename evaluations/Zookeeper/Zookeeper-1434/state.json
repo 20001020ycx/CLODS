@@ -75,9 +75,9 @@
       "status": "DONE",
       "outcome": "success",
       "success": true,
-      "started": "2026-08-11T20:52:17Z",
-      "finished": "2026-08-11T20:53:29Z",
-      "attempts": 1,
+      "started": "2026-08-16T05:12:08Z",
+      "finished": "2026-08-16T05:14:35Z",
+      "attempts": 2,
       "by": "agent-run-57ce8ccf",
       "artifacts": [
         "source/ (gitignored; regen via private/anonymize.sh)",
@@ -85,30 +85,30 @@
         "private/anonymize.sh",
         "private/anonymization_map.json"
       ],
-      "note": "Minimal, case-targeted anonymization. Renamed exactly two identifiers in ZooKeeperMain.java: the CLI command 'stat'->'meta' and the printer printStat->printNodeMeta (the two tokens the JIRA-quoted stack trace / ticket title string-match on). Everything else stays real (packages, ZooKeeperMain/ZooKeeper/ClientCnxn/KeeperException, Stat, whole server log). The renamed tree was REBUILT at a neutral path (repos/zookeeper-anonymized - the JVM prints classpath+user.dir into the log) and reproduce.sh re-run against it, so logs/symptom.log (9554 lines, 3147 DEBUG) is the genuine output of the renamed binary, not a rewritten log; the NPE still reproduces (exit 1). source/ = 16 curated real failure-path files. Verified: zero hits for ZOOKEEPER-1434/1059, bare 1434/1059, printStat, or the old command name."
+      "note": "REDONE 2026-08-16 under the revised METHODOLOGY \u00a76(a)-(e). The failure path is one file (root-cause line + all six stack frames): ZooKeeperMain.java/class ZooKeeperMain -> CliShellMain.java/class CliShellMain, references updated (JLineZNodeCompletor, bin/zkCli.sh, bin/zkCli.cmd, logger tag, MyWatcher inner class). All log printing statements OF THAT FILE rewritten to neutral information-equivalent text (prompt '[zk: '->'[client: ', banner/connect lines, LOG.debug 'Processing'->'Dispatching command:', the 11 znode-metadata labels printed by printNodeMeta cZxid->createTxnId etc., and processCmd's catch-arm messages 'Node does not exist: '->'No such node: '). Distinctive-term renames kept (stat->meta, printStat->printNodeMeta). Log NOT rewritten: the anonymized tree was rebuilt and reproduce.sh re-run against it, so logs/symptom.log (9555 lines, 3146 DEBUG) is genuine output of the anonymized binary and still reproduces (exit 1, uncaught NPE, no graceful message). Non-failure-path files (server, ClientCnxn telemetry, ZooKeeper/KeeperException/Stat) left real. Verified zero leakage of both ticket numbers, the original class name, printStat, the old command, and every original log literal."
     },
     {
       "id": "M5",
-      "status": "DONE",
-      "outcome": "success",
-      "success": true,
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
       "started": "2026-08-11T20:53:59Z",
-      "finished": "2026-08-11T20:55:08Z",
+      "finished": null,
       "attempts": 1,
       "by": "agent-run-57ce8ccf",
       "artifacts": [
         "symptom.md",
         "private/ground_truth.md"
       ],
-      "note": "symptom.md = 6-line operator-level description (shell dies with unhandled NPE, exit 1, when the 'meta' command targets a non-existent znode; server healthy; same command on existing znodes is fine). No bug id, no fix hint, no internal mechanism. ground_truth.md derived from private/fix.diff: root-causing site = ZooKeeperMain.processZKCmd branch 'cmd.equals(\"meta\") && args.length>=2' where stat=zk.exists(path,watch) (L726) is passed unchecked to printNodeMeta(stat) (L727); crash site = printNodeMeta L132 (stat.getCzxid()); required branch condition = the missing 'stat == null' guard, because ZooKeeper.exists() returns null (converting the server's NONODE/-101) instead of throwing NoNodeException, unlike every other command's API. Explanatory context: processCmd's catch chain handles NoNodeException but not NPE, so the exception kills the JVM. Leakage re-verified across source/, logs/symptom.log, symptom.md: 0 hits for both ticket numbers, printStat, and the old command name."
+      "note": "[SUPERSEDED 2026-08-16 by the METHODOLOGY.md revision \u2014 re-running] symptom.md = 6-line operator-level description (shell dies with unhandled NPE, exit 1, when the 'meta' command targets a non-existent znode; server healthy; same command on existing znodes is fine). No bug id, no fix hint, no internal mechanism. ground_truth.md derived from private/fix.diff: root-causing site = ZooKeeperMain.processZKCmd branch 'cmd.equals(\"meta\") && args.length>=2' where stat=zk.exists(path,watch) (L726) is passed unchecked to printNodeMeta(stat) (L727); crash site = printNodeMeta L132 (stat.getCzxid()); required branch condition = the missing 'stat == null' guard, because ZooKeeper.exists() returns null (converting the server's NONODE/-101) instead of throwing NoNodeException, unlike every other command's API. Explanatory context: processCmd's catch chain handles NoNodeException but not NPE, so the exception kills the JVM. Leakage re-verified across source/, logs/symptom.log, symptom.md: 0 hits for both ticket numbers, printStat, and the old command name."
     },
     {
       "id": "M6",
-      "status": "DONE",
-      "outcome": "success",
-      "success": true,
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
       "started": "2026-08-11T20:57:02Z",
-      "finished": "2026-08-11T21:01:23Z",
+      "finished": null,
       "attempts": 1,
       "by": "agent-run-57ce8ccf",
       "artifacts": [
@@ -118,15 +118,15 @@
         "diagnosis/run_4.md",
         "diagnosis/run_5.md"
       ],
-      "note": "5 independent single-turn diagnoses via context/run_diagnosis.sh in the clods-eval container: egress iptables-locked to api.anthropic.com:443 (plus --add-host pin so the lock does not depend on DNS after the DROP policy), Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, throwaway staging dir holding ONLY symptom.md + source/ + logs/symptom.log (private/ unreachable), model claude-opus-4-7 effort high, --no-session-persistence, --exclude-dynamic-system-prompt-sections, no follow-up prompts. Auth: host OAuth credentials mounted read-write into a scratch config dir; CLAUDE_PURITY_FLAG=--safe-mode instead of --bare (--bare refuses stored credentials -> 'Not logged in'), IS_SANDBOX=1 so bypassPermissions is allowed as root (iptables needs root). All 5 returned substantive answers; every stderr empty."
+      "note": "[SUPERSEDED 2026-08-16 by the METHODOLOGY.md revision \u2014 re-running] 5 independent single-turn diagnoses via context/run_diagnosis.sh in the clods-eval container: egress iptables-locked to api.anthropic.com:443 (plus --add-host pin so the lock does not depend on DNS after the DROP policy), Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, throwaway staging dir holding ONLY symptom.md + source/ + logs/symptom.log (private/ unreachable), model claude-opus-4-7 effort high, --no-session-persistence, --exclude-dynamic-system-prompt-sections, no follow-up prompts. Auth: host OAuth credentials mounted read-write into a scratch config dir; CLAUDE_PURITY_FLAG=--safe-mode instead of --bare (--bare refuses stored credentials -> 'Not logged in'), IS_SANDBOX=1 so bypassPermissions is allowed as root (iptables needs root). All 5 returned substantive answers; every stderr empty."
     },
     {
       "id": "M7",
-      "status": "DONE",
-      "outcome": "success",
-      "success": true,
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
       "started": "2026-08-11T21:02:07Z",
-      "finished": "2026-08-11T21:02:24Z",
+      "finished": null,
       "attempts": 1,
       "by": "agent-run-57ce8ccf",
       "artifacts": [
@@ -136,34 +136,24 @@
         "diagnosis/run_4.grade.json",
         "diagnosis/run_5.grade.json"
       ],
-      "note": "5/5 PASS. Every run named the root-causing pair in the meta branch of processZKCmd (stat = zk.exists(path, watch) at 726 passed unchecked to printNodeMeta at 727 - the exact place the fix inserts its guard), the NPE site at printNodeMeta:132, AND the two required branch conditions: the dispatch branch cmd.equals('meta') && args.length>=2, and the absent 'stat == null' guard justified by exists() returning null instead of throwing NoNodeException. Runs 2-5 additionally quoted the real log evidence (replyHeader -101 NONODE) and/or identified processCmd's catch chain as the reason the NPE is fatal; run 1's unwind explanation misattributes the catch chain to the jline reflection handlers, which is explanatory context only and does not affect its verdict under the ground-truth PASS rule."
+      "note": "[SUPERSEDED 2026-08-16 by the METHODOLOGY.md revision \u2014 re-running] 5/5 PASS. Every run named the root-causing pair in the meta branch of processZKCmd (stat = zk.exists(path, watch) at 726 passed unchecked to printNodeMeta at 727 - the exact place the fix inserts its guard), the NPE site at printNodeMeta:132, AND the two required branch conditions: the dispatch branch cmd.equals('meta') && args.length>=2, and the absent 'stat == null' guard justified by exists() returning null instead of throwing NoNodeException. Runs 2-5 additionally quoted the real log evidence (replyHeader -101 NONODE) and/or identified processCmd's catch chain as the reason the NPE is fatal; run 1's unwind explanation misattributes the catch chain to the jline reflection handlers, which is explanatory context only and does not affect its verdict under the ground-truth PASS rule."
     },
     {
       "id": "M8",
-      "status": "DONE",
-      "outcome": "success",
-      "success": true,
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
       "started": null,
-      "finished": "2026-08-11T21:03:08Z",
+      "finished": null,
       "attempts": 0,
       "by": "agent-run-57ce8ccf",
       "artifacts": [
         "summary.md"
       ],
-      "note": "5/5 PASS. All five single-turn runs named ZooKeeperMain.java:726/727 (unguarded zk.exists() result in the meta branch) plus the missing 'stat == null' condition; four also derived why the NPE is fatal (processCmd's catch chain). Summary records the honest caveat that a stack-trace-localized, single-file null dereference is the easy end of the spectrum, and that the model retains general familiarity with the ZooKeeper CLI despite the renames."
+      "note": "[SUPERSEDED 2026-08-16 by the METHODOLOGY.md revision \u2014 re-running] 5/5 PASS. All five single-turn runs named ZooKeeperMain.java:726/727 (unguarded zk.exists() result in the meta branch) plus the missing 'stat == null' condition; four also derived why the NPE is fatal (processCmd's catch chain). Summary records the honest caveat that a stack-trace-localized, single-file null dereference is the easy end of the spectrum, and that the model retains general familiarity with the ZooKeeper CLI despite the renames."
     }
   ],
-  "result": {
-    "successes": 5,
-    "total": 5,
-    "per_run": [
-      "PASS",
-      "PASS",
-      "PASS",
-      "PASS",
-      "PASS"
-    ]
-  },
+  "result": null,
   "fix_commit_jira_ref": "ZOOKEEPER-1059 (same defect; ZOOKEEPER-1434 is the 3.3.5 report, resolved Won't Fix for 3.3 because it was already fixed on trunk/3.4 by ZOOKEEPER-1059)",
   "source_version": "trunk @ 2011-05 (3.4.0-dev)"
 }

@@ -1,40 +1,91 @@
 {
   "bug": "Zookeeper-1434",
-  "policy": "minimal, case-targeted (METHODOLOGY §6). The real ZooKeeper source and the real DEBUG reproduction log are kept; package names, class names (ZooKeeperMain, ZooKeeper, ClientCnxn, KeeperException), the Stat data class, znode/session/quorum vocabulary and the whole server-side log are untouched. Only the identifiers that pin the specific JIRA case are renamed.",
+  "revision": "2026-08-16 — redone under the revised METHODOLOGY.md §6 (a)-(e) (failure-path file/type renames + failure-path log-statement rewrites + log regenerated from the anonymized source). Supersedes the 2026-08-11 minimal version.",
+  "policy": "Case-targeted, not system-hiding. The failure path here is a single file: it holds the root-causing line and every frame of the symptom stack trace. That file's name, its public type, and all of its log printing statements are anonymized; everything else stays real — package paths, the ZooKeeper / ClientCnxn / KeeperException / Stat classes and their bodies, znode/session/quorum vocabulary, the entire server-side log, and ClientCnxn's per-request DEBUG telemetry.",
+  "failure_path": {
+    "definition_used": "files named in the fix diff + files named in the symptom-log stack trace",
+    "files": ["src/java/main/org/apache/zookeeper/ZooKeeperMain.java"],
+    "note": "private/fix.diff touches only ZooKeeperMain.java (plus CHANGES.txt and a test), and all six stack frames are in that same file."
+  },
   "bug_id_scrub": {
     "terms": ["ZOOKEEPER-1434", "1434", "ZOOKEEPER-1059", "1059"],
-    "note": "Neither the reporting ticket nor the trunk ticket that carries the fix may appear in any LLM-facing artifact. The scratch clone path (repos/Zookeeper-Zookeeper-1434) and reproduce.sh's temp dir were therefore moved to neutral paths (repos/zookeeper-anonymized, /tmp/zk-repro-XXXX) before the log-producing run, because the JVM prints java.class.path and user.dir into the log.",
+    "note": "Neither the reporting ticket nor the trunk ticket carrying the fix may appear in any LLM-facing artifact. The scratch clone path and reproduce.sh's temp dir were moved to neutral paths (repos/zookeeper-anonymized, /tmp/zk-repro-XXXX) because the JVM prints java.class.path and user.dir into the log.",
     "verified": "grep -RniE 'ZOOKEEPER-(1434|1059)|\\b1434\\b|\\b1059\\b' source/ logs/symptom.log symptom.md -> 0 hits"
   },
-  "renames": [
+  "distinctive_term_renames": [
     {
       "original": "stat",
       "anonymized": "meta",
       "kind": "CLI command name",
-      "where": "ZooKeeperMain.java: commandMap.put(\"stat\",\"path [watch]\") and the dispatch branch cmd.equals(\"stat\"); consequently every occurrence in the reproduction log (the shell prompt lines and the production DEBUG line 'Processing stat')",
-      "why": "This is the term that names the case — the ticket is literally 'stat command on non-existing node causes NPE'. Renaming it stops the LLM from string-matching the ticket or the reported session transcript."
+      "where": "commandMap.put(\"stat\",\"path [watch]\") and the dispatch branch cmd.equals(\"stat\"); consequently every prompt line and the LOG.debug dispatch line in the log",
+      "why": "the term that names the case — the ticket is literally 'stat command on non-existing node causes NPE'"
     },
     {
       "original": "printStat",
       "anonymized": "printNodeMeta",
-      "kind": "private static method of ZooKeeperMain (all 6 occurrences: declaration + 5 call sites)",
-      "where": "ZooKeeperMain.java; consequently the top frame of the uncaught-exception trace in the log",
-      "why": "The JIRA report quotes the stack trace verbatim, whose distinctive token is 'ZooKeeperMain.printStat'. Renaming it means the trace this build emits no longer matches the reported one."
+      "kind": "private static method (declaration + 5 call sites)",
+      "where": "the failure-path file; consequently the top frame of the stack trace in the log",
+      "why": "the distinctive token of the stack trace the JIRA report quotes verbatim"
     }
   ],
-  "jira_quoted_text_redaction": {
-    "applicable": true,
-    "what_the_ticket_quotes": "a 6-frame NullPointerException stack trace (printStat <- processZKCmd <- processCmd <- executeLine <- run <- main, ZooKeeperMain.java lines 130/722/581/353/311/270 in 3.3.5)",
-    "how_handled": "Not blanked out (the trace IS the symptom). It is de-matched by the renames above plus the fact that this tree is 3.4.0-dev: the log's trace reads printNodeMeta/132, processZKCmd/727, processCmd/583, executeLine/355, run/313, main/272. The remaining frame names (processZKCmd, processCmd, executeLine, run, main) are generic dispatch methods of the kept-real class and are not case-identifying.",
-    "note": "No other log or stack-trace text is quoted or attached in the ticket, so nothing else in the reproduction log needed redaction."
+  "failure_path_file_type_renames": [
+    {
+      "original_file": "src/java/main/org/apache/zookeeper/ZooKeeperMain.java",
+      "anonymized_file": "src/java/main/org/apache/zookeeper/CliShellMain.java",
+      "original_type": "ZooKeeperMain",
+      "anonymized_type": "CliShellMain",
+      "references_updated": [
+        "src/java/main/org/apache/zookeeper/JLineZNodeCompletor.java (ZooKeeperMain.getCommands())",
+        "bin/zkCli.sh, bin/zkCli.cmd (main class)",
+        "the logger name, so log4j's %C{1} tag prints CliShellMain",
+        "the inner class in ZooKeeper.java's connection log line (watcher=org.apache.zookeeper.CliShellMain$MyWatcher@…)",
+        "all six frames of the stack trace in logs/symptom.log (regenerated, not rewritten)"
+      ],
+      "why": "blocks 'I recognize org.apache.zookeeper.ZooKeeperMain.printStat → this is the known zkCli stat NPE ticket' mapping from parametric memory"
+    }
+  ],
+  "failure_path_log_statement_rewrites": {
+    "scope": "every string literal printed by the failure-path file (shell prompt, banner/connect lines, the LOG.debug dispatch line, the znode-metadata labels printed by printNodeMeta, and processCmd's catch-arm messages). Wording changes; the kind and quantity of information does not. Log statements in files that are NOT on the failure path (server side, ClientCnxn's per-request DEBUG telemetry) are left untouched so the log still reads as genuine system output.",
+    "literals": {
+      "[zk: ": "[client: ",
+      "Connecting to ": "Contacting server ",
+      "Welcome to ZooKeeper!": "Interactive client ready.",
+      "JLine support is enabled": "Line editing enabled.",
+      "JLine support is disabled": "Line editing unavailable.",
+      "ZooKeeper -server host:port cmd args": "client -server host:port cmd args",
+      "Processing <cmd>": "Dispatching command: <cmd>",
+      "cZxid = 0x": "createTxnId = 0x",
+      "ctime = ": "createTime = ",
+      "mZxid = 0x": "modifyTxnId = 0x",
+      "mtime = ": "modifyTime = ",
+      "pZxid = 0x": "childTxnId = 0x",
+      "cversion = ": "childVersion = ",
+      "dataVersion = ": "contentVersion = ",
+      "aclVersion = ": "permVersion = ",
+      "ephemeralOwner = 0x": "sessionOwner = 0x",
+      "dataLength = ": "contentLength = ",
+      "numChildren = ": "childCount = ",
+      "Command failed: ": "Command rejected: ",
+      "Node does not exist: ": "No such node: ",
+      "Ephemerals cannot have children: ": "Ephemeral node cannot have children: ",
+      "Node already exists: ": "Node is already present: ",
+      "Node not empty: ": "Node still has children: ",
+      "Created ": "Added node ",
+      "Quitting...": "Exiting shell..."
+    },
+    "not_rewritten": "KeeperException.java's javadoc comment '/** Node does not exist */' on the NONODE code — an API doc comment in a non-failure-path file, not a log printing statement."
   },
-  "regeneration": {
+  "jira_quoted_text": {
+    "what_the_ticket_quotes": "a 6-frame NullPointerException stack trace (printStat <- processZKCmd <- processCmd <- executeLine <- run <- main, ZooKeeperMain.java lines 130/722/581/353/311/270 in 3.3.5) and a transcript line '[zk: c0405(CONNECTED) 3] stat /foobar'",
+    "how_handled": "Not blanked (the trace is the observable symptom) but fully de-matched: every frame now reads org.apache.zookeeper.CliShellMain.<method>(CliShellMain.java:NN) with printNodeMeta on top, and the transcript line reads '[client: 127.0.0.1:21812(CONNECTED) 7] meta /app/workers/w4242'. No string in the ticket matches the log."
+  },
+  "log_regeneration": {
     "script": "private/anonymize.sh",
-    "how": "copies the pre-fix working tree (with private/deps-fix.patch already applied) to the neutral path repos/zookeeper-anonymized, applies the two renames to ZooKeeperMain.java, rebuilds with `ant jar`, re-runs reproduce.sh (STAT_CMD=meta, PORT=21812) against the RENAMED build, publishes private/symptom.orig.log as logs/symptom.log, copies the curated failure-path files into source/, and re-verifies zero leakage.",
-    "note": "The symptom log is never rewritten after the fact — it is the genuine output of the renamed binary."
+    "how": "copy the pre-fix tree (deps-fix applied) to repos/zookeeper-anonymized → rename file/type → rename distinctive terms → rewrite failure-path log literals → `ant jar` → re-run reproduce.sh (STAT_CMD=meta, MAIN_CLASS=org.apache.zookeeper.CliShellMain, NONODE_MSG='No such node:', PORT=21812) → publish logs/symptom.log + source/ → verify.",
+    "guarantee": "logs/symptom.log is the genuine 9,555-line DEBUG output of the anonymized binary (3,146 DEBUG lines); it is never a post-hoc rewrite of the M3 log, so its literals and stack frames match source/ exactly. The symptom still reproduces (client exit code 1, uncaught NPE, no graceful missing-node message)."
   },
   "source_files": [
-    "src/java/main/org/apache/zookeeper/ZooKeeperMain.java",
+    "src/java/main/org/apache/zookeeper/CliShellMain.java  (renamed from ZooKeeperMain.java)",
     "src/java/main/org/apache/zookeeper/ZooKeeper.java",
     "src/java/main/org/apache/zookeeper/ClientCnxn.java",
     "src/java/main/org/apache/zookeeper/KeeperException.java",

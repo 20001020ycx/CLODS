@@ -31,6 +31,8 @@ BUG_DIR="${BUG_DIR:-/work/evaluations/Zookeeper/Zookeeper-1434}"
 # parameterised here; the defaults are the real pre-fix names.
 MAIN_CLASS="${MAIN_CLASS:-org.apache.zookeeper.ZooKeeperMain}"
 STAT_CMD="${STAT_CMD:-stat}"
+# The shell's "missing node" message; M4 rewrites this failure-path log literal.
+NONODE_MSG="${NONODE_MSG:-Node does not exist:}"
 PORT="${PORT:-21811}"
 
 RUN="$(mktemp -d /tmp/zk-repro-XXXX)"   # neutral: the JVM prints paths into the log
@@ -155,7 +157,7 @@ FAILED=0
 [ "$C_RC" -ne 0 ] || { echo "[reproduce] ASSERT FAIL: client exited 0"; FAILED=1; }
 grep -q 'Exception in thread "main" java.lang.NullPointerException' "$RUN/client_C.log" \
     || { echo "[reproduce] ASSERT FAIL: no unhandled NullPointerException in client output"; FAILED=1; }
-grep -q 'Node does not exist' "$RUN/client_C.log" \
+grep -qF "$NONODE_MSG" "$RUN/client_C.log" \
     && { echo "[reproduce] ASSERT FAIL: the shell handled the missing node gracefully"; FAILED=1; }
 
 if [ "$FAILED" -eq 0 ]; then

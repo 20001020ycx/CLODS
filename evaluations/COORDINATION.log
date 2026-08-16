@@ -64,3 +64,4 @@
 2026-08-16T04:01:37Z Zookeeper-1851 M3 REDONE success (2 logs; merged into production log)
 2026-08-16T04:26:39Z Zookeeper-1851 M4 REDONE success (file/type + log-literal anonymization; both logs regenerated)
 2026-08-16T04:28:07Z Zookeeper-1851 M5 REDONE success (merged-log symptom + anonymized ground truth)
+2026-08-16T05:14:35Z Zookeeper-1434 M4 REDONE success (failure-path file/type + log-literal anonymization per revised methodology)

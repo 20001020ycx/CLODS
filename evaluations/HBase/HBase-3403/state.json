@@ -4,10 +4,10 @@
   "jira": "HBASE-3403",
   "jira_url": "https://issues.apache.org/jira/browse/HBASE-3403",
   "source_repo": "https://github.com/apache/hbase.git",
-  "fix_commit": null,
-  "pre_fix_commit": null,
+  "fix_commit": "0d31ac5f37a2e8866884bb216a3485eea652a822",
+  "pre_fix_commit": "dddee0d50ff77c93a2b39f408bf11f60e397ebf4",
   "anonymized_commit": null,
-  "symptom_short": null,
+  "symptom_short": "After a region server dies mid-split, a daughter region's directory exists on HDFS but the region is in neither .META. nor deployed on any region server (hbck reports the table inconsistent).",
   "milestones": [
     {
       "id": "M0",
@@ -25,15 +25,17 @@
     },
     {
       "id": "M1",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T01:58:06Z",
+      "finished": "2026-08-17T01:58:06Z",
+      "attempts": 1,
+      "by": "agent-run-8b54496c",
+      "artifacts": [
+        "evaluations/HBase/HBase-3403/private/fix.diff"
+      ],
+      "note": "JIRA HBASE-3403 (blocker, 0.90.0, fixed 2011-01-07 by Michael Stack). Trunk fix commit 0d31ac5f37 (svn trunk@1056884) touches MetaEditor.offlineParentInMeta (removes the SERVER/STARTCODE blanking = root cause), ServerShutdownHandler.fixupDaughter (isDaughterMissing scan), MetaReader.fullScan(startrow) overload, CatalogJanitor.setEnabled + HMaster.setCatalogJanitorEnabled (test hooks), and adds TestSplitTransactionOnCluster. pre-fix = dddee0d50f (trunk, 2011-01-08). Two sibling commits exist on branch-0.90 (a2475d4e2a code, f9a97da9da test); trunk 0d31ac5 is the complete fix and is used."
     },
     {
       "id": "M2",

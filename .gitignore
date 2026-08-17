@@ -8,7 +8,14 @@ evaluations/**/source/
 evaluations/**/logs/*
 !evaluations/EXAMPLE/bug-1/logs/symptom.log
 evaluations/**/private/symptom.orig.log
+evaluations/**/private/merged.orig.log
+evaluations/**/logs/repro.log
 repos/
+
+# Shared per-system production logs (GB-scale noise/context logs that a bug's
+# reproduction log is merged into at M3; regenerable from the cluster setup under
+# agent-dev/case-study). Never commit — multi-GB.
+production-logs/
 
 # Build / editor noise
 *.class

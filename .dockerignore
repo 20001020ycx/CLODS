@@ -1,0 +1,7 @@
+# Keep the docker build context tiny. The Dockerfile only COPYs
+# context/run_diagnosis.sh — exclude the multi-GB evaluation / production /
+# repo trees so `docker build .` doesn't ship ~20 GB as context.
+*
+!Dockerfile
+!context
+!context/**

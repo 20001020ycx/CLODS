@@ -1,0 +1,31 @@
+{
+  "verdict": "FAIL",
+  "model": "claude-opus-4-7",
+  "effort": "high",
+  "endpoint": "llm-gateway.yscope.io (org gateway)",
+  "harness": "private/run_diagnosis.yscope.sh",
+  "justification": "Same shape as run 1, and goes further in the wrong direction: it lists 'a truncated/partially-written flush' only as one hypothesis for how the bytes got bad, never follows it into the code, and then states explicitly that the skip is 'not a second bug: it is the *intentional* policy encoded at FamilyStore.java:273'. That is the opposite of the ticket's judgement and, more to the point, neither fix site is named.",
+  "claimed_lines": [
+    "FamilyStore.openStoreFiles FamilyStore.java:273 (catch IOException -> WARN -> continue)",
+    "FixedFileTrailer.readFromStream FixedFileTrailer.java:306",
+    "the trailer major-version range check"
+  ],
+  "claimed_branches": [
+    "majorVersion in [1,2] fails for 1652127846 -> IOException",
+    "the per-file catch(IOException) clause that logs the WARN and skips the file instead of aborting region open"
+  ],
+  "gt_lines": [
+    "Store.internalFlushCache (anon FamilyStore.writeSnapshotFile) Store.java:521-533 - fs.rename(writer.getPath(), dstPath) promotes the flushed file into the live column-family dir at line 526; sf.createReader() only reads it at 533 (fix inserts validateStoreFile(writer.getPath()) at 523, before the rename)",
+    "Store.completeCompaction (anon FamilyStore.installCompactionResult) Store.java:1221-1232 - StoreFile.rename(...) promotes the compaction output at 1224-1225 inside 'if (compactedFile != null)'; result.createReader() only reads it at 1232 (fix inserts validateStoreFile(compactedFile.getPath()) at 1222, before the rename)"
+  ],
+  "gt_branches": [
+    "flush path: the move out of .tmp is guarded only by 'if (!fs.rename(...))' i.e. 'did the rename succeed', never by 'can the file be opened'",
+    "compaction path: the move is guarded only by 'if (compactedFile != null)' plus a catch on rename failure, never by 'can the file be opened'",
+    "in both: the open (createReader) happens AFTER the move, so an unreadable file is already a permanent member of the store directory; the required guard is 'opens successfully -> promote, else keep it in .tmp'"
+  ],
+  "bar": "PASS = both root-cause sites (flush promotion AND compaction promotion) + the exact missing-validation condition; no partial credit (METHODOLOGY \u00a78, \u00a710). Pre-registered in private/ground_truth.md before the runs.",
+  "site_a": "MISS",
+  "site_b": "MISS",
+  "condition_stated": false,
+  "symptom_site_only": true
+}

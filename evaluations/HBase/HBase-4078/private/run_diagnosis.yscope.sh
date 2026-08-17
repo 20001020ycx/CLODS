@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_diagnosis.prodlog.sh — HBase-4078's copy of context/run_diagnosis.sh.
+# run_diagnosis.yscope.sh — HBase-4078's copy of context/run_diagnosis.sh.
 #
 # context/ is read-only for agents (METHODOLOGY §13) and the tracked harness has not caught
 # up with two things the current methodology requires, so this copy applies exactly those two

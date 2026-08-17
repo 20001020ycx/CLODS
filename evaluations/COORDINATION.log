@@ -102,3 +102,5 @@
 2026-08-17T19:39:16Z HBase-4078 M5 DONE success (bare-observable symptom + two-site ground truth)
 2026-08-17T19:49:15Z HBase-4078 M6 IN_PROGRESS: 2/5 runs done, 3 blocked by claude-opus-4-7 daily quota (resets 2026-08-18T12:00Z)
 2026-08-17T20:43:19Z HBase-4078 M6 retry still quota-blocked (trivial probe passes, real runs 429) - wait for 2026-08-18T12:00Z
+2026-08-17T21:08:00Z HBase-4078 M6 DONE (5 runs; 3-5 via operator subscription, Opus 4.7 verified)
+2026-08-17T21:08:00Z HBase-4078 M7 DONE 0/5 PASS (site A 2/5, site B 0/5); M8 DONE; bug COMPLETE 0/5

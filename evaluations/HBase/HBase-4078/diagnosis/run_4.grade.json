@@ -1,0 +1,31 @@
+{
+  "verdict": "FAIL",
+  "model": "claude-opus-4-7",
+  "effort": "high",
+  "endpoint": "api.anthropic.com (operator subscription, Max plan)",
+  "harness": "private/run_diagnosis.subscription.sh",
+  "justification": "Root-cause site A is HIT with the exact missing-validation condition, in the model's own words ('rename-before-verify', 'the unconditional publish at line 526'), and it reconstructed the provenance from the merged production log itself (found the 'Moving new store file .../.tmp/... to .../cf/1553916852809385968' line, noticed there is no matching 'Registered ...' line, and tied it to the DroppedSnapshotException). Site B (the compaction promotion in installCompactionResult, the second call site the fix adds) is not named - the word 'compaction' does not occur anywhere in the answer - so under the pre-registered rule that a run must name every site the fix touched (METHODOLOGY \u00a710) this is FAIL.",
+  "claimed_lines": [
+    "FamilyStore.writeSnapshotFile FamilyStore.java:526 (fs.rename of the tmp file into the family dir) and :533 (sf.createReader) == Store.internalFlushCache 526/533",
+    "FamilyStore.openStoreFiles FamilyStore.java:274-278 (catch -> WARN -> continue)",
+    "HFile.checkFormatVersion HFile.java:473"
+  ],
+  "claimed_branches": [
+    "'Rename-before-verify (lines 526 -> 533): the tmp file is moved into the live family directory BEFORE it is validated. If sf.createReader() throws, control leaves writeSnapshotFile with the bad file already at cf/...; there is no catch, no fs.delete(dstPath), no move-aside. The unconditional publish at line 526 (rename result is only logged, never acted on) means the corrupt file is now permanently part of the family directory.'",
+    "openStoreFiles' catch(IOException) -> WARN + continue keeps it there forever"
+  ],
+  "gt_lines": [
+    "Store.internalFlushCache (anon FamilyStore.writeSnapshotFile) Store.java:521-533 - fs.rename(writer.getPath(), dstPath) promotes the flushed file into the live column-family dir at line 526; sf.createReader() only reads it at 533 (fix inserts validateStoreFile(writer.getPath()) at 523, before the rename)",
+    "Store.completeCompaction (anon FamilyStore.installCompactionResult) Store.java:1221-1232 - StoreFile.rename(...) promotes the compaction output at 1224-1225 inside 'if (compactedFile != null)'; result.createReader() only reads it at 1232 (fix inserts validateStoreFile(compactedFile.getPath()) at 1222, before the rename)"
+  ],
+  "gt_branches": [
+    "flush path: the move out of .tmp is guarded only by 'if (!fs.rename(...))' i.e. 'did the rename succeed', never by 'can the file be opened'",
+    "compaction path: the move is guarded only by 'if (compactedFile != null)' plus a catch on rename failure, never by 'can the file be opened'",
+    "in both: the open (createReader) happens AFTER the move, so an unreadable file is already a permanent member of the store directory; the required guard is 'opens successfully -> promote, else keep it in .tmp'"
+  ],
+  "bar": "PASS = both root-cause sites (flush promotion AND compaction promotion) + the exact missing-validation condition; no partial credit (METHODOLOGY \u00a78, \u00a710). Pre-registered in private/ground_truth.md before the runs.",
+  "site_a": "HIT",
+  "site_b": "MISS",
+  "condition_stated": true,
+  "symptom_site_only": false
+}

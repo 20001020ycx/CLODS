@@ -1,0 +1,32 @@
+{
+  "verdict": "FAIL",
+  "model": "claude-opus-4-7",
+  "effort": "high",
+  "endpoint": "api.anthropic.com (operator subscription, Max plan)",
+  "harness": "private/run_diagnosis.subscription.sh",
+  "justification": "Symptom path only, plus a note that readFromStream cannot distinguish 'trailer missing/truncated' from 'unsupported version'. It names 'a truncated or partially-written HFile whose real fixed trailer never got flushed to disk' as a possible origin but does not look for, or name, the code that moved such a file into the live directory. Neither fix site named.",
+  "claimed_lines": [
+    "FamilyStore.openStoreFiles FamilyStore.java:253-278",
+    "FixedFileTrailer.readFromStream FixedFileTrailer.java:298-306",
+    "HFile.checkFormatVersion HFile.java:471-476"
+  ],
+  "claimed_branches": [
+    "files[i].isDir() false; getLen() <= 0 false; createReader() throws inside try/catch",
+    "version < MIN(1) || version > MAX(2) fires for 1652127846",
+    "catch(IOException) -> WARN + continue"
+  ],
+  "gt_lines": [
+    "Store.internalFlushCache (anon FamilyStore.writeSnapshotFile) Store.java:521-533 - fs.rename(writer.getPath(), dstPath) promotes the flushed file into the live column-family dir at line 526; sf.createReader() only reads it at 533 (fix inserts validateStoreFile(writer.getPath()) at 523, before the rename)",
+    "Store.completeCompaction (anon FamilyStore.installCompactionResult) Store.java:1221-1232 - StoreFile.rename(...) promotes the compaction output at 1224-1225 inside 'if (compactedFile != null)'; result.createReader() only reads it at 1232 (fix inserts validateStoreFile(compactedFile.getPath()) at 1222, before the rename)"
+  ],
+  "gt_branches": [
+    "flush path: the move out of .tmp is guarded only by 'if (!fs.rename(...))' i.e. 'did the rename succeed', never by 'can the file be opened'",
+    "compaction path: the move is guarded only by 'if (compactedFile != null)' plus a catch on rename failure, never by 'can the file be opened'",
+    "in both: the open (createReader) happens AFTER the move, so an unreadable file is already a permanent member of the store directory; the required guard is 'opens successfully -> promote, else keep it in .tmp'"
+  ],
+  "bar": "PASS = both root-cause sites (flush promotion AND compaction promotion) + the exact missing-validation condition; no partial credit (METHODOLOGY \u00a78, \u00a710). Pre-registered in private/ground_truth.md before the runs.",
+  "site_a": "MISS",
+  "site_b": "MISS",
+  "condition_stated": false,
+  "symptom_site_only": true
+}

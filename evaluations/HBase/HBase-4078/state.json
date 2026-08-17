@@ -113,48 +113,72 @@
     },
     {
       "id": "M6",
-      "status": "IN_PROGRESS",
-      "outcome": "in_progress",
-      "success": null,
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
       "started": "2026-08-17T19:39:00Z",
-      "finished": null,
-      "attempts": 3,
+      "finished": "2026-08-17T21:00:00Z",
+      "attempts": 4,
       "by": "agent-run-4ee9c5a7",
       "artifacts": [
-        "private/run_diagnosis.prodlog.sh",
+        "private/run_diagnosis.yscope.sh",
+        "private/run_diagnosis.subscription.sh",
         "diagnosis/run_1.md",
         "diagnosis/run_2.md",
-        "diagnosis/run_3.QUOTA-FAILED.txt",
-        "diagnosis/run_4.QUOTA-FAILED.txt",
-        "diagnosis/run_5.QUOTA-FAILED.txt"
+        "diagnosis/run_3.md",
+        "diagnosis/run_4.md",
+        "diagnosis/run_5.md"
       ],
-      "note": "2 of 5 runs COMPLETED; runs 3-5 are blocked by the model gateway's DAILY QUOTA, not by anything about this bug: each returned 'API Error: Request rejected (429) - Daily quota exceeded for model group \"claude-opus-4-7\". The quota resets at 2026-08-18T08:00:00-04:00.' (the same wall HBase-3403 hit today, see its run_4/5.QUOTA-FAILED.txt - the quota is shared). Their bodies were renamed to diagnosis/run_N.QUOTA-FAILED.txt so the harness's idempotency check (skip a non-empty run_N.md) will re-run exactly those three; run_1.md and run_2.md are complete, stderr-clean and must NOT be re-run. TO RESUME (after 2026-08-18T12:00Z), from the repo root: bash context/extract-yscope-anthropic-paper-validation-env.sh /tmp/ysa.env ; GW_IP=$(getent ahostsv4 llm-gateway.yscope.io | awk '{print $1}' | sort -u | head -1) ; docker run --rm --cap-add=NET_ADMIN --add-host llm-gateway.yscope.io:$GW_IP --env-file /tmp/ysa.env -e IS_SANDBOX=1 -v $PWD/evaluations/HBase/HBase-4078:/bug --entrypoint bash clods-eval /bug/private/run_diagnosis.prodlog.sh /bug ; then delete /tmp/ysa.env. HARNESS: private/run_diagnosis.prodlog.sh is context/run_diagnosis.sh with EXACTLY two deltas and nothing else (diff = 3 hunks: this header, plus the two) - (1) the sec.5/M6 prompt text 'the production log at <STAGE>/logs/symptom.log (this is a large, realistic production log - grep it for the symptom rather than reading it whole)', (2) sec.7's hardlink-not-copy staging of the 3.19 GB merged log. context/ was NOT modified. One deployment-level addition was needed at docker run: -e IS_SANDBOX=1, because Claude Code 2.1.197 refuses --permission-mode bypassPermissions as root ('--dangerously-skip-permissions cannot be used with root/sudo privileges') and the container must be root for the iptables lock; it changes no isolation property (verified by a control run). Egress iptables-locked to llm-gateway.yscope.io:443 only (--add-host pins the IP so the DROP policy cannot break DNS), auth = the yscope-anthropic-paper-validation bearer token via --env-file, model claude-opus-4-7 effort high, --bare --no-session-persistence --exclude-dynamic-system-prompt-sections, Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, throwaway staging dir holding ONLY source/ + logs/symptom.log + symptom.md, single turn, no follow-ups. PRELIMINARY (both completed runs, not yet graded at M7): both traced the SYMPTOM path exhaustively and correctly - FamilyStore.openStoreFiles' catch(IOException){WARN; continue;} at 268-273, StoreFile.createReader -> HFile.pickReaderVersion -> FixedFileTrailer.readFromStream:306 -> HFile.checkFormatVersion's 'version < 1 || version > 2' at HFile.java:473 - and both concluded the root cause is 'the HFile trailer is corrupt' plus the swallow-and-continue policy. NEITHER named either site the fix changed: 0 mentions of writeSnapshotFile (= internalFlushCache) or installCompactionResult (= completeCompaction), and neither asked how an unreadable file came to be in the live column-family directory. Run 2 explicitly calls the skip 'not a second bug ... the intentional policy', the opposite of the ticket's judgment. || RETRY 2026-08-17T20:42Z FAILED THE SAME WAY, with a useful lesson recorded here so nobody repeats it: a TRIVIAL probe through the gateway (claude -p 'Reply with exactly: OK', same model claude-opus-4-7, same effort high, same credentials) SUCCEEDS while the real diagnosis runs are still rejected with the identical 429 'Daily quota exceeded ... resets at 2026-08-18T08:00:00-04:00'. The quota is evidently enforced on request volume/size, not on request count, and a diagnosis request (staged source tree + a 3.19 GB log to grep, effort high) is orders of magnitude larger than the probe. CONCLUSION: a cheap probe is NOT a valid readiness test for this batch - only re-running the harness after the stated reset is. runs 3-5 were re-parked as diagnosis/run_N.QUOTA-FAILED.txt; runs 1-2 were correctly skipped by the harness ('run_N.md exists and is non-empty; skipping')."
+      "note": "2 of 5 runs COMPLETED; runs 3-5 are blocked by the model gateway's DAILY QUOTA, not by anything about this bug: each returned 'API Error: Request rejected (429) - Daily quota exceeded for model group \"claude-opus-4-7\". The quota resets at 2026-08-18T08:00:00-04:00.' (the same wall HBase-3403 hit today, see its run_4/5.QUOTA-FAILED.txt - the quota is shared). Their bodies were renamed to diagnosis/run_N.QUOTA-FAILED.txt so the harness's idempotency check (skip a non-empty run_N.md) will re-run exactly those three; run_1.md and run_2.md are complete, stderr-clean and must NOT be re-run. TO RESUME (after 2026-08-18T12:00Z), from the repo root: bash context/extract-yscope-anthropic-paper-validation-env.sh /tmp/ysa.env ; GW_IP=$(getent ahostsv4 llm-gateway.yscope.io | awk '{print $1}' | sort -u | head -1) ; docker run --rm --cap-add=NET_ADMIN --add-host llm-gateway.yscope.io:$GW_IP --env-file /tmp/ysa.env -e IS_SANDBOX=1 -v $PWD/evaluations/HBase/HBase-4078:/bug --entrypoint bash clods-eval /bug/private/run_diagnosis.yscope.sh /bug ; then delete /tmp/ysa.env. HARNESS: private/run_diagnosis.yscope.sh is context/run_diagnosis.sh with EXACTLY two deltas and nothing else (diff = 3 hunks: this header, plus the two) - (1) the sec.5/M6 prompt text 'the production log at <STAGE>/logs/symptom.log (this is a large, realistic production log - grep it for the symptom rather than reading it whole)', (2) sec.7's hardlink-not-copy staging of the 3.19 GB merged log. context/ was NOT modified. One deployment-level addition was needed at docker run: -e IS_SANDBOX=1, because Claude Code 2.1.197 refuses --permission-mode bypassPermissions as root ('--dangerously-skip-permissions cannot be used with root/sudo privileges') and the container must be root for the iptables lock; it changes no isolation property (verified by a control run). Egress iptables-locked to llm-gateway.yscope.io:443 only (--add-host pins the IP so the DROP policy cannot break DNS), auth = the yscope-anthropic-paper-validation bearer token via --env-file, model claude-opus-4-7 effort high, --bare --no-session-persistence --exclude-dynamic-system-prompt-sections, Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, throwaway staging dir holding ONLY source/ + logs/symptom.log + symptom.md, single turn, no follow-ups. PRELIMINARY (both completed runs, not yet graded at M7): both traced the SYMPTOM path exhaustively and correctly - FamilyStore.openStoreFiles' catch(IOException){WARN; continue;} at 268-273, StoreFile.createReader -> HFile.pickReaderVersion -> FixedFileTrailer.readFromStream:306 -> HFile.checkFormatVersion's 'version < 1 || version > 2' at HFile.java:473 - and both concluded the root cause is 'the HFile trailer is corrupt' plus the swallow-and-continue policy. NEITHER named either site the fix changed: 0 mentions of writeSnapshotFile (= internalFlushCache) or installCompactionResult (= completeCompaction), and neither asked how an unreadable file came to be in the live column-family directory. Run 2 explicitly calls the skip 'not a second bug ... the intentional policy', the opposite of the ticket's judgment. || RETRY 2026-08-17T20:42Z FAILED THE SAME WAY, with a useful lesson recorded here so nobody repeats it: a TRIVIAL probe through the gateway (claude -p 'Reply with exactly: OK', same model claude-opus-4-7, same effort high, same credentials) SUCCEEDS while the real diagnosis runs are still rejected with the identical 429 'Daily quota exceeded ... resets at 2026-08-18T08:00:00-04:00'. The quota is evidently enforced on request volume/size, not on request count, and a diagnosis request (staged source tree + a 3.19 GB log to grep, effort high) is orders of magnitude larger than the probe. CONCLUSION: a cheap probe is NOT a valid readiness test for this batch - only re-running the harness after the stated reset is. runs 3-5 were re-parked as diagnosis/run_N.QUOTA-FAILED.txt; runs 1-2 were correctly skipped by the harness ('run_N.md exists and is non-empty; skipping'). || COMPLETED 2026-08-17T21:00Z on the operator's OWN Anthropic subscription (ccs 'anthropic' account profile, Max plan) against api.anthropic.com, at their instruction, because the org gateway's daily claude-opus-4-7 quota stayed exhausted. BOTH harnesses are kept side by side and are interchangeable per run (each skips a run whose run_N.md is already non-empty), so a batch can start on whichever endpoint has quota and finish on the other: private/run_diagnosis.yscope.sh (org gateway; bearer token via --env-file; --add-host llm-gateway.yscope.io:<ip>; purity --bare) and private/run_diagnosis.subscription.sh (api.anthropic.com; auth via an ISOLATED COPY of the account profile's .credentials.json mounted at CLAUDE_CONFIG_DIR, so the container can never write to the operator's real profile and none of its history/projects/MCP servers come along; --add-host api.anthropic.com:<ip>; purity --safe-mode, because --bare skips the keychain and therefore refuses account auth - CLAUDE_PURITY_FLAG is the tracked script's own knob for exactly this). The subscription variant differs from the yscope one in exactly three hunks, all auth/egress; prompt, staging, tool denials, statelessness, single turn and model/effort pinning are byte-identical. SUBJECT VERIFIED: a control call returned modelUsage={'claude-opus-4-7'}, i.e. the subscription served Opus 4.7 and not an alias. Runs 1-2 came from the gateway, runs 3-5 from the subscription; all five stderr files are empty and all five answers are complete (3.9-9.0 kB). Operational note: the batch's shell exited 127 at its final echo because the script file was edited on disk (renaming the sibling harness) while bash was still reading it - all five answers had already been written and none is truncated."
     },
     {
       "id": "M7",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T21:00:00Z",
+      "finished": "2026-08-17T21:10:00Z",
+      "attempts": 1,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "diagnosis/run_1.grade.json",
+        "diagnosis/run_2.grade.json",
+        "diagnosis/run_3.grade.json",
+        "diagnosis/run_4.grade.json",
+        "diagnosis/run_5.grade.json"
+      ],
+      "note": "0/5 PASS under the bar pre-registered in private/ground_truth.md (both sites the fix changed + the exact missing-validation condition; no partial credit per sec.8/sec.10). ALL FIVE runs reconstructed the SYMPTOM path perfectly and identically (FamilyStore.openStoreFiles' catch(IOException){WARN;continue;} at 269-279, StoreFile.createReader -> HFile.pickReaderVersion -> FixedFileTrailer.readFromStream:300-306, HFile.checkFormatVersion's 'version < 1 || version > 2' firing on 1652127846). Runs 1, 2 and 3 stopped there and named the root cause as 'the HFile is corrupt'; run 2 additionally declared the silent skip 'not a second bug: it is the *intentional* policy encoded at FamilyStore.java:273', the exact reading HBASE-4078 was filed to overturn. Runs 4 and 5 DID work backwards through the 3.19 GB merged log to the flush that created the file and stated ROOT-CAUSE SITE A exactly - run 4: 'Rename-before-verify (lines 526 -> 533) ... the unconditional publish at line 526 ... means the corrupt file is now permanently part of the family directory'; run 5: 'FamilyStore.writeSnapshotFile does the flush -> validate sequence in the wrong order', line 526 renames the not-yet-validated file and 531-533 opens it only afterwards. Run 4 also noticed there is no matching 'Registered ...' line for the promoted file. NONE of the five named ROOT-CAUSE SITE B (installCompactionResult = completeCompaction, the compaction promotion): the word 'compaction' occurs 0 times in all five answers, although the same incident also promoted a truncated compaction output and the log carries its 'Merge failed' error. Sub-scores in every grade JSON (site_a, site_b, condition_stated, symptom_site_only) keep alternative bars auditable without a re-run: site_a 2/5, site_b 0/5, condition_stated 2/5, symptom-site-only 3/5."
     },
     {
       "id": "M8",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T21:10:00Z",
+      "finished": "2026-08-17T21:15:00Z",
+      "attempts": 1,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "summary.md"
+      ],
+      "note": "summary.md written: 0/5 under the pre-registered two-site bar, with the shape of the misses recorded (3/5 never leave the symptom site and one of those calls the silent skip 'the intentional policy'; 2/5 reach root-cause site A with its exact condition, but none generalises to the second promotion path). Result set in state.json.result with the alternative-bar counts."
     }
   ],
-  "result": null,
+  "result": {
+    "successes": 0,
+    "total": 5,
+    "per_run": [
+      "FAIL",
+      "FAIL",
+      "FAIL",
+      "FAIL",
+      "FAIL"
+    ],
+    "site_a_successes": 2,
+    "site_b_successes": 0,
+    "condition_stated_successes": 2,
+    "symptom_site_only": 3,
+    "note": "0/5 under the pre-registered bar (both sites the fix changed + the exact missing-validation condition). All 5 traced the symptom path (openStoreFiles' catch/continue and the HFile trailer version check) correctly. Runs 4 and 5 additionally named root-cause site A - the flush's rename-before-validate at Store.internalFlushCache 526/533 - with the exact condition, having reconstructed the file's provenance from the 3.19 GB merged production log. No run named site B (the identical unvalidated promotion in Store.completeCompaction): 'compaction' appears 0 times across all five answers. Runs 1-2 used the org gateway, runs 3-5 the operator's own subscription; same model claude-opus-4-7, effort high, identical prompt/staging/tool-denials."
+  },
   "source_version": "trunk @ 2011-10-13 (0.93-SNAPSHOT)"
 }

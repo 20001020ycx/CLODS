@@ -1,0 +1,32 @@
+{
+  "verdict": "FAIL",
+  "model": "claude-opus-4-7",
+  "effort": "high",
+  "endpoint": "llm-gateway.yscope.io (org gateway)",
+  "harness": "private/run_diagnosis.yscope.sh",
+  "justification": "Traces the SYMPTOM path exhaustively and correctly (skip-and-continue at openStoreFiles, the trailer version check) and states the root cause as 'the HFile trailer of .../cf/1553916852809385968 is corrupt'. It never asks how an unreadable file came to be in the live column-family directory: 0 mentions of the flush promotion (writeSnapshotFile) or the compaction promotion (installCompactionResult), and 0 mentions of compaction at all. Neither site the fix changed is named, so neither the lines nor the branch condition of the fix are matched.",
+  "claimed_lines": [
+    "FamilyStore.openStoreFiles FamilyStore.java:268-271 (catch IOException -> WARN -> continue)",
+    "HFile.checkFormatVersion HFile.java:473 (version < 1 || version > 2)",
+    "FixedFileTrailer.readFromStream FixedFileTrailer.java:300-306"
+  ],
+  "claimed_branches": [
+    "version(1652127846) > MAX_FORMAT_VERSION(2) -> IllegalArgumentException",
+    "catch(IllegalArgumentException) -> throw new IOException",
+    "catch(IOException) around createReader() -> LOG.warn + continue, so the region opens without the file"
+  ],
+  "gt_lines": [
+    "Store.internalFlushCache (anon FamilyStore.writeSnapshotFile) Store.java:521-533 - fs.rename(writer.getPath(), dstPath) promotes the flushed file into the live column-family dir at line 526; sf.createReader() only reads it at 533 (fix inserts validateStoreFile(writer.getPath()) at 523, before the rename)",
+    "Store.completeCompaction (anon FamilyStore.installCompactionResult) Store.java:1221-1232 - StoreFile.rename(...) promotes the compaction output at 1224-1225 inside 'if (compactedFile != null)'; result.createReader() only reads it at 1232 (fix inserts validateStoreFile(compactedFile.getPath()) at 1222, before the rename)"
+  ],
+  "gt_branches": [
+    "flush path: the move out of .tmp is guarded only by 'if (!fs.rename(...))' i.e. 'did the rename succeed', never by 'can the file be opened'",
+    "compaction path: the move is guarded only by 'if (compactedFile != null)' plus a catch on rename failure, never by 'can the file be opened'",
+    "in both: the open (createReader) happens AFTER the move, so an unreadable file is already a permanent member of the store directory; the required guard is 'opens successfully -> promote, else keep it in .tmp'"
+  ],
+  "bar": "PASS = both root-cause sites (flush promotion AND compaction promotion) + the exact missing-validation condition; no partial credit (METHODOLOGY \u00a78, \u00a710). Pre-registered in private/ground_truth.md before the runs.",
+  "site_a": "MISS",
+  "site_b": "MISS",
+  "condition_stated": false,
+  "symptom_site_only": true
+}

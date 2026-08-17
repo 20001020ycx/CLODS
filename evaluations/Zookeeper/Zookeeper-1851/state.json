@@ -195,5 +195,41 @@
       }
     ]
   },
-  "source_version": "trunk @ 2014-07 (3.5.0-dev)"
+  "source_version": "trunk @ 2014-07 (3.5.0-dev)",
+  "additional_batches": [
+    {
+      "date": "2026-08-17",
+      "dir": "diagnosis/2026-08-17",
+      "endpoint": "https://llm-gateway.yscope.io (yscope-anthropic-paper-validation profile, bearer token)",
+      "model": "claude-opus-4-7",
+      "effort": "high",
+      "log": "merged production log, 8,072,681 lines",
+      "successes": 0,
+      "total": 4,
+      "per_run": [
+        "FAIL",
+        "FAIL",
+        "FAIL",
+        "FAIL"
+      ],
+      "run_5": "not produced - gateway 429 daily quota for model group claude-opus-4-7, resets 2026-08-18T08:00-04:00",
+      "note": "All four diagnosed a head-of-line-blocking stall; none found the NullPointerException (0 mentions) or createExt (0 mentions). Possible confound vs the 2026-08-16 batch: the gateway profile sets CLAUDE_CODE_DISABLE_1M_CONTEXT=true + auto-compaction at 200k, a smaller working context for an 8M-line grep task."
+    }
+  ],
+  "superseded_batches": [
+    {
+      "date": "2026-08-17",
+      "dir": "diagnosis/2026-08-17-oauth-superseded",
+      "endpoint": "api.anthropic.com (OAuth, pre-gateway)",
+      "successes": 0,
+      "total": 4,
+      "per_run": [
+        "FAIL",
+        "FAIL",
+        "FAIL",
+        "FAIL"
+      ],
+      "note": "4 runs completed before the endpoint switch; run 5 hit the subscription session limit. Runs 1 named needCommit only; 2 and 4 were stall answers; 3 blamed the crash site with the wrong trigger."
+    }
+  ]
 }

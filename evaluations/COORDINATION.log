@@ -97,3 +97,4 @@
 2026-08-17T13:21:56Z HBase-3627 M5 DONE success (bare-observable symptom + two-site ground truth)
 2026-08-17T13:33:51Z HBase-3627 M6-M8 DONE; bug COMPLETE 0/5 two-site (5/5 root-causing line+branch)
 2026-08-17T18:53:16Z HBase-4078 M3 DONE success (4 unreadable files promoted into the live store dir; 139.7MB repro merged into 3.19GB)
+2026-08-17T19:09:34Z Zookeeper-1851 extra M6 batch via gateway: 0/4 (run 5 quota-blocked)

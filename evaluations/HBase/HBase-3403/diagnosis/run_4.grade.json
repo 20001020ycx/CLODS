@@ -1,0 +1,18 @@
+{
+  "verdict": "PASS",
+  "justification": "Final summary names `CatalogScanner.metaRowToRegionPairWithInfo` + `getRegionsOfServer` at CatalogScanner.java:578-580 as the filter that drops the split parent 'because offlineSplitParent wrote a zero-length info:server value (CatalogWriter.java:80-83)', and LostServerHandler.java:179-184 / recoverSplitChild:209-222 as the self-healing path gated on the parent surviving that filter. Adds correct but credit-neutral context (closeUserRegions with zk=false, processServerShutdown discarding the in-memory map). Matches (a) and (b).",
+  "claimed_lines": [
+    "CatalogWriter.java:80-83 (offlineSplitParent writes SERVER_QUALIFIER/STARTCODE_QUALIFIER = EMPTY_BYTE_ARRAY)"
+  ],
+  "claimed_branches": [
+    "CatalogScanner.java:578-580 `pair.getSecond() == null || !pair.getSecond().equals(hsi)` -> continue",
+    "LostServerHandler.java:179 `hri.isOffline() && hri.isSplit()` -> recoverSplitChildren never reached"
+  ],
+  "gt_lines": [
+    "CatalogWriter.offlineSplitParent (real MetaEditor.offlineParentInMeta), CatalogWriter.java:80-83 -- the two put.add() calls writing HConstants.SERVER_QUALIFIER and HConstants.STARTCODE_QUALIFIER as HConstants.EMPTY_BYTE_ARRAY into the split parent's .META. row (the fix deletes exactly these four lines)"
+  ],
+  "gt_branches": [
+    "CatalogScanner.getRegionsOfServer (real MetaReader.getServerUserRegions), CatalogScanner.java:578: `if (pair.getSecond() == null || !pair.getSecond().equals(hsi)) continue;` -- the offlined parent has no server, so it is dropped from the dead server's region set",
+    "LostServerHandler.processLostRegion (real ServerShutdownHandler.processDeadRegion), LostServerHandler.java:179: `if (hri.isOffline() && hri.isSplit())` -> recoverSplitChildren -- consequently never evaluated for the parent, so the missing split child is never re-added to .META. nor assigned"
+  ]
+}

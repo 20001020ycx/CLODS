@@ -20,7 +20,7 @@ milestone carries `status` + `success` + `outcome`.
 | M0 | Scaffold & claim the bug folder | DONE | true | success |
 | M1 | From JIRA: fix commit + pre-fix commit | DONE | true | success |
 | M2 | Check out pre-fix, build from source, fix deps | DONE | true | success |
-| M3 | Reproduce the failure + merge into production log | PENDING | null | pending |
+| M3 | Reproduce the failure + merge into production log | DONE | true | success |
 | M4 | Anonymize, rebuild, re-confirm reproduction | PENDING | null | pending |
 | M5 | Prepare diagnosis inputs & ground truth | PENDING | null | pending |
 | M6 | Run LLM diagnosis x5 (network locked) | PENDING | null | pending |
@@ -44,3 +44,12 @@ milestone carries `status` + `success` + `outcome`.
   (their original repos — people.apache.org, repository.codehaus.org — are dead), plus Central's `hadoop-test-0.20.2.jar`
   under the append coordinate (test scope only); one source edit in `private/deps-fix.patch`
   (`InputSampler.java:320`, add a `(K[])` cast javac 8 requires and javac 6 did not).
+- 2026-08-17T03:55Z M3 DONE success=true — real cluster (1 master + 3 regionservers + ZooKeeper, all DEBUG) built from the
+  pre-fix tree in a `--cpus=2` container; 300-region table, 3M rows of 1 KB, mixed traffic; the incident is an operator
+  **cluster restart**, after which the master re-places regions faster than the servers can open them. **7 181** regions-in-transition
+  timeouts and **4 740** `Caught throwable while processing event M_RS_OPEN_REGION` + `NullPointerException` at
+  `Writables.getWritable:75` ← `RegionTransitionData.fromBytes:198` ← `ZKAssign.transitionNode:673` ← … ←
+  `OpenRegionHandler.process:90` ← `EventHandler.run:151`, each preceded by ZKUtil's `Unable to get data of znode … because
+  node does not exist` — the JIRA's own trace. No source patched, no log line injected; detection is silent.
+  `private/symptom.orig.log` = 1 662 415 lines / 244 MB (Log A); `private/merged.orig.log` = 13 657 242 lines / 3.3 GB
+  (Log B = Log A merged into `production-logs/HBase/production.log`). Write-up in `reproduce.md`.

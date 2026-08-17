@@ -7,7 +7,7 @@
   "fix_commit": "79b522db0c8795d9d303aa6ec564c197b3a8bb20",
   "pre_fix_commit": "86e9f5f8c9cb36b3dd2a1344c8c8c2bf95f44cc5",
   "anonymized_commit": null,
-  "symptom_short": null,
+  "symptom_short": "Region bring-ups on the region servers die with a NullPointerException while they claim the region's coordination record, and the master keeps re-placing the same regions",
   "milestones": [
     {
       "id": "M0",
@@ -58,15 +58,25 @@
     },
     {
       "id": "M3",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T02:10:00Z",
+      "finished": "2026-08-17T03:48:08Z",
+      "attempts": 6,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "reproduce.sh",
+        "reproduce.md",
+        "private/repro/mkconf.sh",
+        "private/repro/cluster.sh",
+        "private/repro/Workload.java",
+        "private/repro/CreateTable.java",
+        "private/merge_logs.py",
+        "private/symptom.orig.log (Log A, gitignored)",
+        "private/merged.orig.log (Log B, gitignored)"
+      ],
+      "note": "Reproduced on the real system: 1 master + 3 regionservers + 1 ZooKeeper built from the pre-fix tree (0.90.2-SNAPSHOT), all at DEBUG, hbase.rootdir on the local FS, inside the per-bug container limited to --cpus=2 (an ordinary overloaded two-core node). PHASE A: usertable pre-split into 300 regions, 12 client threads write 3,000,000 rows of 1 KB, then a mixed read/write/scan/delete workload; compaction is off and the memstore flush size is 256 KB, so regions carry tens of store files and are slow to open. PHASE B (incident, no code touched): the operator restarts the cluster; the master bulk-places all 300 regions far faster than the servers can open them. PHASE C: client traffic runs across the restart (6x20000 mixed ops) plus a post-incident probe. RESULT: 7181 regions-in-transition timeouts on the master and 4740 'Caught throwable while processing event M_RS_OPEN_REGION' + java.lang.NullPointerException at Writables.getWritable:75 <- RegionTransitionData.fromBytes:198 <- ZKAssign.transitionNode:673 <- transitionNodeOpening:552/545 <- OpenRegionHandler.transitionZookeeperOfflineToOpening:297 <- OpenRegionHandler.process:90 <- EventHandler.run:151 on the regionservers, each preceded by the ZKUtil DEBUG 'Unable to get data of znode /hbase/unassigned/<encoded> because node does not exist' (4741) - byte-for-byte the trace the JIRA report attaches. Mechanism: the region sits queued in PENDING_OPEN, the master's timeout monitor re-places it on another server, that server opens it and the master deletes the unassigned znode, and the first server's queued OpenRegionHandler then claims a znode that is gone. Four ordinary operator knobs compress the ticket's 'region takes too long to open' onto a small node: timeoutmonitor.timeout=2000 (default 30000), .period=500 (10000), hbase.bulk.assignment.waiton.empty.rit=2000 (600000; its own comment says 'If we timeout, the RIT monitor should do fixup') and openregion.threads=1 (3). No HBase source is patched and NO log or print statement was added anywhere; detection is silent (reproduce.sh greps the servers' own logs and the clients' result files and prints only to its stdout; Workload.java prints one summary line to its own stdout). Log A private/symptom.orig.log = 1,662,415 lines / 244 MB (1,490,478 DEBUG, 75,392 INFO, 2,834 WARN, 4,758 ERROR) = 5 daemon logs + 5 client session logs with '===== file: X =====' headers. Log B private/merged.orig.log = 13,657,242 lines / 3.3 GB = 11,945,370 production + 1,573,462 reproduction records, produced by private/merge_logs.py (Zookeeper-1900's tool, copied verbatim) with --interleave position, warping only the reproduction timestamps onto the production span (2026-08-14 19:06:45,717 .. 19:31:38,751); the shared production log is never modified. Earlier attempts (1-5) failed to trip the timeout because this host opens a region in ~50 ms: bigger WAL replays, hundreds of store files per region and an RS kill all drained faster than any plausible timeout; the CPU limit plus the bulk-assign wait were what reproduced it deterministically. Write-up in reproduce.md."
     },
     {
       "id": "M4",

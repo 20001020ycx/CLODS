@@ -89,3 +89,4 @@
 2026-08-17T02:15:37Z HBase-3403 M3 DONE success (repro + merge into HBase production log)
 2026-08-17T02:39:57Z HBase-3403 M4 DONE success (failure-path anonymization; rebuilt, re-reproduced, re-merged 2.9GB; zero leakage)
 2026-08-17T02:41:01Z HBase-3403 M5 DONE success (bare-observable symptom + ground truth)
+2026-08-17T03:48:08Z HBase-3627 M3 DONE success (4740 NPEs on real cluster; merged into production log)

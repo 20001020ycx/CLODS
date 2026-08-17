@@ -201,3 +201,30 @@
 - 2026-08-17T13:03:31Z M8 DONE (success=true) — `summary.md` written; `state.json.result` =
   `{"successes": 5, "total": 5, "per_run": ["PASS","PASS","PASS","PASS","PASS"]}`.
   **Bug complete: 5/5.**
+- 2026-08-17T19:05Z **SUPPLEMENTARY re-run** (user-requested; does NOT alter M6/M7/M8 or
+  `state.json`). A second independent batch under `diagnosis/rerun-2026-08-17/`, graded on a
+  different, user-specified bar. The M6 batch in `diagnosis/run_{1..5}.md` was not touched.
+  - Harness `private/run_diagnosis.rerun.sh` = `run_diagnosis.prodlog.sh` + exactly two mechanical
+    deltas: `$CLODS_DIAG_DIR` output override, and the iptables allowlist derived from
+    `$ANTHROPIC_BASE_URL` (gateway `llm-gateway.yscope.io`) instead of `api.anthropic.com`.
+    **Prompt byte-identical** to M6 (md5 `05702b26ee05030997f3165b714cf85b`). Subject unchanged:
+    `claude-opus-4-7`, effort high, same tool denials / statelessness / purity flag.
+  - Isolation re-verified live inside the running container: staging held only `source/`,
+    `symptom.md`, `logs/symptom.log`; `private/` absent; `ground_truth.md` unreachable anywhere
+    on the container filesystem. Note: the `ln` hardlink fell back to `cp` because the log is
+    bind-mounted as a *file* (EXDEV across the mount point) — ~3 GB, no correctness impact.
+  - **Only 3 of 5 runs completed.** Runs 4 and 5 returned nothing but
+    `API Error: Request rejected (429) · Daily quota exceeded for model group "claude-opus-4-7"`
+    (resets 2026-08-18T08:00-04:00), preserved as `run_{4,5}.QUOTA-FAILED.txt` and scored VOID —
+    the subject was never asked. Same class as M6 run 5's discarded infrastructure retries.
+  - Grading bar (user's): (A) does it state parent-offlined + ONE daughter missing from `.META.`
+    → inconsistent after crash; (B) would an engineer be misdirected away from the real fix.
+    `RUBRIC.md` was written and saved **before** any output of this batch was read.
+  - Result: **Bar A 3/3 PASS. Bar B 2 PASS (runs 2, 3) + 1 PARTIAL (run 1), 0 FAIL.**
+    Run 1's PARTIAL: it headlines the recovery gap and invents an unsupported META
+    memstore-visibility race, concluding the fallback "wouldn't repair" the daughter — incorrect;
+    runs 2 and 3 correctly find the fallback *would* have repaired it had it been reachable.
+  - Grounding verified: every distinctive log line quoted by runs 1-3 exists verbatim in the
+    2.9 GB log at the cited timestamps, and run 2's negative claim (no
+    `Repairing; unrecorded split child` in 12 M lines) is true. No fabricated quotes found.
+  - See `diagnosis/rerun-2026-08-17/GRADES.md` for per-run quotes and reasoning.

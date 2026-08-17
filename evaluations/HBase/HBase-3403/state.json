@@ -122,15 +122,17 @@
     },
     {
       "id": "M7",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T13:02:11Z",
+      "finished": "2026-08-17T13:02:11Z",
+      "attempts": 1,
+      "by": "agent-run-8b54496c",
+      "artifacts": [
+        "evaluations/HBase/HBase-3403/diagnosis/run_1.grade.json .. run_5.grade.json"
+      ],
+      "note": "5/5 PASS on the two-part bar of private/ground_truth.md 4 (METHODOLOGY 8: exact line AND exact branch, no partial credit). Every run named (a) CatalogWriter.offlineSplitParent (real MetaEditor.offlineParentInMeta) writing SERVER_QUALIFIER/STARTCODE_QUALIFIER as EMPTY_BYTE_ARRAY at CatalogWriter.java:80-83 -- exactly the four lines the fix deletes -- and (b) the deciding filter 'pair.getSecond() == null || !pair.getSecond().equals(hsi) -> continue' in CatalogScanner.getRegionsOfServer (real MetaReader.getServerUserRegions) at CatalogScanner.java:578, plus the consequently unreachable 'hri.isOffline() && hri.isSplit()' branch at LostServerHandler.processLostRegion:179 that guards recoverSplitChildren. Line numbers were matched by code identity; they happen to be identical pre/post anonymization. Several runs corroborated the diagnosis from the log itself (the master's 'Re-hosting 1 region(s)' line, and the absence of any 'Repairing; unrecorded split child' line). No run needed the secondary fix hunks, and none was credited for them."
     },
     {
       "id": "M8",

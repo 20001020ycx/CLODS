@@ -21,7 +21,7 @@
 | M4 | Anonymize failure path, rebuild, re-merge | DONE | true | success | 4 classes + 7 methods + 22 log literals; rebuilt, re-reproduced, re-merged; VERIFY OK |
 | M5 | symptom.md + ground truth | DONE | true | success | bare-observable symptom; two-part ground-truth bar; VERIFY OK |
 | M6 | LLM diagnosis ×5 | DONE | true | success | 5 single-turn runs, network locked, no follow-ups |
-| M7 | Grade runs | PENDING | null | pending | |
+| M7 | Grade runs | DONE | true | success | 5/5 PASS on the two-part bar |
 | M8 | Summary & finalize | PENDING | null | pending | |
 
 ## Environment notes
@@ -183,3 +183,18 @@
     rotated in the ~10 h since it was taken). After refreshing the credential copy the run
     completed normally. All five graded runs are complete single-turn answers; all five
     `run_N.stderr` are empty.
+- 2026-08-17T13:02:29Z M7 DONE (success=true) — **5/5 PASS** against the two-part bar (§8: exact line *and* exact
+  branch, no partial credit).
+  - Every run named **(a)** `CatalogWriter.offlineSplitParent` writing `SERVER_QUALIFIER` /
+    `STARTCODE_QUALIFIER` as `EMPTY_BYTE_ARRAY` at `CatalogWriter.java:80-83` — exactly the four
+    lines the real fix deletes from `MetaEditor.offlineParentInMeta` — **and (b)** the deciding
+    filter `pair.getSecond() == null || !pair.getSecond().equals(hsi)` → `continue` in
+    `CatalogScanner.getRegionsOfServer:578` (real `MetaReader.getServerUserRegions`), together
+    with the consequently unreachable `hri.isOffline() && hri.isSplit()` branch at
+    `LostServerHandler.processLostRegion:179` that guards `recoverSplitChildren`.
+  - Matching was by code identity (the anonymized line numbers happen to coincide with the
+    pre-fix ones). Runs also corroborated the chain from the log itself — the master's
+    `Re-hosting 1 region(s) last served by …` line, and the *absence* of any
+    `Repairing; unrecorded split child` line.
+  - No run was credited for the secondary fix hunks (`isDaughterMissing`, the
+    `fullScan(startrow)` overload, the catalog-janitor test switch); none needed them.

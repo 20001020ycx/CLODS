@@ -92,3 +92,4 @@
 2026-08-17T03:48:08Z HBase-3627 M3 DONE success (4740 NPEs on real cluster; merged into production log)
 2026-08-17T12:59:42Z HBase-3627 M4 DONE success (8 failure-path types renamed, both logs regenerated, gate clean)
 2026-08-17T13:01:38Z HBase-3403 M6 DONE success (5 runs vs merged 3GB production log)
+2026-08-17T13:02:29Z HBase-3403 M7 DONE success (5/5 PASS)

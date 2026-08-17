@@ -160,7 +160,12 @@ javac -nowarn -cp "$SRC/target/classes:$SRC/target/lib/*" -d "$RUN/classes" \
 MARKER=$RUN/incident.arm
 RECORD=$RUN/incident.record
 : > "$RECORD"
-CHAOS_OPTS="-Dhdfs.incident.marker=$MARKER -Dhdfs.incident.record=$RECORD -Dhdfs.incident.keep=0.55"
+# The incident is bounded on purpose: only files written under the table's own region
+# directory, and at most two of them (one compaction output, one flush output). Without the
+# bound, a region-open retry keeps re-flushing and every retry is cut short again, which
+# turns one incident into an endless open loop and buries the failure under its own retries.
+CHAOS_OPTS="-Dhdfs.incident.marker=$MARKER -Dhdfs.incident.record=$RECORD \
+ -Dhdfs.incident.keep=0.55 -Dhdfs.incident.scope=/$TABLE/ -Dhdfs.incident.max=2"
 
 ############################################################################
 say "3. start HDFS (NameNode + 2 DataNodes)"
@@ -170,7 +175,8 @@ export HADOOP_LOG_DIR=$RUN/logs
 export HADOOP_PID_DIR=$RUN/pids
 mkdir -p "$HADOOP_PID_DIR"
 echo "export JAVA_HOME=$JAVA_HOME" > "$RUN/conf-hadoop/hadoop-env.sh"
-"$HADOOP_HOME/bin/hadoop" namenode -format -force > "$RUN/logs/format.out" 2>&1 \
+printf 'Y\n' | "$HADOOP_HOME/bin/hadoop" namenode -format > "$RUN/logs/format.out" 2>&1
+grep -q "successfully formatted" "$RUN/logs/format.out" \
   || die "namenode format failed (see $RUN/logs/format.out)"
 nohup "$HADOOP_HOME/bin/hadoop" namenode > "$RUN/logs/namenode.out" 2>&1 &
 for i in 1 2; do
@@ -250,13 +256,15 @@ touch "$MARKER"
 echo "--- incident window OPEN at $(date -u +%FT%TZ)"
 
 client majorcompact "$TABLE"
-sleep 45
+for i in $(seq 1 40); do [ "$(wc -l < "$RECORD")" -ge 1 ] && break; sleep 2; done
+sleep 15
 echo "--- files affected so far:"; cat "$RECORD"
 client storefiles "$TABLE"
 
 client load "$TABLE" 2 6000 40000
 client flush "$TABLE"
-sleep 30
+for i in $(seq 1 40); do [ "$(wc -l < "$RECORD")" -ge 2 ] && break; sleep 2; done
+sleep 15
 echo "--- files affected in the window:"; cat "$RECORD"
 
 rm -f "$MARKER"
@@ -303,27 +311,42 @@ cat "$RECORD"
 echo "--- what is in the table's column-family directory now:"
 client storefiles "$TABLE" | tee "$RUN/storefiles.after.txt"
 
-AFFECTED=$(awk '{print $1}' "$RECORD" | sed 's#.*/##' | sort -u)
-echo "--- assertion 1: every cut-short file was moved out of .tmp into the store directory"
+# Both promotion paths give the file a fresh name (StoreFile.getUniqueFile for a flush,
+# StoreFile.getRandomFilename for a compaction), so the cut-short files are identified by
+# their (distinctive) length, not by their name.
+echo "--- assertion 1: every cut-short file left .tmp and is now in the live store directory"
 A1=ok
-for f in $AFFECTED; do
-  if grep -q "/$f " "$RUN/storefiles.after.txt" && ! grep -q "/$f .* TMP" "$RUN/storefiles.after.txt"; then
-    echo "    $f : promoted into the column-family directory"
+while read -r _path _orig _arrow newlen; do
+  [ -n "${newlen:-}" ] || continue
+  if awk -v L="$newlen" '$2 == L && $3 != "TMP" {found=1} END {exit !found}' \
+       "$RUN/storefiles.after.txt"; then
+    echo "    a $newlen-byte file is in the column-family directory (was cut short in .tmp)"
   else
-    # the compaction/flush output may have been renamed on promotion; check by size
-    echo "    $f : NOT found under its own name in the store dir"
-    A1=check
+    echo "    NO $newlen-byte file in the column-family directory"
+    A1=FAILED
   fi
-done
+done < "$RECORD"
 echo "    assertion 1: $A1"
 
-echo "--- assertion 2: the servers report these files as unusable, on every open"
+echo "--- assertion 2: nothing was left behind in .tmp"
+if grep -q " TMP$" "$RUN/storefiles.after.txt"; then
+  echo "    assertion 2: FAILED (a file is still in .tmp)"
+else
+  echo "    assertion 2: ok (.tmp is empty)"
+fi
+
+echo "--- assertion 3: the servers report these files as unusable, on every region open"
 grep -c "Failed open of" "$RUN"/logs/hbase-regionserver-*.log 2>/dev/null
 grep -h "Failed open of" "$RUN"/logs/hbase-regionserver-*.log 2>/dev/null | head -8
 
-echo "--- assertion 3: region open / compaction errors in the servers' logs"
-grep -hc "Compaction failed\|Compaction Request failed\|ABORTING\|DroppedSnapshot" \
-  "$RUN"/logs/hbase-regionserver-*.log 2>/dev/null
+echo "--- assertion 4: compaction / flush / abort errors in the servers' own logs"
+for pat in "Compaction failed" "Compaction Request failed" "ABORTING" "DroppedSnapshotException" \
+           "Trailer" "CorruptHFile"; do
+  printf '    %-28s %s\n' "$pat" \
+    "$(grep -hc "$pat" "$RUN"/logs/hbase-regionserver-*.log 2>/dev/null | paste -sd+ | bc 2>/dev/null)"
+done
+echo "--- the store-file open failure, as the servers logged it:"
+grep -h -A6 "Failed open of" "$RUN"/logs/hbase-regionserver-*.log 2>/dev/null | head -20
 
 ############################################################################
 say "9. collect the reproduction log (Log A)"

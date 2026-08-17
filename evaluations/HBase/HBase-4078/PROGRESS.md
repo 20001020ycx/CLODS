@@ -17,7 +17,7 @@
 | M0 | Scaffold & claim | DONE | true | success | folder + trackers created |
 | M1 | Identify fix + pre-fix commit | DONE | true | success | `Store.validateStoreFile` added at 2 promotion sites |
 | M2 | Build from source at pre-fix | DONE | true | success | mvn package, JDK 8, hadoop 1.0.4 |
-| M3 | Reproduce + merge into production log | IN_PROGRESS | null | in_progress | harness written + committed; run blocked (sandbox refuses `docker`) |
+| M3 | Reproduce + merge into production log | DONE | true | success | 4 short files promoted into the live store dir; 139.7 MB repro log merged into 3.19 GB |
 | M4 | Anonymize failure path, rebuild, re-reproduce | PENDING | null | pending | |
 | M5 | Diagnosis inputs + ground truth | PENDING | null | pending | |
 | M6 | LLM diagnosis ×5 | PENDING | null | pending | |
@@ -61,3 +61,19 @@
   - **Phase C** — the window closes and the region is opened again (regionserver restart if one aborted, then two operator `move`s): this is where `loadStoreFiles`' `catch (IOException) { … continue; }` silently skips the promoted unreadable files — "this keeps happening as the region moves around".
   - **Detection is silent** — HDFS listings, the servers' own logs and client row counts, printed only to `reproduce.sh` stdout.
   - **Logs** — Log A `private/symptom.orig.log` (per-daemon sections with `===== <name>__var_log_hbase__<file> =====` headers, matching the production log's bundle format); Log B `private/merged.orig.log` via `private/merge_logs.py` (Zookeeper-1851's tool copied verbatim; `--interleave position`, since the HBase production log is likewise a bundle of per-host sections).
+- 2026-08-17T18:52:00Z agent-run-4ee9c5a7 — **M3 DONE (`success=true`)**. The harness ran end to end (3rd attempt; the first two failed on harness bugs, not on HBase — see below). Full write-up in `reproduce.md`.
+
+  **What reproduced.** Phase A built four healthy store files (9 956 120 B each, 36 000 rows, mixed workload 36 988 ops / 0 failures). Inside the bounded filesystem-incident window an operator major compaction wrote `.tmp/65629880766638568` (39 822 970 B) which the filesystem cut to 21 902 633 B, and memstore flushes were cut the same way (8 427 637→4 635 200; two 8 361 349→4 598 741 during the region open that followed). **The pre-fix code moved every one of those short files out of `.tmp` into the region's live `cf/` directory and only then opened it** — `.tmp` ends empty, `cf/` ends holding four unreadable files beside the one healthy 44 952 978 B file (assertions 1 + 2 ok).
+
+  **How it surfaced, in the cluster's own log:**
+  - `ERROR … compactions.CompactionRequest: Compaction failed regionName=usertable,…` — the compaction died *after* its output was already in the store directory;
+  - `FATAL [regionserver60021.cacheFlusher] … HRegionServer: ABORTING region server …: Replay of HLog required. Forcing server shutdown` — same for the flush;
+  - **17×** `WARN … regionserver.Store: Failed open of hdfs://…/cf/<file>; presumption is that file was corrupted at flush and lost edits picked up by commit log replay. Verify!`, each carrying `java.io.IOException: java.lang.IllegalArgumentException: Invalid HFile version: 1886087525 (expected to be between 1 and 2)` at `FixedFileTrailer.readFromStream:306 ← HFile.pickReaderVersion:330 ← HFile.createReader:346 ← StoreFile$Reader.<init>:983 ← StoreFile.open:444`;
+  - **2×** `ERROR … handler.OpenRegionHandler: Failed open of region=usertable,…` with `DroppedSnapshotException` from `HRegion.replayRecoveredEditsIfAny:2217`;
+  - the files are never cleaned up and are silently skipped at every later open — the 0.89-fb commit's *"this keeps happening as the region moves around"*, exercised by two operator `move`s in phase C. The cluster kept serving throughout (0 client failures).
+
+  A final scan returns 40 990 rows where 42 000 keys were written; that shortfall is recorded as an **observation only** (WAL-tail loss during log splitting on Hadoop 1.0.4 could explain part of it). Detection stays silent: HDFS listings, the servers' own logs and client row counts, printed only to `reproduce.sh` stdout.
+
+  **Logs.** Log A `private/symptom.orig.log` = 139.7 MB / 790 805 lines (785 597 DEBUG, 1 307 INFO, 46 WARN, 7 ERROR, 2 FATAL) in four `===== <name>__var_log_hbase__<file> =====` sections. Log B `private/merged.orig.log` = 3.19 GB = 11 945 370 production + 786 959 reproduction records via `private/merge_logs.py` (Zookeeper-1851's tool, verbatim), reproduction timestamps warped from `18:43:33,544…18:48:40,160` onto the production span `2026-08-14 19:06:45,717…19:31:38,751`, `--interleave position` (the shared HBase production log is a bundle of per-host sections). The shared production log is never modified.
+
+  **Harness bugs fixed along the way** (neither is an HBase bug): `loseTail` called the 2-arg `super.create`, which `FileSystem` dispatches back into the overridden 7-arg `create` → infinite recursion/`StackOverflowError`; and an unscoped, unbounded incident also cut short `.META.`'s open-time flushes, putting `.META.` into a retry storm — the fault is now scoped to `/usertable/` and capped at 2 files per regionserver JVM.

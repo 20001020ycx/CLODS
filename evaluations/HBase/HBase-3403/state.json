@@ -39,15 +39,19 @@
     },
     {
       "id": "M2",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T02:04:10Z",
+      "finished": "2026-08-17T02:04:10Z",
+      "attempts": 1,
+      "by": "agent-run-8b54496c",
+      "artifacts": [
+        "repos/HBase-HBase-3403 (pre-fix checkout, built)",
+        "evaluations/HBase/HBase-3403/private/deps-fix.patch",
+        "evaluations/HBase/HBase-3403/reproduce.sh"
+      ],
+      "note": "Built the 2011 pre-fix tree from source in clods-eval:HBase-HBase-3403 (base image + openjdk-8-jdk; JDK 8 is the newest JDK that still accepts -source/-target 1.6). Build cmd: mvn -B -s /work/repos/m2-HBase-3403/settings.xml -DskipTests test-compile. Dep fixes (private/deps-fix.patch): (1) hadoop.version 0.20-append-r1056497 -> 0.20.2 (the append artifact was only ever in a now-dead temp repo; 0.20.205.0 was tried first but its security rewrite drops UserGroupInformation's Writable-ness, breaking ipc/ConnectionHeader); (2) dropped the org.apache.thrift:thrift:0.2.0 dependency and excluded **/thrift/** from compile+test-compile (that artifact exists in no surviving repo; nothing outside the thrift package references it); (3) InputSampler.java:320 needs an explicit (K[]) cast -- raw-typed InputFormat made javac 8 reject what javac 6 accepted. Maven 3.6.3 with a settings.xml mirroring all repos to https Central (the four 2011 repos in the pom are dead). main+test both compile."
     },
     {
       "id": "M3",

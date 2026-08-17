@@ -16,7 +16,7 @@
 |---|---|---|---|---|---|
 | M0 | Scaffold & claim | DONE | true | success | folder + trackers created |
 | M1 | Identify fix / pre-fix commit | DONE | true | success | fix `0d31ac5f37`, pre-fix `dddee0d50f`, `private/fix.diff` saved |
-| M2 | Build from source at pre-fix | PENDING | null | pending | |
+| M2 | Build from source at pre-fix | DONE | true | success | JDK 8 + hadoop 0.20.2 + thrift dropped; main & test compile |
 | M3 | Reproduce + merge into production log | PENDING | null | pending | |
 | M4 | Anonymize failure path, rebuild, re-merge | PENDING | null | pending | |
 | M5 | symptom.md + ground truth | PENDING | null | pending | |
@@ -49,3 +49,27 @@
   `ServerShutdownHandler.process`/`processDeadRegion` never reaches the
   `hri.isOffline() && hri.isSplit()` branch for the parent → `fixupDaughters` never runs →
   a daughter that never made it into `.META.` stays orphaned on HDFS.
+- 2026-08-17T02:04:28Z M2 DONE (success=true) — pre-fix tree builds from source.
+  - Image: `clods-eval:HBase-HBase-3403` = `clods-eval` + `openjdk-8-jdk` (JDK 8 is the newest
+    JDK that still accepts `-source/-target 1.6`, which this pom pins via `compileSource`).
+  - Build command:
+    `mvn -B -s /work/repos/m2-HBase-3403/settings.xml -DskipTests test-compile`
+    (run in the container with the repo mounted at `/work`, cwd `/work/repos/HBase-HBase-3403`).
+  - Maven: 3.6.3 with a `settings.xml` that mirrors **all** repos to https Maven Central —
+    the four repositories the 2011 pom lists (people.apache.org/~rawson, download.java.net,
+    repository.codehaus.org, repository.jboss.org) are all dead. Local repo is kept per-bug at
+    `repos/m2-HBase-3403/repository` so no other agent's build is affected.
+  - Dependency fixes (`private/deps-fix.patch`):
+    1. `hadoop.version` `0.20-append-r1056497` → `0.20.2`. The append artifact was published
+       only to a temporary repo that no longer exists (404 on Central and repository.apache.org).
+       `0.20.205.0` was tried first and fails: its security rewrite makes
+       `UserGroupInformation` non-`Writable`, breaking `ipc/ConnectionHeader.java:63`.
+       `0.20.2` compiles cleanly.
+    2. Dropped the `org.apache.thrift:thrift:0.2.0` dependency and excluded `**/thrift/**`
+       from compile and test-compile. That artifact survives in no reachable repo
+       (Central 404, Cloudera 404). Nothing outside `org/apache/hadoop/hbase/thrift/`
+       references thrift, and the thrift gateway is not on this bug's failure path.
+    3. `InputSampler.java:320`: added an explicit `(K[])` cast. `inf` is a raw
+       `InputFormat`, so the call erases to `Object[]`; javac 6 accepted it, javac 8 does not.
+       Off the failure path, purely a toolchain-compat fix.
+  - Result: `main` (467 sources) and the full test tree both compile; `MVN_EXIT=0`.

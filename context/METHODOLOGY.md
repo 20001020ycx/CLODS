@@ -540,12 +540,12 @@ See §6 for the full procedure.
 ### M6 — Run LLM diagnosis ×5 (network locked, single prompt, no follow-ups)
 1. Use `context/run_diagnosis.sh` (§7). It runs the diagnosis **5 times**, each in a
    fresh, stateless process, with web tools denied and egress restricted to the model
-   gateway only (the `ccs yscope-anthropic` endpoint, `llm-gateway.yscope.io` — the org's
+   gateway only (the `ccs yscope-anthropic-paper-validation` endpoint, `llm-gateway.yscope.io` — the org's
    Anthropic-backed gateway; see §11 for the credential/env-file setup). It stages only
    `symptom.md` + `source/` + `logs/symptom.log` (the **merged**
    GB-scale production+reproduction log; never `private/`, and never the standalone
    `logs/repro.log`), pins `--model claude-opus-4-7 --effort high` (Opus 4.7, reached via
-   the yscope-anthropic profile's API bearer token — not an OAuth login, so it does not
+   the yscope-anthropic-paper-validation profile's API bearer token — not an OAuth login, so it does not
    expire mid-batch), and writes `diagnosis/run_N.md`.
 2. The **exact prompt** (the script substitutes the staging paths for you):
 
@@ -695,11 +695,11 @@ case-identifying and renaming them only makes the log unreadable. Record the com
 ## 7. The diagnosis helper (`context/run_diagnosis.sh`)
 
 `run_diagnosis.sh <BUG_DIR>` runs the 5 diagnoses. It:
-- **authenticates via the `ccs yscope-anthropic` profile**: the container receives that
+- **authenticates via the `ccs yscope-anthropic-paper-validation` profile**: the container receives that
   profile's env (`ANTHROPIC_BASE_URL=https://llm-gateway.yscope.io` + `ANTHROPIC_AUTH_TOKEN`
   — a long-lived API bearer token to the org's Anthropic-backed gateway — plus the
   model-default and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` flags) through
-  `docker run --env-file`, produced by `context/extract-yscope-anthropic-env.sh`. The
+  `docker run --env-file`, produced by `context/extract-yscope-anthropic-paper-validation-env.sh`. The
   script **refuses to run** unless `ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` are set, so
   it can never silently fall back to a login prompt or a different endpoint. The token is a
   secret — the env-file lives outside the repo (chmod 600) and is never committed (§11);
@@ -804,7 +804,7 @@ auditable.
   means the model cannot fetch external pages, search, or reach its training corpus; it
   must reason from the provided files. (The endpoint is the org gateway rather than
   api.anthropic.com directly — a deliberate choice for credential stability: the
-  yscope-anthropic profile uses a long-lived API bearer token instead of expiring OAuth, so
+  yscope-anthropic-paper-validation profile uses a long-lived API bearer token instead of expiring OAuth, so
   runs no longer break on host token rotation. Egress is locked to that one host, so the
   no-internet guarantee is preserved.)
 
@@ -879,14 +879,14 @@ Mount the bug dir **read-write** (the script writes `diagnosis/run_N.md`) — th
 the agent there with `Bash`/`Write`/`Edit` denied, so the agent can neither reach
 `private/` nor modify anything.
 
-The subject is Claude Opus 4.7 reached through the `ccs yscope-anthropic` profile. First
+The subject is Claude Opus 4.7 reached through the `ccs yscope-anthropic-paper-validation` profile. First
 materialize that profile's env into a **gitignored** env-file (the helper strips the
 `export `/single-quote shell formatting that `ccs env --format raw` emits, which
 `docker --env-file` would otherwise pass through verbatim and break auth):
 
 ```bash
 # 1. produce the credential env-file (SECRET — lives in /tmp, chmod 600, never committed)
-bash context/extract-yscope-anthropic-env.sh /tmp/ysa.env
+bash context/extract-yscope-anthropic-paper-validation-env.sh /tmp/ysa.env
 
 # 2. pin the gateway IP so /etc/hosts resolves it after the DROP policy kills DNS
 GW_IP="$(getent ahostsv4 llm-gateway.yscope.io | awk '{print $1}' | sort -u | head -1)"

@@ -97,15 +97,19 @@
     },
     {
       "id": "M5",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T19:30:00Z",
+      "finished": "2026-08-17T19:35:00Z",
+      "attempts": 1,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "symptom.md",
+        "private/ground_truth.md",
+        "private/verify_anon.py"
+      ],
+      "note": "symptom.md = the bare observable + the prescribed merged-log pointer, nothing else: one sentence ('A store file of table usertable cannot be read: every time the region is opened, the region server reports that file and carries on without it.'), then 'The log for this run is logs/symptom.log, where the report reads:' followed by the WARN and its ten-frame stack EXACTLY as logs/symptom.log prints them (FamilyStore 'Cannot read hdfs://.../cf/1553916852809385968; leaving it out of this column family's file list. Check the file.' + 'java.io.IOException: java.lang.IllegalArgumentException: Invalid HFile version: 1652127846 (expected to be between 1 and 2)' at FixedFileTrailer.readFromStream:306 <- HFile.pickReaderVersion:330 <- HFile.createReader:346 <- StoreFile$Reader.<init>:983 <- StoreFile.open:444 <- StoreFile.createReader:517 <- FamilyStore.openStoreFiles:273 <- FamilyStore.<init>:215 <- HRegion.instantiateHStore:2409). Only the record's leading absolute timestamp is elided, because it would act as an exact-position pointer into the 3.19 GB log; every other character is verbatim and greppable (the pasted 'Cannot read ...' line occurs 5x in logs/symptom.log, 'Invalid HFile version: 1652127846' 14x). No >>> SYMPTOM marker and no line number, per M5 step 1(b) for a merged log. DELIBERATELY ABSENT (anti-cheat): the trigger (nothing about a filesystem incident or partially written files), the mechanism, the at-fault class/method/branch, and - most important for this bug - any mention of the two operations that select the failure (the compaction and the flush) or of the regionserver abort and the failed compaction that accompany it; naming those would hand over the shape of the answer, since the two root-cause sites ARE the flush promotion and the compaction promotion. The LLM must grep the merged production log for the rest itself. ground_truth.md derived from private/fix.diff with BOTH the real names and the anonymized ones plus a translation table (M5 step 2): site A = Store.internalFlushCache lines 521-533 (= FamilyStore.writeSnapshotFile) where fs.rename(writer.getPath(), dstPath) promotes the flushed file and sf.createReader() only reads it afterwards; site B = Store.completeCompaction lines 1221-1232 (= FamilyStore.installCompactionResult) where StoreFile.rename(...) inside 'if (compactedFile != null)' promotes the compaction output and result.createReader() only reads it afterwards; the wrong condition at both = the move is guarded only by 'did the rename succeed' / 'was anything written', never by 'can the file be opened', and the open happens after the move so a bad file is already a permanent member of the store dir. The consequence site (loadStoreFiles' catch(IOException){continue;} = openStoreFiles) is recorded as NOT a pass, since the fix does not touch it. Pre-registered bar per sec.8/sec.10: BOTH sites + the exact missing-validation condition; sub-scores site_a/site_b/condition_stated/symptom_site_only are recorded per run so alternative bars are auditable without a re-run. M5 gate (private/verify_anon.py, streaming pass): source/, logs/repro.log, the whole 3.19 GB logs/symptom.log and symptom.md carry 0 hits for the bug id and every original failure-path type/method/literal; the only survivor is the bare number 4078 as an ordinary counter value (RPC call ids, HDFS packet seqnos, ZooKeeper xids). Sentence-by-sentence re-read of symptom.md found no trigger, no mechanism/timeline, no at-fault component or branch, no narrowing comparison and nothing copied from the JIRA ticket."
     },
     {
       "id": "M6",

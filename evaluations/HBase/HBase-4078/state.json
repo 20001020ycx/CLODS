@@ -4,10 +4,10 @@
   "jira": "HBASE-4078",
   "jira_url": "https://issues.apache.org/jira/browse/HBASE-4078",
   "source_repo": "https://github.com/apache/hbase.git",
-  "fix_commit": null,
-  "pre_fix_commit": null,
+  "fix_commit": "df9b82c082571b7dfca4380bffaa38f3fd058927",
+  "pre_fix_commit": "9814ffbaf0eca469bbded025a1dca81271c6d4e6",
   "anonymized_commit": null,
-  "symptom_short": null,
+  "symptom_short": "After a transient filesystem incident, a store file that cannot be opened is left inside the region's live column-family directory: the region server reports it as un-openable on every region open and never serves or removes it",
   "milestones": [
     {
       "id": "M0",
@@ -25,15 +25,18 @@
     },
     {
       "id": "M1",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T01:56:00Z",
+      "finished": "2026-08-17T02:20:00Z",
+      "attempts": 1,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "private/fix.diff",
+        "private/fix.0.89.diff"
+      ],
+      "note": "JIRA HBASE-4078 'Silent Data Offlining During HDFS Flakiness' (Bug, Blocker, Closed/Fixed; reporter Nicolas Spiegelberg, assignee Pritam Damania; affects 0.89.20100924/0.90.3/0.92.0, fixVersion 0.92.0+0.94.0). Description: 'See HBASE-1436. The bug fix for this JIRA is a temporary workaround for improperly moving partially-written files from TMP into the region directory when a FS error occurs. Unfortunately, the fix is to ignore all IO exceptions, which masks off-lining due to FS flakiness.' The ticket quotes/attaches NO log snippet or stack trace (comments only reference the review board r/1327 and 'added to 89, 92, & 94' on 2011-10-13). FIX COMMIT (trunk) = df9b82c082 'HBASE-4078 Validate store files after flush/compaction' (Nicolas Spiegelberg, 2011-10-13, svn trunk@1183071; identical commits fa26da20db on 0.92 and 98cad6e708). It adds Store.validateStoreFile(Path) (open the file with new StoreFile(...).createReader(), LOG.error + rethrow on IOException, closeReader in finally) and calls it at exactly TWO production sites, in both cases BEFORE the file is moved out of the region .tmp dir: (1) Store.internalFlushCache, immediately before the flushed file is renamed into the store home dir, and (2) Store.completeCompaction, immediately before StoreFile.rename of the compaction output. It also widens compactStore/completeCompaction from private to package-private and adds TestCompaction.testCompactionWithCorruptResult. COMPANION 0.89-fb commit 790feddf2d '(HBASE-4078) Move corrupt store files out of main store file directory' saved as private/fix.0.89.diff; its message states the symptom in the reporters' own words: 'if A, B, C was compacted to D and D was corrupt, the regionserver still keeps D around but maintains the current list of store files as A, B, C. The problem now arises that when the region moves, the new RS sees A, B, C and D and tries to open D as well and gets an error. This keeps happening as the region moves around.' PRE-FIX COMMIT = 9814ffbaf0 (HBASE-4556, 2011-10-13, the parent of df9b82c082). Verified on that tree (src/main/java/org/apache/hadoop/hbase/regionserver/Store.java, 1811 lines): internalFlushCache lines 521-533 do 'Path dstPath = StoreFile.getUniqueFile(fs, homedir); ... fs.rename(writer.getPath(), dstPath); ... StoreFile sf = new StoreFile(this.fs, dstPath, ...); StoreFile.Reader r = sf.createReader();' - the file is promoted into the live store dir BEFORE it is ever opened; completeCompaction lines 1221-1232 do 'if (compactedFile != null) { p = StoreFile.rename(this.fs, compactedFile.getPath(), StoreFile.getRandomFilename(fs, this.homedir)); ... result.createReader(); }' - same order. loadStoreFiles lines 269-279 is the HBASE-1436 workaround the ticket names: 'catch (IOException ioe) { LOG.warn(\"Failed open of \" + p + \"; presumption is that file was corrupted at flush and lost edits picked up by commit log replay. Verify!\", ioe); continue; }' - so at every subsequent region open the promoted corrupt file is silently skipped. Repo apache/hbase, version 0.93-SNAPSHOT, default maven profile hadoop-0.20 with hadoop-core 0.20-append-r1057313 (likely needs a dep fix at M2), compileSource 1.6."
     },
     {
       "id": "M2",
@@ -120,5 +123,6 @@
       "note": ""
     }
   ],
-  "result": null
+  "result": null,
+  "source_version": "trunk @ 2011-10-13 (0.93-SNAPSHOT)"
 }

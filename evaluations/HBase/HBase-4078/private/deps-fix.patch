@@ -1,0 +1,92 @@
+diff --git a/pom.xml b/pom.xml
+index 3c8d135e64..08eba75fc2 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -199,46 +199,6 @@
+       <id>apache release</id>
+       <url>https://repository.apache.org/content/repositories/releases/</url>
+     </repository>
+-    <repository>
+-      <id>hadoop-non-releases</id>
+-      <name>Hadoop non-releases</name>
+-      <url>http://people.apache.org/~rawson/repo/</url>
+-      <snapshots>
+-        <enabled>false</enabled>
+-      </snapshots>
+-      <releases>
+-        <enabled>true</enabled>
+-      </releases>
+-    </repository>
+-    <repository>
+-      <id>java.net</id>
+-      <name>Java.Net</name>
+-      <url>http://download.java.net/maven/2/</url>
+-      <snapshots>
+-        <enabled>false</enabled>
+-      </snapshots>
+-      <releases>
+-        <enabled>true</enabled>
+-      </releases>
+-    </repository>
+-    <repository>
+-      <id>codehaus</id>
+-      <name>Codehaus Public</name>
+-      <url>http://repository.codehaus.org/</url>
+-      <snapshots>
+-        <enabled>false</enabled>
+-      </snapshots>
+-      <releases>
+-        <enabled>true</enabled>
+-      </releases>
+-    </repository>
+-    <repository>
+-      <id>repository.jboss.org</id>
+-      <url>http://repository.jboss.org/nexus/content/groups/public-jboss/</url>
+-      <snapshots>
+-        <enabled>false</enabled>
+-      </snapshots>
+-    </repository>
+   </repositories>
+ 
+   <build>
+@@ -1204,7 +1164,7 @@
+         at revision 1034499 with this hdfs-895 patch:
+         https://issues.apache.org/jira/secure/attachment/12459473/hdfs-895-branch-20-append.txt
+         -->
+-        <hadoop.version>0.20-append-r1057313</hadoop.version>
++        <hadoop.version>1.0.4</hadoop.version>
+       </properties>
+       <dependencies>
+         <dependency>
+diff --git a/src/main/java/org/apache/hadoop/hbase/mapreduce/hadoopbackport/InputSampler.java b/src/main/java/org/apache/hadoop/hbase/mapreduce/hadoopbackport/InputSampler.java
+index 345fd36d50..e37d98d17b 100644
+--- a/src/main/java/org/apache/hadoop/hbase/mapreduce/hadoopbackport/InputSampler.java
++++ b/src/main/java/org/apache/hadoop/hbase/mapreduce/hadoopbackport/InputSampler.java
+@@ -341,7 +341,7 @@ public class InputSampler<K,V> extends Configured implements Tool  {
+     final InputFormat inf = 
+         ReflectionUtils.newInstance(job.getInputFormatClass(), conf);
+     int numPartitions = job.getNumReduceTasks();
+-    K[] samples = sampler.getSample(inf, job);
++    K[] samples = (K[]) sampler.getSample(inf, job);
+     LOG.info("Using " + samples.length + " samples");
+     RawComparator<K> comparator =
+       (RawComparator<K>) job.getSortComparator();
+diff --git a/src/main/java/org/apache/hadoop/hbase/util/PoolMap.java b/src/main/java/org/apache/hadoop/hbase/util/PoolMap.java
+index 1956e6b8ae..1947ec42a1 100644
+--- a/src/main/java/org/apache/hadoop/hbase/util/PoolMap.java
++++ b/src/main/java/org/apache/hadoop/hbase/util/PoolMap.java
+@@ -91,11 +91,12 @@ public class PoolMap<K, V> implements Map<K, V> {
+     return null;
+   }
+ 
+-  public boolean remove(K key, V value) {
++  @SuppressWarnings("unchecked")
++  public boolean remove(Object key, Object value) {
+     Pool<V> pool = pools.get(key);
+     boolean res = false;
+     if (pool != null) {
+-      res = pool.remove(value);
++      res = pool.remove((V) value);
+       if (res && pool.size() == 0) {
+         pools.remove(key);
+       }

@@ -40,15 +40,20 @@
     },
     {
       "id": "M2",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T02:00:00Z",
+      "finished": "2026-08-17T02:12:00Z",
+      "attempts": 1,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "private/deps-fix.patch",
+        "repos/HBase-HBase-4078/target/hbase-0.93-SNAPSHOT.jar (gitignored)",
+        "repos/HBase-HBase-4078/target/hbase-0.93-SNAPSHOT-tests.jar (gitignored)",
+        "repos/HBase-HBase-4078/target/lib/ (62 dependency jars, gitignored)"
+      ],
+      "note": "Built the pre-fix tree (9814ffbaf0, HBase 0.93-SNAPSHOT trunk of 2011-10-13) from source with Maven 3.6.3 + JDK 8 in the per-bug image clods-eval:HBase-HBase-4078 (clods-eval base + openjdk-8-jdk; JDK 11/17 refuse -source/-target 1.6, which this pom pins via compileSource). Build cmds: 'mvn -DskipTests -B package' (-> target/hbase-0.93-SNAPSHOT.jar 3.0 MB + -tests.jar 1.4 MB + target/classes) and 'mvn -B dependency:copy-dependencies -DincludeScope=test -DoutputDirectory=target/lib' (-> 62 jars incl. hadoop-core-1.0.4, hadoop-test-1.0.4, zookeeper-3.3.3), so the same tree can run a real multi-JVM HDFS+HBase deployment at M3. BUILD SUCCESS in 24 s. DEP FIXES (private/deps-fix.patch, 3 edits): (1) pom.xml <hadoop.version> 0.20-append-r1057313 -> 1.0.4 - the 0.20-append build was only ever published to people.apache.org/~rawson/repo, which is gone; 1.0.4 is the published descendant of 0.20.205 (0.20-append + append/sync) and is API-compatible with this tree. (2) pom.xml: deleted the four dead 2011 <repositories> (people.apache.org/~rawson/repo, download.java.net, repository.codehaus.org - the host no longer resolves at all and Maven aborts on it - and repository.jboss.org), keeping Apache releases + Central. (3) two javac-8 source incompatibilities in files NOT on the failure path: util/PoolMap.java 'public boolean remove(K,V)' -> 'remove(Object,Object)' (+ a (V) cast) because Java 8 added Map.remove(Object,Object), giving an erasure clash that no -source flag can suppress; and mapreduce/hadoopbackport/InputSampler.java line 344 'K[] samples = sampler.getSample(inf, job)' -> '(K[]) sampler.getSample(...)' (the raw InputFormat local erases the generic return under javac 8). Neither touches regionserver/Store.java or anything else on the failure path. Warnings only otherwise (sun.misc.Unsafe, deprecation); the antrun 'hadoop-snappy-nativelibs.tar not found' message is the pre-existing optional-native-lib task and does not fail the build."
     },
     {
       "id": "M3",

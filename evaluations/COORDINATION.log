@@ -85,3 +85,4 @@
 2026-08-17T02:02:24Z HBase-4078 M1 DONE success (fix df9b82c082, pre-fix 9814ffbaf0)
 2026-08-17T02:04:28Z HBase-3403 M2 DONE success (pre-fix builds: JDK8, hadoop 0.20.2, thrift dropped)
 2026-08-17T02:06:11Z HBase-3627 M2 DONE success (mvn package, JDK8, deps from 0.90.2 tarball)
+2026-08-17T02:10:13Z HBase-4078 M2 DONE success (mvn package, JDK8, hadoop 1.0.4)

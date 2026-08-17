@@ -16,7 +16,7 @@
 |---|---|---|---|---|---|
 | M0 | Scaffold & claim | DONE | true | success | folder + trackers created |
 | M1 | Identify fix + pre-fix commit | DONE | true | success | `Store.validateStoreFile` added at 2 promotion sites |
-| M2 | Build from source at pre-fix | PENDING | null | pending | |
+| M2 | Build from source at pre-fix | DONE | true | success | mvn package, JDK 8, hadoop 1.0.4 |
 | M3 | Reproduce + merge into production log | PENDING | null | pending | |
 | M4 | Anonymize failure path, rebuild, re-reproduce | PENDING | null | pending | |
 | M5 | Diagnosis inputs + ground truth | PENDING | null | pending | |
@@ -39,3 +39,9 @@
   - `loadStoreFiles` 269-279 (the HBASE-1436 workaround the ticket names): `catch (IOException ioe) { LOG.warn("Failed open of " + p + "; presumption is that file was corrupted at flush and lost edits picked up by commit log replay. Verify!", ioe); continue; }` — so at every later region open the promoted unreadable file is silently skipped.
 
   Ticket quotes **no** log/stack snippet, so M4's log-literal rewrite is driven by the failure-path literals themselves.
+- 2026-08-17T02:12:00Z agent-run-4ee9c5a7 — M2 DONE. Pre-fix tree builds from source in `clods-eval:HBase-HBase-4078` (base image + `openjdk-8-jdk`; the pom pins `compileSource=1.6`, which JDK 11/17 refuse).
+  Build: `mvn -DskipTests -B package` → `target/hbase-0.93-SNAPSHOT.jar` (3.0 MB), `-tests.jar` (1.4 MB), `target/classes`; then `mvn -B dependency:copy-dependencies -DincludeScope=test -DoutputDirectory=target/lib` → 62 jars (hadoop-core-1.0.4, hadoop-test-1.0.4, zookeeper-3.3.3), so M3 can run a real multi-JVM HDFS+HBase deployment out of this tree.
+  Dependency fixes (`private/deps-fix.patch`):
+  1. `pom.xml`: `hadoop.version` `0.20-append-r1057313` → `1.0.4` (the 0.20-append build only ever existed on `people.apache.org/~rawson/repo`, now gone; 1.0.4 is its published descendant).
+  2. `pom.xml`: dropped the four dead 2011 repositories (`people.apache.org/~rawson/repo`, `download.java.net`, `repository.codehaus.org` — no longer resolves, and Maven aborts hard on it — `repository.jboss.org`).
+  3. two javac-8 source incompatibilities **off** the failure path: `util/PoolMap.java` `remove(K,V)` → `remove(Object,Object)` (Java 8 added `Map.remove(Object,Object)`; erasure clash), and `mapreduce/hadoopbackport/InputSampler.java:344` `(K[])` cast.

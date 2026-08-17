@@ -1,0 +1,354 @@
+commit 79b522db0c8795d9d303aa6ec564c197b3a8bb20
+Author: Michael Stack <stack@apache.org>
+Date:   Thu Mar 24 19:04:07 2011 +0000
+
+    HBASE-3627 NPE in EventHandler when region already reassigned
+    
+    git-svn-id: https://svn.apache.org/repos/asf/hbase/branches/0.90@1085077 13f79535-47bb-0310-9956-ffa450edef68
+
+diff --git a/CHANGES.txt b/CHANGES.txt
+index 93aef9da2a..281ae21fa0 100644
+--- a/CHANGES.txt
++++ b/CHANGES.txt
+@@ -52,6 +52,7 @@ Release 0.90.2 - Unreleased
+                a RS
+    HBASE-3697  Admin actions that use MetaReader to iterate regions need to
+                skip offline ones
++   HBASE-3627  NPE in EventHandler when region already reassigned
+ 
+   IMPROVEMENTS
+    HBASE-3542  MultiGet methods in Thrift
+diff --git a/src/main/java/org/apache/hadoop/hbase/master/AssignmentManager.java b/src/main/java/org/apache/hadoop/hbase/master/AssignmentManager.java
+index a81b631410..82099f7f2a 100644
+--- a/src/main/java/org/apache/hadoop/hbase/master/AssignmentManager.java
++++ b/src/main/java/org/apache/hadoop/hbase/master/AssignmentManager.java
+@@ -1643,6 +1643,10 @@ public class AssignmentManager extends ZooKeeperListener {
+                   Stat stat = new Stat();
+                   RegionTransitionData data = ZKAssign.getDataNoWatch(watcher,
+                       node, stat);
++                  if (data == null) {
++                    LOG.warn("Data is null, node " + node + " no longer exists");
++                    break;
++                  }
+                   if (data.getEventType() == EventType.RS_ZK_REGION_OPENED) {
+                     LOG.debug("Region has transitioned to OPENED, allowing " +
+                         "watched event handlers to process");
+diff --git a/src/main/java/org/apache/hadoop/hbase/regionserver/handler/OpenRegionHandler.java b/src/main/java/org/apache/hadoop/hbase/regionserver/handler/OpenRegionHandler.java
+index 3d35c11072..0f0deb0939 100644
+--- a/src/main/java/org/apache/hadoop/hbase/regionserver/handler/OpenRegionHandler.java
++++ b/src/main/java/org/apache/hadoop/hbase/regionserver/handler/OpenRegionHandler.java
+@@ -87,7 +87,11 @@ public class OpenRegionHandler extends EventHandler {
+ 
+     // If fails, just return.  Someone stole the region from under us.
+     // Calling transitionZookeeperOfflineToOpening initalizes this.version.
+-    if (!transitionZookeeperOfflineToOpening(encodedName)) return;
++    if (!transitionZookeeperOfflineToOpening(encodedName)) {
++      LOG.warn("Region was hijacked? It no longer exists, encodedName=" +
++        encodedName);
++      return;
++    }
+ 
+     // Open region.  After a successful open, failures in subsequent processing
+     // needs to do a close as part of cleanup.
+@@ -254,7 +258,7 @@ public class OpenRegionHandler extends EventHandler {
+   /**
+    * @return Instance of HRegion if successful open else null.
+    */
+-  private HRegion openRegion() {
++  HRegion openRegion() {
+     HRegion region = null;
+     try {
+       // Instantiate the region.  This also periodically tickles our zk OPENING
+diff --git a/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKAssign.java b/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKAssign.java
+index df99620a62..1dab700107 100644
+--- a/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKAssign.java
++++ b/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKAssign.java
+@@ -396,7 +396,8 @@ public class ZKAssign {
+     zkw.sync(node);
+     Stat stat = new Stat();
+     byte [] bytes = ZKUtil.getDataNoWatch(zkw, node, stat);
+-    if(bytes == null) {
++    if (bytes == null) {
++      // If it came back null, node does not exist.
+       throw KeeperException.create(Code.NONODE);
+     }
+     RegionTransitionData data = RegionTransitionData.fromBytes(bytes);
+@@ -667,8 +668,11 @@ public class ZKAssign {
+ 
+     // Read existing data of the node
+     Stat stat = new Stat();
+-    byte [] existingBytes =
+-      ZKUtil.getDataNoWatch(zkw, node, stat);
++    byte [] existingBytes = ZKUtil.getDataNoWatch(zkw, node, stat);
++    if (existingBytes == null) {
++      // Node no longer exists.  Return -1. It means unsuccessful transition.
++      return -1;
++    }
+     RegionTransitionData existingData =
+       RegionTransitionData.fromBytes(existingBytes);
+ 
+@@ -755,7 +759,7 @@ public class ZKAssign {
+    * @param zkw zk reference
+    * @param pathOrRegionName fully-specified path or region name
+    * @param stat object to store node info into on getData call
+-   * @return data for the unassigned node
++   * @return data for the unassigned node or null if node does not exist
+    * @throws KeeperException if unexpected zookeeper exception
+    */
+   public static RegionTransitionData getDataNoWatch(ZooKeeperWatcher zkw,
+@@ -764,7 +768,7 @@ public class ZKAssign {
+     String node = pathOrRegionName.startsWith("/") ?
+         pathOrRegionName : getNodeName(zkw, pathOrRegionName);
+     byte [] data = ZKUtil.getDataNoWatch(zkw, node, stat);
+-    if(data == null) {
++    if (data == null) {
+       return null;
+     }
+     return RegionTransitionData.fromBytes(data);
+diff --git a/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKUtil.java b/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKUtil.java
+index ef063bc08e..08748f8102 100644
+--- a/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKUtil.java
++++ b/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKUtil.java
+@@ -576,7 +576,7 @@ public class ZKUtil {
+    * @param zkw zk reference
+    * @param znode path of node
+    * @param stat node status to set if node exists
+-   * @return data of the specified znode, or null if does not exist
++   * @return data of the specified znode, or null if node does not exist
+    * @throws KeeperException if unexpected zookeeper exception
+    */
+   public static byte [] getDataNoWatch(ZooKeeperWatcher zkw, String znode,
+diff --git a/src/test/java/org/apache/hadoop/hbase/regionserver/handler/TestOpenRegionHandler.java b/src/test/java/org/apache/hadoop/hbase/regionserver/handler/TestOpenRegionHandler.java
+new file mode 100644
+index 0000000000..d1607cd275
+--- /dev/null
++++ b/src/test/java/org/apache/hadoop/hbase/regionserver/handler/TestOpenRegionHandler.java
+@@ -0,0 +1,227 @@
++/**
++ * Copyright 2011 The Apache Software Foundation
++ *
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.hadoop.hbase.regionserver.handler;
++
++import java.io.IOException;
++import java.util.HashMap;
++import java.util.Map;
++
++import org.apache.commons.logging.Log;
++import org.apache.commons.logging.LogFactory;
++import org.apache.hadoop.conf.Configuration;
++import org.apache.hadoop.hbase.HBaseTestingUtility;
++import org.apache.hadoop.hbase.HConstants;
++import org.apache.hadoop.hbase.HRegionInfo;
++import org.apache.hadoop.hbase.HServerInfo;
++import org.apache.hadoop.hbase.HTableDescriptor;
++import org.apache.hadoop.hbase.Server;
++import org.apache.hadoop.hbase.ZooKeeperConnectionException;
++import org.apache.hadoop.hbase.catalog.CatalogTracker;
++import org.apache.hadoop.hbase.ipc.HBaseRpcMetrics;
++import org.apache.hadoop.hbase.regionserver.CompactionRequestor;
++import org.apache.hadoop.hbase.regionserver.FlushRequester;
++import org.apache.hadoop.hbase.regionserver.HRegion;
++import org.apache.hadoop.hbase.regionserver.RegionServerServices;
++import org.apache.hadoop.hbase.regionserver.wal.HLog;
++import org.apache.hadoop.hbase.zookeeper.ZKAssign;
++import org.apache.hadoop.hbase.zookeeper.ZKUtil;
++import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
++import org.apache.zookeeper.KeeperException;
++import org.apache.zookeeper.KeeperException.NodeExistsException;
++import org.junit.AfterClass;
++import org.junit.BeforeClass;
++import org.junit.Test;
++
++/**
++ * Test of the {@link OpenRegionHandler}.
++ */
++public class TestOpenRegionHandler {
++  private static final Log LOG = LogFactory.getLog(TestOpenRegionHandler.class);
++  private final static HBaseTestingUtility HTU = new HBaseTestingUtility();
++
++  @BeforeClass public static void before() throws Exception {
++    HTU.startMiniZKCluster();
++  }
++
++  @AfterClass public static void after() throws IOException {
++    HTU.shutdownMiniZKCluster();
++  }
++
++  /**
++   * Basic mock Server
++   */
++  static class MockServer implements Server {
++    boolean stopped = false;
++    final static String NAME = "MockServer";
++    final ZooKeeperWatcher zk;
++
++    MockServer() throws ZooKeeperConnectionException, IOException {
++      this.zk =  new ZooKeeperWatcher(HTU.getConfiguration(), NAME, this);
++    }
++
++    @Override
++    public void abort(String why, Throwable e) {
++      LOG.fatal("Abort why=" + why, e);
++      this.stopped = true;
++    }
++
++    @Override
++    public void stop(String why) {
++      LOG.debug("Stop why=" + why);
++      this.stopped = true;
++    }
++
++    @Override
++    public boolean isStopped() {
++      return this.stopped;
++    }
++
++    @Override
++    public Configuration getConfiguration() {
++      return HTU.getConfiguration();
++    }
++
++    @Override
++    public ZooKeeperWatcher getZooKeeper() {
++      return this.zk;
++    }
++
++    @Override
++    public CatalogTracker getCatalogTracker() {
++      // TODO Auto-generated method stub
++      return null;
++    }
++
++    @Override
++    public String getServerName() {
++      return NAME;
++    }
++  }
++
++  /**
++   * Basic mock region server services.
++   */
++  static class MockRegionServerServices implements RegionServerServices {
++    final Map<String, HRegion> regions = new HashMap<String, HRegion>();
++    boolean stopping = false;
++
++    @Override
++    public boolean removeFromOnlineRegions(String encodedRegionName) {
++      return this.regions.remove(encodedRegionName) != null;
++    }
++    
++    @Override
++    public HRegion getFromOnlineRegions(String encodedRegionName) {
++      return this.regions.get(encodedRegionName);
++    }
++    
++    @Override
++    public void addToOnlineRegions(HRegion r) {
++      this.regions.put(r.getRegionInfo().getEncodedName(), r);
++    }
++    
++    @Override
++    public void postOpenDeployTasks(HRegion r, CatalogTracker ct, boolean daughter)
++        throws KeeperException, IOException {
++    }
++    
++    @Override
++    public boolean isStopping() {
++      return this.stopping;
++    }
++    
++    @Override
++    public HLog getWAL() {
++      return null;
++    }
++    
++    @Override
++    public HServerInfo getServerInfo() {
++      return null;
++    }
++    
++    @Override
++    public HBaseRpcMetrics getRpcMetrics() {
++      return null;
++    }
++    
++    @Override
++    public FlushRequester getFlushRequester() {
++      return null;
++    }
++    
++    @Override
++    public CompactionRequestor getCompactionRequester() {
++      return null;
++    }
++
++    @Override
++    public CatalogTracker getCatalogTracker() {
++      return null;
++    }
++
++    @Override
++    public ZooKeeperWatcher getZooKeeperWatcher() {
++      return null;
++    }
++  };
++
++  /**
++   * Test the openregionhandler can deal with its znode being yanked out from
++   * under it.
++   * @see <a href="https://issues.apache.org/jira/browse/HBASE-3627">HBASE-3627</a>
++   * @throws IOException
++   * @throws NodeExistsException
++   * @throws KeeperException
++   */
++  @Test public void testOpenRegionHandlerYankingRegionFromUnderIt()
++  throws IOException, NodeExistsException, KeeperException {
++    final Server server = new MockServer();
++    final RegionServerServices rss = new MockRegionServerServices();
++
++    HTableDescriptor htd =
++      new HTableDescriptor("testOpenRegionHandlerYankingRegionFromUnderIt");
++    final HRegionInfo hri =
++      new HRegionInfo(htd, HConstants.EMPTY_END_ROW, HConstants.EMPTY_END_ROW);
++    OpenRegionHandler handler = new OpenRegionHandler(server, rss, hri) {
++      HRegion openRegion() {
++        // Open region first, then remove znode as though it'd been hijacked.
++        HRegion region = super.openRegion();
++        // Don't actually open region BUT remove the znode as though it'd
++        // been hijacked on us.
++        ZooKeeperWatcher zkw = this.server.getZooKeeper();
++        String node = ZKAssign.getNodeName(zkw, hri.getEncodedName());
++        try {
++          ZKUtil.deleteNodeFailSilent(zkw, node);
++        } catch (KeeperException e) {
++          throw new RuntimeException("Ugh failed delete of " + node, e);
++        }
++        return region;
++      }
++    };
++    // Call process without first creating OFFLINE region in zk, see if
++    // exception or just quiet return (expected).
++    handler.process();
++    ZKAssign.createNodeOffline(server.getZooKeeper(), hri, server.getServerName());
++    // Call process again but this time yank the zk znode out from under it
++    // post OPENING; again will expect it to come back w/o NPE or exception.
++    handler.process();
++  }
++}
+\ No newline at end of file

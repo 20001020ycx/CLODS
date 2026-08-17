@@ -1,0 +1,167 @@
+commit cf3284dfb9b7b081193eb35297e2cf5920aa97e3
+Author: Michael Stack <stack@apache.org>
+Date:   Thu Mar 24 19:01:50 2011 +0000
+
+    HBASE-3627 NPE in EventHandler when region already reassigned
+    
+    git-svn-id: https://svn.apache.org/repos/asf/hbase/trunk@1085075 13f79535-47bb-0310-9956-ffa450edef68
+
+diff --git a/CHANGES.txt b/CHANGES.txt
+index 003d77e477..5beea27f13 100644
+--- a/CHANGES.txt
++++ b/CHANGES.txt
+@@ -168,6 +168,7 @@ Release 0.90.2 - Unreleased
+    HBASE-3617  NoRouteToHostException during balancing will cause Master abort
+                (Ted Yu via Stack)
+    HBASE-3668  CatalogTracker.waitForMeta can wait forever and totally stall a RS
++   HBASE-3627  NPE in EventHandler when region already reassigned
+ 
+   IMPROVEMENTS
+    HBASE-3542  MultiGet methods in Thrift
+diff --git a/src/main/java/org/apache/hadoop/hbase/catalog/CatalogTracker.java b/src/main/java/org/apache/hadoop/hbase/catalog/CatalogTracker.java
+index 08524c5ad6..be311797c8 100644
+--- a/src/main/java/org/apache/hadoop/hbase/catalog/CatalogTracker.java
++++ b/src/main/java/org/apache/hadoop/hbase/catalog/CatalogTracker.java
+@@ -23,6 +23,7 @@ import java.io.EOFException;
+ import java.io.IOException;
+ import java.net.ConnectException;
+ import java.net.SocketTimeoutException;
++import java.net.SocketException;
+ import java.util.concurrent.atomic.AtomicBoolean;
+ 
+ import org.apache.commons.logging.Log;
+@@ -390,8 +391,11 @@ public class CatalogTracker {
+         throw e;
+       }
+     } catch (SocketTimeoutException e) {
+-      // We were passed the wrong address.  Return 'protocol' == null.
++      // Return 'protocol' == null.
+       LOG.debug("Timed out connecting to " + address);
++    } catch (SocketException e) {
++      // Return 'protocol' == null.
++      LOG.debug("Exception connecting to " + address);
+     } catch (IOException ioe) {
+       Throwable cause = ioe.getCause();
+       if (cause != null && cause instanceof EOFException) {
+diff --git a/src/main/java/org/apache/hadoop/hbase/catalog/MetaReader.java b/src/main/java/org/apache/hadoop/hbase/catalog/MetaReader.java
+index 0b416e27df..6e22cf5e44 100644
+--- a/src/main/java/org/apache/hadoop/hbase/catalog/MetaReader.java
++++ b/src/main/java/org/apache/hadoop/hbase/catalog/MetaReader.java
+@@ -308,14 +308,9 @@ public class MetaReader {
+     } catch (java.net.SocketTimeoutException e) {
+       // Treat this exception + message as unavailable catalog table. Catch it
+       // and fall through to return a null
+-    } catch (java.net.ConnectException e) {
+-      if (e.getMessage() != null &&
+-          e.getMessage().contains("Connection refused")) {
+-        // Treat this exception + message as unavailable catalog table. Catch it
+-        // and fall through to return a null
+-      } else {
+-        throw e;
+-      }
++    } catch (java.net.SocketException e) {
++      // Treat this exception + message as unavailable catalog table. Catch it
++      // and fall through to return a null
+     } catch (RemoteException re) {
+       IOException ioe = re.unwrapRemoteException();
+       if (ioe instanceof NotServingRegionException) {
+diff --git a/src/main/java/org/apache/hadoop/hbase/master/AssignmentManager.java b/src/main/java/org/apache/hadoop/hbase/master/AssignmentManager.java
+index b56610d140..e9b2af27b6 100644
+--- a/src/main/java/org/apache/hadoop/hbase/master/AssignmentManager.java
++++ b/src/main/java/org/apache/hadoop/hbase/master/AssignmentManager.java
+@@ -1770,6 +1770,10 @@ public class AssignmentManager extends ZooKeeperListener {
+                   Stat stat = new Stat();
+                   RegionTransitionData data = ZKAssign.getDataNoWatch(watcher,
+                       node, stat);
++                  if (data == null) {
++                    LOG.warn("Data is null, node " + node + " no longer exists");
++                    break;
++                  }
+                   if (data.getEventType() == EventType.RS_ZK_REGION_OPENED) {
+                     LOG.debug("Region has transitioned to OPENED, allowing " +
+                         "watched event handlers to process");
+diff --git a/src/main/java/org/apache/hadoop/hbase/regionserver/handler/OpenRegionHandler.java b/src/main/java/org/apache/hadoop/hbase/regionserver/handler/OpenRegionHandler.java
+index b831ad4c69..441b48419e 100644
+--- a/src/main/java/org/apache/hadoop/hbase/regionserver/handler/OpenRegionHandler.java
++++ b/src/main/java/org/apache/hadoop/hbase/regionserver/handler/OpenRegionHandler.java
+@@ -87,7 +87,11 @@ public class OpenRegionHandler extends EventHandler {
+ 
+     // If fails, just return.  Someone stole the region from under us.
+     // Calling transitionZookeeperOfflineToOpening initalizes this.version.
+-    if (!transitionZookeeperOfflineToOpening(encodedName)) return;
++    if (!transitionZookeeperOfflineToOpening(encodedName)) {
++      LOG.warn("Region was hijacked? It no longer exists, encodedName=" +
++        encodedName);
++      return;
++    }
+ 
+     // Open region.  After a successful open, failures in subsequent processing
+     // needs to do a close as part of cleanup.
+@@ -254,7 +258,7 @@ public class OpenRegionHandler extends EventHandler {
+   /**
+    * @return Instance of HRegion if successful open else null.
+    */
+-  private HRegion openRegion() {
++  HRegion openRegion() {
+     HRegion region = null;
+     try {
+       // Instantiate the region.  This also periodically tickles our zk OPENING
+diff --git a/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKAssign.java b/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKAssign.java
+index 17dd092cd5..34e17b6063 100644
+--- a/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKAssign.java
++++ b/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKAssign.java
+@@ -396,7 +396,8 @@ public class ZKAssign {
+     zkw.sync(node);
+     Stat stat = new Stat();
+     byte [] bytes = ZKUtil.getDataNoWatch(zkw, node, stat);
+-    if(bytes == null) {
++    if (bytes == null) {
++      // If it came back null, node does not exist.
+       throw KeeperException.create(Code.NONODE);
+     }
+     RegionTransitionData data = RegionTransitionData.fromBytes(bytes);
+@@ -674,8 +675,11 @@ public class ZKAssign {
+ 
+     // Read existing data of the node
+     Stat stat = new Stat();
+-    byte [] existingBytes =
+-      ZKUtil.getDataNoWatch(zkw, node, stat);
++    byte [] existingBytes = ZKUtil.getDataNoWatch(zkw, node, stat);
++    if (existingBytes == null) {
++      // Node no longer exists.  Return -1. It means unsuccessful transition.
++      return -1;
++    }
+     RegionTransitionData existingData =
+       RegionTransitionData.fromBytes(existingBytes);
+ 
+@@ -762,7 +766,7 @@ public class ZKAssign {
+    * @param zkw zk reference
+    * @param pathOrRegionName fully-specified path or region name
+    * @param stat object to store node info into on getData call
+-   * @return data for the unassigned node
++   * @return data for the unassigned node or null if node does not exist
+    * @throws KeeperException if unexpected zookeeper exception
+    */
+   public static RegionTransitionData getDataNoWatch(ZooKeeperWatcher zkw,
+@@ -771,7 +775,7 @@ public class ZKAssign {
+     String node = pathOrRegionName.startsWith("/") ?
+         pathOrRegionName : getNodeName(zkw, pathOrRegionName);
+     byte [] data = ZKUtil.getDataNoWatch(zkw, node, stat);
+-    if(data == null) {
++    if (data == null) {
+       return null;
+     }
+     return RegionTransitionData.fromBytes(data);
+diff --git a/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKUtil.java b/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKUtil.java
+index ef063bc08e..08748f8102 100644
+--- a/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKUtil.java
++++ b/src/main/java/org/apache/hadoop/hbase/zookeeper/ZKUtil.java
+@@ -576,7 +576,7 @@ public class ZKUtil {
+    * @param zkw zk reference
+    * @param znode path of node
+    * @param stat node status to set if node exists
+-   * @return data of the specified znode, or null if does not exist
++   * @return data of the specified znode, or null if node does not exist
+    * @throws KeeperException if unexpected zookeeper exception
+    */
+   public static byte [] getDataNoWatch(ZooKeeperWatcher zkw, String znode,

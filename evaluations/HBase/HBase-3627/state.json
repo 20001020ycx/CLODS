@@ -4,8 +4,8 @@
   "jira": "HBASE-3627",
   "jira_url": "https://issues.apache.org/jira/browse/HBASE-3627",
   "source_repo": "https://github.com/apache/hbase.git",
-  "fix_commit": null,
-  "pre_fix_commit": null,
+  "fix_commit": "79b522db0c8795d9d303aa6ec564c197b3a8bb20",
+  "pre_fix_commit": "86e9f5f8c9cb36b3dd2a1344c8c8c2bf95f44cc5",
   "anonymized_commit": null,
   "symptom_short": null,
   "milestones": [
@@ -25,15 +25,19 @@
     },
     {
       "id": "M1",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T01:58:41Z",
+      "finished": "2026-08-17T01:58:41Z",
+      "attempts": 1,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "private/fix.diff",
+        "private/fix.trunk.diff",
+        "private/fix.addendum.diff"
+      ],
+      "note": "JIRA HBASE-3627 'NPE in EventHandler when region already reassigned' (Bug, Critical, Closed/Fixed; affects 0.90.1, fixVersion 0.90.2; reported by Jean-Daniel Cryans, assigned/committed by Michael Stack, created 2011-03-12, resolved 2011-03-24). The ticket quotes three log lines: ZKAssign DEBUG 'Attempting to transition node <encoded> from RS_ZK_REGION_OPENING to RS_ZK_REGION_OPENING', ZKUtil DEBUG 'Unable to get data of znode /hbase/unassigned/<encoded> because node does not exist (not necessarily an error)', and EventHandler ERROR 'Caught throwable while processing event M_RS_OPEN_REGION java.lang.NullPointerException at org.apache.hadoop.hbase.util.Writables.getWritable'. Stack's commit comment: 'Make sure that when we go to get data from a znode, that if doesn't exist because its been hijacked, then make sure callers do not try to make use of null data.' Six commits mention HBASE-3627; the released fix for 0.90.2 is the branch-0.90 commit 79b522db0c (2011-03-24 19:04:07 +0000, svn branches/0.90@1085077), which changes AssignmentManager, OpenRegionHandler, ZKAssign, ZKUtil and adds TestOpenRegionHandler. Its trunk twin is cf3284dfb9 (saved as private/fix.trunk.diff; it additionally carries unrelated CatalogTracker/MetaReader edits). 23606d0645 is a later same-titled addendum that only widens a LeaseException catch in HRegionServer -- unrelated to the NPE, saved as private/fix.addendum.diff for completeness. pre_fix_commit = 86e9f5f8c9 (HBASE-3669 debugging, 2011-03-24 18:36:34). Verified against the pre-fix tree that the diff resolves the reported symptom: ZKAssign.transitionNode (pre-fix lines 670-673) does 'byte[] existingBytes = ZKUtil.getDataNoWatch(zkw, node, stat); RegionTransitionData existingData = RegionTransitionData.fromBytes(existingBytes);' with no null guard, and ZKUtil.getDataNoWatch returns null (logging the quoted DEBUG line) when the znode is gone; RegionTransitionData.fromBytes -> Writables.getWritable(bytes, w) dereferences bytes.length -> NPE, which is unchecked so it escapes OpenRegionHandler.tickleOpening's 'catch (KeeperException e)' and is caught by EventHandler.run's 'catch (Throwable t)' -> the quoted ERROR line. The fix adds 'if (existingBytes == null) return -1;' there. The same commit also adds a null guard at AssignmentManager's TimeoutMonitor OPENING case (pre-fix line 1645: 'data.getEventType()' on the result of ZKAssign.getDataNoWatch, which is null when the node is gone) -- the master-side twin of the same defect. The OpenRegionHandler LOG.warn and the ZKUtil/ZKAssign javadoc edits are non-behavioural."
     },
     {
       "id": "M2",
@@ -120,5 +124,6 @@
       "note": ""
     }
   ],
-  "result": null
+  "result": null,
+  "source_version": "branch-0.90 @ 2011-03-24 (0.90.2-SNAPSHOT, pre-fix parent of the HBASE-3627 commit)"
 }

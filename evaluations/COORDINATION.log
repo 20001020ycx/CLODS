@@ -81,3 +81,4 @@
 2026-08-17T01:54:18Z HBase-3403 claim M0
 2026-08-17T01:54:18Z HBase-3403 M0 DONE success
 2026-08-17T01:58:29Z HBase-3403 M1 DONE success (fix 0d31ac5f37, pre-fix dddee0d50f)
+2026-08-17T01:58:53Z HBase-3627 M1 DONE success (fix 79b522db0c, pre-fix 86e9f5f8c9)

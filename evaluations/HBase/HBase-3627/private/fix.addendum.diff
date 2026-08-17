@@ -1,0 +1,66 @@
+commit 23606d0645ae3db2b70d976ed3506981a3ef8a20
+Author: Michael Stack <stack@apache.org>
+Date:   Thu Mar 24 20:36:10 2011 +0000
+
+     (HBASE-3627) NPE in EventHandler when region already reassigned; fix incompatibility between 0.90 and TRUNK
+    
+    git-svn-id: https://svn.apache.org/repos/asf/hbase/branches/0.90@1085120 13f79535-47bb-0310-9956-ffa450edef68
+
+diff --git a/CHANGES.txt b/CHANGES.txt
+index 82af341e2f..5ea59b5ea5 100644
+--- a/CHANGES.txt
++++ b/CHANGES.txt
+@@ -57,6 +57,7 @@ Release 0.90.2 - Unreleased
+                locations such as -ROOT- or .META.
+    HBASE-3654  Weird blocking between getOnlineRegion and createRegionLoad
+                (Subbu M Iyer via Stack)
++   HBASE-3666  TestScannerTimeout fails occasionally
+ 
+   IMPROVEMENTS
+    HBASE-3542  MultiGet methods in Thrift
+diff --git a/src/main/java/org/apache/hadoop/hbase/regionserver/HRegionServer.java b/src/main/java/org/apache/hadoop/hbase/regionserver/HRegionServer.java
+index 98bb8f4423..cd39ac418f 100644
+--- a/src/main/java/org/apache/hadoop/hbase/regionserver/HRegionServer.java
++++ b/src/main/java/org/apache/hadoop/hbase/regionserver/HRegionServer.java
+@@ -1798,7 +1798,12 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
+       } catch (IOException e) {
+         // If checkOpen failed, server not running or filesystem gone,
+         // cancel this lease; filesystem is gone or we're closing or something.
+-        this.leases.cancelLease(scannerName);
++        try {
++          this.leases.cancelLease(scannerName);
++        } catch (LeaseException le) {
++          LOG.info("Server shutting down and client tried to access missing scanner " +
++            scannerName);
++        }
+         throw e;
+       }
+       this.leases.renewLease(scannerName);
+diff --git a/src/test/java/org/apache/hadoop/hbase/regionserver/handler/TestOpenRegionHandler.java b/src/test/java/org/apache/hadoop/hbase/regionserver/handler/TestOpenRegionHandler.java
+index d1607cd275..90da379578 100644
+--- a/src/test/java/org/apache/hadoop/hbase/regionserver/handler/TestOpenRegionHandler.java
++++ b/src/test/java/org/apache/hadoop/hbase/regionserver/handler/TestOpenRegionHandler.java
+@@ -171,16 +171,6 @@ public class TestOpenRegionHandler {
+     public CompactionRequestor getCompactionRequester() {
+       return null;
+     }
+-
+-    @Override
+-    public CatalogTracker getCatalogTracker() {
+-      return null;
+-    }
+-
+-    @Override
+-    public ZooKeeperWatcher getZooKeeperWatcher() {
+-      return null;
+-    }
+   };
+ 
+   /**
+@@ -224,4 +214,4 @@ public class TestOpenRegionHandler {
+     // post OPENING; again will expect it to come back w/o NPE or exception.
+     handler.process();
+   }
+-}
+\ No newline at end of file
++}

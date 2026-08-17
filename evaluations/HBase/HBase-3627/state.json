@@ -152,17 +152,32 @@
     },
     {
       "id": "M8",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T13:34:00Z",
+      "finished": "2026-08-17T13:33:51Z",
+      "attempts": 1,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "summary.md"
+      ],
+      "note": "summary.md written: 0/5 under the two-site bar, 5/5 under the on-path bar, with the per-run table, the reason site B is unreachable from this symptom, the alternative-fix divergence all five runs proposed (the 2-arg Writables.getWritable overload) and the one production-noise artefact (run 1 anchoring its trigger story on a -ROOT- line from a different host)."
     }
   ],
-  "result": null,
+  "result": {
+    "successes": 0,
+    "total": 5,
+    "per_run": [
+      "FAIL",
+      "FAIL",
+      "FAIL",
+      "FAIL",
+      "FAIL"
+    ],
+    "site_a_successes": 5,
+    "site_b_successes": 0,
+    "note": "0/5 under the pre-registered PRIMARY bar (both production sites the fix changed). All 5 runs named the root-causing line AND its exact missing branch (ZKAssign.transitionNode 670-673 = RegionStateZK.java:670-673, 'if (existingBytes == null) return -1' missing, null coming from getDataNoWatch's NoNodeException branch) inside the 3.1 GB merged production log under renamed classes; 3 of them also derived the trigger, which symptom.md never states. None named site B (AssignmentManager TimeoutMonitor 'case OPENING:' 1646), which this reproduction never exercises (all timeouts are PENDING_OPEN; zero OPENING timeouts, zero master NPEs), so the AUXILIARY on-path bar is 5/5."
+  },
   "source_version": "branch-0.90 @ 2011-03-24 (0.90.2-SNAPSHOT, pre-fix parent of the HBASE-3627 commit)"
 }

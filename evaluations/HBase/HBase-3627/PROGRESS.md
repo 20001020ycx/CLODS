@@ -25,7 +25,7 @@ milestone carries `status` + `success` + `outcome`.
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true | success |
 | M6 | Run LLM diagnosis x5 (network locked) | DONE | true | success |
 | M7 | Grade each run vs ground truth | DONE | true | success |
-| M8 | Write summary & finalize | PENDING | null | pending |
+| M8 | Write summary & finalize | DONE | true | success |
 
 ## Log
 
@@ -83,3 +83,5 @@ milestone carries `status` + `success` + `outcome`.
   missing `existingBytes == null` guard, with the NoNodeException→`null` condition that produces it; three also derived
   the trigger (the unassigned znode being created/deleted underneath the bring-up) from the log alone. None named the
   master-side twin (`AssignmentManager` TimeoutMonitor `case OPENING:`), which this reproduction never exercises.
+- 2026-08-17T13:35Z M8 DONE success=true — `summary.md` written; `state.json.result` = **0/5** under the pre-registered
+  two-site bar (`site_a_successes: 5`, `site_b_successes: 0`). Bug complete.

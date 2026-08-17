@@ -95,3 +95,4 @@
 2026-08-17T13:02:29Z HBase-3403 M7 DONE success (5/5 PASS)
 2026-08-17T13:03:38Z HBase-3403 M8 DONE success; bug COMPLETE 5/5 (merged production log)
 2026-08-17T13:21:56Z HBase-3627 M5 DONE success (bare-observable symptom + two-site ground truth)
+2026-08-17T13:33:51Z HBase-3627 M6-M8 DONE; bug COMPLETE 0/5 two-site (5/5 root-causing line+branch)

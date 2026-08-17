@@ -4,7 +4,8 @@
 #   reproduce.sh [HBASE_SRC] [RUNDIR] [OUT_LOG]
 #     HBASE_SRC  source tree to run (default /work/repos/HBase-HBase-3627 = the pre-fix tree;
 #                at M4 this is pointed at the anonymized tree)
-#     RUNDIR     scratch cluster dir     (default /work/repos/hbase-run-3627)
+#     RUNDIR     scratch cluster dir     (default /work/repos/hbase-cluster-run; the path and the
+#                container hostname must not contain the bug number - they end up in the log)
 #     OUT_LOG    where the collected log is written
 #                (default /work/evaluations/HBase/HBase-3627/private/symptom.orig.log)
 #
@@ -12,10 +13,10 @@
 # slow relative to the master's regions-in-transition timeout (an ordinary, overloaded
 # two-core node):
 #
-#   docker run -d --name hbase3627 --cpus=2 -v "$PWD:/work" \
+#   docker run -d --name clods-hbase --hostname hbase-node-a --cpus=2 -v "$PWD:/work" \
 #       -v "$PWD/repos/.m2-HBase-3627:/root/.m2" --entrypoint bash \
 #       clods-eval:HBase-HBase-3627 -lc 'sleep infinity'
-#   docker exec hbase3627 bash /work/evaluations/HBase/HBase-3627/reproduce.sh
+#   docker exec clods-hbase bash /work/evaluations/HBase/HBase-3627/reproduce.sh
 #
 # Scenario (all of it is ordinary operation — nothing is patched, no log line is injected):
 #   PHASE A  a 3-regionserver cluster is brought up on one host, a 300-region user table is
@@ -35,7 +36,7 @@
 set -euo pipefail
 
 H=${1:-/work/repos/HBase-HBase-3627}
-RUN=${2:-/work/repos/hbase-run-3627}
+RUN=${2:-/work/repos/hbase-cluster-run}
 OUT=${3:-/work/evaluations/HBase/HBase-3627/private/symptom.orig.log}
 R=/work/evaluations/HBase/HBase-3627/private/repro
 NRS=3
@@ -99,7 +100,7 @@ say "PHASE B: waiting for the cluster to settle"
 last=0; quiet=0; waited=0
 while [ $waited -lt 480 ]; do
   sleep 15; waited=$((waited + 15))
-  now=$(grep -ac "Regions in transition timed out" "$MASTER_LOG" || true)
+  now=$(grep -acE "Regions in transition timed out|Placement did not finish in time" "$MASTER_LOG" || true)
   if [ "$now" = "$last" ]; then quiet=$((quiet + 15)); else quiet=0; fi
   last=$now
   [ $quiet -ge 45 ] && break
@@ -123,10 +124,12 @@ done
 # ---------------------------------------------------------------- silent assertions
 echo
 echo "================ reproduction result ================"
-NPE=$(cat "$RUN"/logs/hbase-rs[123]-regionserver-*.log 2>/dev/null | grep -ac "Caught throwable while processing event M_RS_OPEN_REGION" || true)
-STACK=$(cat "$RUN"/logs/hbase-rs[123]-regionserver-*.log 2>/dev/null | grep -ac "at org.apache.hadoop.hbase.zookeeper.ZKAssign.transitionNode" || true)
-NONODE=$(cat "$RUN"/logs/hbase-rs[123]-regionserver-*.log 2>/dev/null | grep -ac "because node does not exist" || true)
-RIT=$(grep -ac "Regions in transition timed out" "$MASTER_LOG" || true)
+# The patterns accept both the pre-fix wording and the M4-anonymized wording, so the same
+# script asserts the same failure before and after anonymization.
+NPE=$(cat "$RUN"/logs/hbase-rs[123]-regionserver-*.log 2>/dev/null | grep -acE "(Caught throwable while processing event|Handler died on an unexpected error, task) (M_RS_OPEN_REGION|M_RS_BRINGUP_REGION)" || true)
+STACK=$(cat "$RUN"/logs/hbase-rs[123]-regionserver-*.log 2>/dev/null | grep -acE "at org\.apache\.hadoop\.hbase\.zookeeper\.(ZKAssign|RegionStateZK)\.transitionNode" || true)
+NONODE=$(cat "$RUN"/logs/hbase-rs[123]-regionserver-*.log 2>/dev/null | grep -acE "because node does not exist|since the node is absent" || true)
+RIT=$(grep -acE "Regions in transition timed out|Placement did not finish in time" "$MASTER_LOG" || true)
 echo "regions-in-transition timeouts logged by the master : $RIT"
 echo "M_RS_OPEN_REGION handler failures on regionservers   : $NPE"
 echo "  ...of which the stack passes through ZKAssign      : $STACK"

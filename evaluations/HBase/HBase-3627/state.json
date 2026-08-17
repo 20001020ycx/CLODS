@@ -80,15 +80,23 @@
     },
     {
       "id": "M4",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T03:45:00Z",
+      "finished": "2026-08-17T12:59:42Z",
+      "attempts": 3,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "source/ (451 java files, gitignored)",
+        "logs/repro.log (Log A, gitignored)",
+        "logs/symptom.log (Log B, merged, LLM-facing, gitignored)",
+        "private/anonymize.sh",
+        "private/anon-map-source.json",
+        "private/anon-map-production.json",
+        "private/merge_logs.py"
+      ],
+      "note": "Anonymized per METHODOLOGY M4/\u00a76. Failure path = the completed causal chain: root cause ZKAssign.transitionNode; ZKUtil.getDataNoWatch (returns the null and logs the JIRA-quoted DEBUG); RegionTransitionData.fromBytes and Writables.getWritable (where the NPE is thrown); OpenRegionHandler (the caller); EventHandler (catches the Throwable and prints the symptom ERROR); plus the two master-side actors that make the znode disappear - AssignmentManager (times out PENDING_OPEN and re-places the region; also the second fix site) and OpenedRegionHandler (deletes the unassigned znode once the other server has opened it). (a) bug-id scrub. (b)+(c) type+file renames: ZKAssign->RegionStateZK, ZKUtil->ZKOps, RegionTransitionData->RegionStateRecord, Writables->SerdeUtil, EventHandler->TaskHandler (TableEventHandler follows to TableTaskHandler), OpenRegionHandler->RegionBringupHandler, AssignmentManager->RegionPlacementManager, OpenedRegionHandler->RegionOnlineHandler, plus the event/executor constants M_RS_OPEN_REGION->M_RS_BRINGUP_REGION and RS_OPEN_REGION->RS_REGION_BRINGUP (they appear in the symptom line and in the thread names). (d) 26 failure-path log literals rewritten, including all three the JIRA quotes: 'Caught throwable while processing event '->'Handler died on an unexpected error, task ', 'Unable to get data of znode '->'Could not read the contents of node ' (+'because node does not exist (not necessarily an error)'->'since the node is absent (not necessarily an error)') and 'Attempting to transition node '->'Trying to move the placement record of '. One longest-key-first pass over every .java/.jsp/.xml/.rb under src/ (42 map entries, 81 files touched), then each file renamed to match its public type; java.beans.EventHandler (a JDK class) is protected from the substitution and the one stray import that used it now points at the renamed HBase type. The anonymized tree BUILDS ('mvn -DskipTests package' OK) and still REPRODUCES: 7203 regions-in-transition timeouts and 4849 'Handler died on an unexpected error, task M_RS_BRINGUP_REGION' + NullPointerException at SerdeUtil.getWritable:75 <- RegionStateRecord.fromBytes:198 <- RegionStateZK.transitionNode:673 <- transitionNodeOpening:552/545 <- RegionBringupHandler.transitionZookeeperOfflineToOpening:297 <- RegionBringupHandler.process:90 <- TaskHandler.run:151. logs/repro.log (Log A) = 1,608,196 lines / 241 MB written by the anonymized binaries; logs/symptom.log (Log B, LLM-facing) = 13,603,023 lines / 3.1 GB = 11,945,370 production + 1,541,908 reproduction records, merged with --interleave position and --rename so the SAME class/literal map is applied to the production stream (the shared HBase production log is real HBase output containing ZKUtil 3690x, ZKAssign 3794x, AssignmentManager 4443x, OpenRegionHandler 373x, 'Unable to get data of znode' 565x, RS_OPEN_REGION 11756x) - otherwise the merged log would contradict source/. The shared production log itself is never modified. ATTEMPT 2 FAILED THE GATE and was re-run: the container hostname (hbase3627) and the scratch paths (/work/repos/hbase-run-3627, hbase-anon-3627) carried the bug number into every server name, thread name and startup classpath line of the log; the rerun uses hostname hbase-node-a, /work/repos/hbase-cluster-run and /work/repos/hbase-src. Final gate over source/ + logs/repro.log + the whole 3.1 GB merged log: 0 hits for [Hh][Bb][Aa][Ss][Ee][ _-]?3627, hbase-anon, hbase-run-3627, ZKAssign, ZKUtil, RegionTransitionData, Writables, EventHandler, OpenRegionHandler, OpenedRegionHandler, AssignmentManager, M_RS_OPEN_REGION, RS_OPEN_REGION and the three quoted literals. The only remaining bare '3627' strings are incidental numerics printed with their context by the gate: 30 IPC call ids ('got #3627') and 7 'Wrote 3627 bytes.' - no bug-id leak. source/ = the full anonymized src/main/java (451 files, 5.8 MB). Regeneration is deterministic: private/anonymize.sh (pre_fix_commit + deps-fix.patch + the two maps + reproduce.sh + merge_logs.py)."
     },
     {
       "id": "M5",

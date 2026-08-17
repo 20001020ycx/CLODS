@@ -12,14 +12,20 @@ to the script's stdout.
 ```bash
 # per-bug container, CPU-limited so that region opens are slow relative to the master's
 # regions-in-transition timeout (an ordinary, overloaded two-core node)
-docker run -d --name hbase3627 --cpus=2 -v "$PWD:/work" \
+docker run -d --name clods-hbase --hostname hbase-node-a --cpus=2 -v "$PWD:/work" \
     -v "$PWD/repos/.m2-HBase-3627:/root/.m2" --entrypoint bash \
     clods-eval:HBase-HBase-3627 -lc 'sleep infinity'
 
-docker exec hbase3627 bash /work/evaluations/HBase/HBase-3627/reproduce.sh
+docker exec clods-hbase bash /work/evaluations/HBase/HBase-3627/reproduce.sh
 #   reproduce.sh [HBASE_SRC] [RUNDIR] [OUT_LOG]
-#   defaults: /work/repos/HBase-HBase-3627, /work/repos/hbase-run-3627,
+#   defaults: /work/repos/HBase-HBase-3627, /work/repos/hbase-cluster-run,
 #             /work/evaluations/HBase/HBase-3627/private/symptom.orig.log
+
+# The container hostname and the run/source directory names must not contain the bug number:
+# HBase logs the host name in every server name and thread name, and the daemons print their
+# classpath and hbase.home.dir at startup, so those strings end up inside the symptom log
+# (this is why the M4 rerun uses `hbase-node-a`, `/work/repos/hbase-cluster-run` and
+# `/work/repos/hbase-src` rather than the first attempt's `hbase3627`/`hbase-run-3627`).
 ```
 
 `reproduce.sh` builds the tree if needed (`mvn -DskipTests -Dmaven.javadoc.skip=true package`,

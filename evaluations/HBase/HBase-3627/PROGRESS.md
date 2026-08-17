@@ -21,7 +21,7 @@ milestone carries `status` + `success` + `outcome`.
 | M1 | From JIRA: fix commit + pre-fix commit | DONE | true | success |
 | M2 | Check out pre-fix, build from source, fix deps | DONE | true | success |
 | M3 | Reproduce the failure + merge into production log | DONE | true | success |
-| M4 | Anonymize, rebuild, re-confirm reproduction | PENDING | null | pending |
+| M4 | Anonymize, rebuild, re-confirm reproduction | DONE | true | success |
 | M5 | Prepare diagnosis inputs & ground truth | PENDING | null | pending |
 | M6 | Run LLM diagnosis x5 (network locked) | PENDING | null | pending |
 | M7 | Grade each run vs ground truth | PENDING | null | pending |
@@ -53,3 +53,13 @@ milestone carries `status` + `success` + `outcome`.
   node does not exist` — the JIRA's own trace. No source patched, no log line injected; detection is silent.
   `private/symptom.orig.log` = 1 662 415 lines / 244 MB (Log A); `private/merged.orig.log` = 13 657 242 lines / 3.3 GB
   (Log B = Log A merged into `production-logs/HBase/production.log`). Write-up in `reproduce.md`.
+- 2026-08-17T12:55Z M4 DONE success=true — failure-path types + files renamed (`ZKAssign`→`RegionStateZK`, `ZKUtil`→`ZKOps`,
+  `RegionTransitionData`→`RegionStateRecord`, `Writables`→`SerdeUtil`, `EventHandler`→`TaskHandler`,
+  `OpenRegionHandler`→`RegionBringupHandler`, `AssignmentManager`→`RegionPlacementManager`,
+  `OpenedRegionHandler`→`RegionOnlineHandler`, `M_RS_OPEN_REGION`→`M_RS_BRINGUP_REGION`, `RS_OPEN_REGION`→`RS_REGION_BRINGUP`)
+  and 26 failure-path log literals rewritten, including all three the JIRA quotes. The anonymized tree builds and still
+  reproduces (7 203 RIT timeouts, 4 849 NPEs with fully renamed frames). `logs/repro.log` = 1 608 196 lines / 241 MB;
+  `logs/symptom.log` = 13 603 023 lines / 3.1 GB (11 945 370 production + 1 541 908 reproduction records, same map applied to
+  the production stream). Attempt 2 failed the leak gate — the container hostname and scratch paths carried the bug number
+  into the log — so the run was repeated with `hbase-node-a` / `hbase-cluster-run` / `hbase-src`. Gate now clean.
+  Replay: `private/anonymize.sh`.

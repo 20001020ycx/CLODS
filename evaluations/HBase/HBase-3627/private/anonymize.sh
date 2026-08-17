@@ -20,7 +20,7 @@ set -euo pipefail
 
 BUG_DIR=${BUG_DIR:-/work/evaluations/HBase/HBase-3627}
 SRC_REPO=${SRC_REPO:-/work/repos/HBase-HBase-3627}
-ANON_REPO=${ANON_REPO:-/work/repos/hbase-anon-3627}
+ANON_REPO=${ANON_REPO:-/work/repos/hbase-src}   # neutral: this path is printed in the daemons' startup log lines
 PROD_LOG=${PROD_LOG:-/work/production-logs/HBase/production.log}
 SMAP=$BUG_DIR/private/anon-map-source.json
 PMAP=$BUG_DIR/private/anon-map-production.json
@@ -28,6 +28,7 @@ PRE_FIX=86e9f5f8c9cb36b3dd2a1344c8c8c2bf95f44cc5
 
 echo "[anonymize] 1/6 fresh pre-fix tree -> $ANON_REPO"
 rm -rf "$ANON_REPO"; mkdir -p "$ANON_REPO"
+git config --global --add safe.directory '*' >/dev/null 2>&1 || true   # the clone is root-owned inside the container
 git -C "$SRC_REPO" archive "$PRE_FIX" | tar -x -C "$ANON_REPO"
 git -C "$ANON_REPO" init -q 2>/dev/null || true
 patch -p1 -d "$ANON_REPO" -s < "$BUG_DIR/private/deps-fix.patch"
@@ -38,6 +39,10 @@ import json, os, re, sys
 root, mapfile = sys.argv[1], sys.argv[2]
 m = json.load(open(mapfile))
 pat = re.compile("|".join(re.escape(k) for k in sorted(m, key=len, reverse=True)))
+# java.beans.EventHandler is a JDK class that happens to share HBase's class name; protect it
+# (and anything else in java.*/javax.*) from the substitution.
+PROTECT = {"java.beans.EventHandler": "\x00JDK_BEANS_EVENTHANDLER\x00"}
+
 changed = files = 0
 for dirpath, _dirs, names in os.walk(os.path.join(root, "src")):
     for n in names:
@@ -45,39 +50,41 @@ for dirpath, _dirs, names in os.walk(os.path.join(root, "src")):
             continue
         p = os.path.join(dirpath, n)
         s = open(p, encoding="utf-8", errors="surrogateescape").read()
-        t = pat.sub(lambda x: m[x.group(0)], s)
+        t = s
+        for k, v in PROTECT.items():
+            t = t.replace(k, v)
+        t = pat.sub(lambda x: m[x.group(0)], t)
+        for k, v in PROTECT.items():
+            t = t.replace(v, k)
+        # TotesHRegionInfo carries a stray `import java.beans.EventHandler;` whose javadoc
+        # {@link} actually means HBase's handler; point it at the renamed HBase type so no
+        # original name survives anywhere in source/.
+        t = t.replace("import java.beans.EventHandler;",
+                      "import org.apache.hadoop.hbase.executor.TaskHandler;")
         files += 1
         if t != s:
             open(p, "w", encoding="utf-8", errors="surrogateescape").write(t)
             changed += 1
 print(f"[anonymize]   substituted in {changed}/{files} files")
-# rename the files whose public type was renamed
-renames = {
-    "src/main/java/org/apache/hadoop/hbase/zookeeper/ZKAssign.java": "RegionStateZK.java",
-    "src/main/java/org/apache/hadoop/hbase/zookeeper/ZKUtil.java": "ZKOps.java",
-    "src/main/java/org/apache/hadoop/hbase/executor/RegionTransitionData.java": "RegionStateRecord.java",
-    "src/main/java/org/apache/hadoop/hbase/executor/EventHandler.java": "TaskHandler.java",
-    "src/main/java/org/apache/hadoop/hbase/util/Writables.java": "SerdeUtil.java",
-    "src/main/java/org/apache/hadoop/hbase/regionserver/handler/OpenRegionHandler.java": "RegionBringupHandler.java",
-    "src/main/java/org/apache/hadoop/hbase/master/AssignmentManager.java": "RegionPlacementManager.java",
-    "src/main/java/org/apache/hadoop/hbase/master/handler/OpenedRegionHandler.java": "RegionOnlineHandler.java",
-}
-for old, new in renames.items():
-    src = os.path.join(root, old)
-    dst = os.path.join(os.path.dirname(src), new)
-    if os.path.exists(src):
-        os.rename(src, dst)
-        print(f"[anonymize]   {os.path.basename(old)} -> {new}")
-    elif not os.path.exists(dst):
-        sys.exit(f"[anonymize] FATAL: neither {src} nor {dst} exists")
-# the test that names the handler class in its file name follows too
-for dirpath, _dirs, names in os.walk(os.path.join(root, "src/test")):
-    for n in names:
-        if "OpenRegionHandler" in n or "AssignmentManager" in n or "ZKAssign" in n:
-            os.rename(os.path.join(dirpath, n),
-                      os.path.join(dirpath, n.replace("OpenRegionHandler", "RegionBringupHandler")
-                                             .replace("AssignmentManager", "RegionPlacementManager")
-                                             .replace("ZKAssign", "RegionStateZK")))
+
+# Every .java file must be named after its public type: rename any file whose public type the
+# substitution changed (the eight failure-path types plus anything that embeds their names,
+# e.g. TableEventHandler -> TableTaskHandler).
+TYPE = re.compile(r"^\s*public\s+(?:final\s+|abstract\s+|strictfp\s+)*(?:class|interface|enum)\s+(\w+)",
+                  re.M)
+renamed = 0
+for sub in ("src/main/java", "src/test/java"):
+    for dirpath, _dirs, names in os.walk(os.path.join(root, sub)):
+        for n in names:
+            if not n.endswith(".java") or n == "package-info.java":
+                continue
+            p = os.path.join(dirpath, n)
+            mt = TYPE.search(open(p, encoding="utf-8", errors="surrogateescape").read())
+            if mt and mt.group(1) != n[:-5]:
+                os.rename(p, os.path.join(dirpath, mt.group(1) + ".java"))
+                print(f"[anonymize]   {n} -> {mt.group(1)}.java")
+                renamed += 1
+print(f"[anonymize]   renamed {renamed} files to match their public type")
 PY
 
 echo "[anonymize] 3/6 rebuilding the anonymized tree"
@@ -86,7 +93,7 @@ echo "[anonymize] 3/6 rebuilding the anonymized tree"
 
 echo "[anonymize] 4/6 re-running the reproduction against the anonymized binaries"
 rc=0
-bash "$BUG_DIR/reproduce.sh" "$ANON_REPO" /work/repos/hbase-run-3627 "$BUG_DIR/logs/repro.log" || rc=$?
+bash "$BUG_DIR/reproduce.sh" "$ANON_REPO" /work/repos/hbase-cluster-run "$BUG_DIR/logs/repro.log" || rc=$?
 [ "$rc" -eq 0 ] || { echo "[anonymize] FATAL: the anonymized build no longer reproduces (rc=$rc)"; exit "$rc"; }
 
 echo "[anonymize] 5/6 merging into the shared production log"
@@ -103,7 +110,11 @@ cp -a "$ANON_REPO/src/main/java" "$BUG_DIR/source/java"
 echo "[anonymize] source/ = $(find "$BUG_DIR/source" -name '*.java' | wc -l) java files"
 
 bad=0
-for pat in 'HBASE-3627' '\b3627\b' '\bZKAssign\b' '\bZKUtil\b' '\bRegionTransitionData\b' \
+# The bug id must be ungreppable in any form ('HBASE-3627', 'hbase 3627', a path or host name
+# built from it). A BARE 3627 with no 'hbase' next to it is not a bug-id leak - it also turns
+# up as an RPC byte count ('Wrote 3627 bytes.') and inside MD5 region names - so those are
+# reported below for the record instead of failing the gate.
+for pat in '[Hh][Bb][Aa][Ss][Ee][ _-]?3627' 'hbase-anon' 'hbase-run-3627' '\bZKAssign\b' '\bZKUtil\b' '\bRegionTransitionData\b' \
            '\bWritables\b' '\bEventHandler\b' '\bOpenRegionHandler\b' '\bOpenedRegionHandler\b' \
            '\bAssignmentManager\b' 'M_RS_OPEN_REGION' 'RS_OPEN_REGION' \
            'Caught throwable while processing event' 'Unable to get data of znode' \
@@ -116,4 +127,8 @@ for pat in 'HBASE-3627' '\b3627\b' '\bZKAssign\b' '\bZKUtil\b' '\bRegionTransiti
     done
     if [ -n "$hits" ]; then echo "[anonymize] LEAK '$pat' in:$hits"; bad=1; fi
 done
+# For the record: every remaining bare '3627' with its context (expected: incidental numbers).
+echo "[anonymize] incidental bare '3627' contexts in logs/repro.log:"
+LC_ALL=C grep -aoE '.{0,20}(^|[^0-9])3627([^0-9]|$).{0,20}' "$BUG_DIR/logs/repro.log" | sort | uniq -c | sort -rn | head -10
+
 [ "$bad" -eq 0 ] && echo "[anonymize] leak check: clean" || { echo "[anonymize] LEAK CHECK FAILED"; exit 1; }

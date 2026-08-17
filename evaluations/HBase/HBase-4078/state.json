@@ -1,0 +1,124 @@
+{
+  "bug_id": "HBase-4078",
+  "system": "HBase",
+  "jira": "HBASE-4078",
+  "jira_url": "https://issues.apache.org/jira/browse/HBASE-4078",
+  "source_repo": "https://github.com/apache/hbase.git",
+  "fix_commit": null,
+  "pre_fix_commit": null,
+  "anonymized_commit": null,
+  "symptom_short": null,
+  "milestones": [
+    {
+      "id": "M0",
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T01:52:58Z",
+      "finished": "2026-08-17T01:54:00Z",
+      "attempts": 1,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "evaluations/HBase/HBase-4078/"
+      ],
+      "note": "Folder scaffolded (private/ source/ logs/ diagnosis/); PROGRESS.md + state.json created; bug claimed in COORDINATION.log. First HBase bug in this workspace; production-logs/HBase/production.log (3.06 GB, HBase 1.2.7) exists so the M3 merge applies."
+    },
+    {
+      "id": "M1",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M2",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M3",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M4",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M5",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M6",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M7",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M8",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    }
+  ],
+  "result": null
+}

@@ -74,3 +74,5 @@
 2026-08-16T05:48:55Z Zookeeper-1900 M7 DONE (0/5 two-site; 5/5 root-causing line, 3/5 with exact condition)
 2026-08-16T05:48:55Z Zookeeper-1900 M8 DONE; bug COMPLETE 0/5 (production-log batch)
 2026-08-16T05:49:26Z Zookeeper-1851 bug COMPLETE 0/5 (merged production log)
+2026-08-17T01:53:29Z HBase-4078 claim M0
+2026-08-17T01:53:29Z HBase-4078 M0 DONE success

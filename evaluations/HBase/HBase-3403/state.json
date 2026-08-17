@@ -136,16 +136,28 @@
     },
     {
       "id": "M8",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T13:03:31Z",
+      "finished": "2026-08-17T13:03:31Z",
+      "attempts": 1,
+      "by": "agent-run-8b54496c",
+      "artifacts": [
+        "evaluations/HBase/HBase-3403/summary.md"
+      ],
+      "note": "summary.md written; result = 5/5 PASS. Discussion: the LLM isolated the root cause deterministically because this bug's causal chain is fully witnessed by the merged log (the catalog 'took split parent out of service' line, the master's 'Re-hosting 1 region(s)' count, and the absence of any daughter-repair line), and the path from there is a short synchronous catalog-write -> scan-filter -> if. Contrasted with the 0/5 ZooKeeper/HDFS bugs in this study, whose symptoms left no discriminating evidence; the model was equally confident in both cases, which is the gap CLODS targets."
     }
   ],
-  "result": null
+  "result": {
+    "successes": 5,
+    "total": 5,
+    "per_run": [
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS"
+    ]
+  }
 }

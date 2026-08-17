@@ -22,7 +22,7 @@
 | M5 | symptom.md + ground truth | DONE | true | success | bare-observable symptom; two-part ground-truth bar; VERIFY OK |
 | M6 | LLM diagnosis ×5 | DONE | true | success | 5 single-turn runs, network locked, no follow-ups |
 | M7 | Grade runs | DONE | true | success | 5/5 PASS on the two-part bar |
-| M8 | Summary & finalize | PENDING | null | pending | |
+| M8 | Summary & finalize | DONE | true | success | summary.md; result 5/5 PASS |
 
 ## Environment notes
 
@@ -198,3 +198,6 @@
     `Repairing; unrecorded split child` line.
   - No run was credited for the secondary fix hunks (`isDaughterMissing`, the
     `fullScan(startrow)` overload, the catalog-janitor test switch); none needed them.
+- 2026-08-17T13:03:31Z M8 DONE (success=true) — `summary.md` written; `state.json.result` =
+  `{"successes": 5, "total": 5, "per_run": ["PASS","PASS","PASS","PASS","PASS"]}`.
+  **Bug complete: 5/5.**

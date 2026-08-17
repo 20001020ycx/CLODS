@@ -22,7 +22,7 @@ milestone carries `status` + `success` + `outcome`.
 | M2 | Check out pre-fix, build from source, fix deps | DONE | true | success |
 | M3 | Reproduce the failure + merge into production log | DONE | true | success |
 | M4 | Anonymize, rebuild, re-confirm reproduction | DONE | true | success |
-| M5 | Prepare diagnosis inputs & ground truth | PENDING | null | pending |
+| M5 | Prepare diagnosis inputs & ground truth | DONE | true | success |
 | M6 | Run LLM diagnosis x5 (network locked) | PENDING | null | pending |
 | M7 | Grade each run vs ground truth | PENDING | null | pending |
 | M8 | Write summary & finalize | PENDING | null | pending |
@@ -62,4 +62,14 @@ milestone carries `status` + `success` + `outcome`.
   `logs/symptom.log` = 13 603 023 lines / 3.1 GB (11 945 370 production + 1 541 908 reproduction records, same map applied to
   the production stream). Attempt 2 failed the leak gate — the container hostname and scratch paths carried the bug number
   into the log — so the run was repeated with `hbase-node-a` / `hbase-cluster-run` / `hbase-src`. Gate now clean.
-  Replay: `private/anonymize.sh`.
+  Replay: `private/anonymize.sh`. (Re-run once more after the first pass left one original literal — the master's
+  `"Region has been PENDING_OPEN for too " + "long, reassigning region="` is concatenated across two source lines, so the
+  single-token map missed it; five split-literal keys were added. Final counts: 9 700 RIT timeouts, 6 421 NPEs,
+  `logs/repro.log` 1 678 623 lines / 253 MB, `logs/symptom.log` 13 673 450 lines / 3.1 GB.)
+- 2026-08-17T13:21Z M5 DONE success=true — `symptom.md` = one observable sentence + the merged-log pointer + the exception
+  exactly as `logs/symptom.log` prints it (no line number, no marker, timestamp elided); no trigger, no mechanism, no
+  at-fault branch. `private/ground_truth.md` carries both name sets, a translation table and the **pre-registered** bars:
+  PRIMARY = both sites the fix changed (`ZKAssign.transitionNode` 669-673 + the missing `existingBytes == null` guard, and
+  `AssignmentManager`'s TimeoutMonitor `case OPENING:` 1646 + the missing `data == null` guard); AUXILIARY = site A alone,
+  the only site this reproduction can testify to (all 9 700+ timeouts are `PENDING_OPEN`; zero `OPENING` timeouts and zero
+  master-side NPEs). Gate clean across `source/`, both logs and `symptom.md`.

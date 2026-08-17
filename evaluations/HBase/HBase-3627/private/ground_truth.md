@@ -31,9 +31,9 @@ Full map incl. the rewritten log literals: `private/anon-map-source.json` (sourc
 
 **Real:** `src/main/java/org/apache/hadoop/hbase/zookeeper/ZKAssign.java`,
 `transitionNode(ZooKeeperWatcher, HRegionInfo, String, EventType, EventType, int)`,
-**pre-fix lines 669-673**
+**pre-fix lines 669-673** (the read at 670-671, the unguarded deserialization at 672-673)
 **Anonymized:** `source/java/org/apache/hadoop/hbase/zookeeper/RegionStateZK.java`,
-`transitionNode(...)`, **lines 669-673** (line numbers are unchanged by the anonymization).
+`transitionNode(...)`, **lines 669-673** — identical line numbers, the anonymization is a pure rename.
 
 ```java
     // Read existing data of the node
@@ -79,11 +79,10 @@ open, `OpenedRegionHandler` deletes the unassigned node).
 ### Site B — the same defect on the master side (not on the reproduced path)
 
 **Real:** `src/main/java/org/apache/hadoop/hbase/master/AssignmentManager.java`, inner class
-`TimeoutMonitor`, `case OPENING:` branch, **pre-fix line 1645** (the `data.getEventType()`
-dereference of the value returned at 1643-1644).
+`TimeoutMonitor`, `case OPENING:` branch: the read at **pre-fix lines 1644-1645** and its
+unguarded dereference at **line 1646**.
 **Anonymized:** `source/java/org/apache/hadoop/hbase/master/RegionPlacementManager.java`,
-`TimeoutMonitor`, `case OPENING:`, **line 1646** (`data.getEventType()` after the
-`RegionStateZK.getDataNoWatch` at 1644-1645).
+`TimeoutMonitor`, `case OPENING:` — same line numbers (read at 1644-1645, dereference at 1646).
 
 ```java
                   RegionTransitionData data = ZKAssign.getDataNoWatch(watcher, node, stat);
@@ -103,10 +102,10 @@ dereference of the value returned at 1643-1644).
 the unassigned znode of a region the master is timing out in state `OPENING` has already been
 deleted.
 
-**This site is NOT exercised by the reproduction** (verified: the reproduction produces 7 181
-regions-in-transition timeouts, all of them `PENDING_OPEN`; `grep -c "has been OPENING for too
-long"` = 0 and the master logs no `NullPointerException`). It is therefore invisible in
-`logs/symptom.log`.
+**This site is NOT exercised by the reproduction** (verified on the final M4 run: 7 203
+regions-in-transition timeouts, every one of them `PENDING_OPEN`; zero
+"Region has been claimed for too long" (= "has been OPENING for too long") lines and zero
+`NullPointerException`s in the master log). It is therefore invisible in `logs/symptom.log`.
 
 ### Non-behavioural parts of the fix (never required)
 

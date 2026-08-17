@@ -94,3 +94,4 @@
 2026-08-17T13:01:38Z HBase-3403 M6 DONE success (5 runs vs merged 3GB production log)
 2026-08-17T13:02:29Z HBase-3403 M7 DONE success (5/5 PASS)
 2026-08-17T13:03:38Z HBase-3403 M8 DONE success; bug COMPLETE 5/5 (merged production log)
+2026-08-17T13:21:56Z HBase-3627 M5 DONE success (bare-observable symptom + two-site ground truth)

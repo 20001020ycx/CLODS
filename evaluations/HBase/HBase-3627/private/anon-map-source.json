@@ -40,5 +40,10 @@
   "\"Opened \" + name);": "\"Brought up region \" + name);",
   "assignmentManager": "placementManager",
   "openRegionHandler": "bringupHandler",
-  "eventHandler": "taskHandler"
+  "eventHandler": "taskHandler",
+  "Region has been PENDING_OPEN for too ": "Region has been queued for bring-up too ",
+  "long, reassigning region=": "long, placing it elsewhere, region=",
+  "has been CLOSED for too long, waiting on queued ": "has been closed too long, waiting on the queued ",
+  "Region has been OFFLINE for too long, ": "Region has been idle too long, ",
+  "reassigning \" + regionInfo.getRegionNameAsString()": "placing \" + regionInfo.getRegionNameAsString()"
 }

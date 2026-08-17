@@ -50,7 +50,7 @@ For your assigned bug you will, in order:
 
 You do NOT need internet during diagnosis. You DO need it for clone/build/reproduce.
 **You run on the host** (a Claude Code session in the repo root, where your git
-credentials and `ANTHROPIC_API_KEY` already work), and you spin up **disposable Docker
+credentials already work), and you spin up **disposable Docker
 containers** for the per-bug build/reproduce/diagnose steps (see §11) — this is
 deliberate: each bug lives on a different version of the system with a different
 dependency set, and the container lets you install exactly the toolchain/dependencies that
@@ -539,11 +539,14 @@ See §6 for the full procedure.
 
 ### M6 — Run LLM diagnosis ×5 (network locked, single prompt, no follow-ups)
 1. Use `context/run_diagnosis.sh` (§7). It runs the diagnosis **5 times**, each in a
-   fresh, stateless process, with web tools denied and egress restricted to the Anthropic
-   API only. It stages only `symptom.md` + `source/` + `logs/symptom.log` (the **merged**
+   fresh, stateless process, with web tools denied and egress restricted to the model
+   gateway only (the `ccs yscope-anthropic` endpoint, `llm-gateway.yscope.io` — the org's
+   Anthropic-backed gateway; see §11 for the credential/env-file setup). It stages only
+   `symptom.md` + `source/` + `logs/symptom.log` (the **merged**
    GB-scale production+reproduction log; never `private/`, and never the standalone
-   `logs/repro.log`), pins `--model claude-opus-4-7 --effort high` (Opus 4.7), and writes
-   `diagnosis/run_N.md`.
+   `logs/repro.log`), pins `--model claude-opus-4-7 --effort high` (Opus 4.7, reached via
+   the yscope-anthropic profile's API bearer token — not an OAuth login, so it does not
+   expire mid-batch), and writes `diagnosis/run_N.md`.
 2. The **exact prompt** (the script substitutes the staging paths for you):
 
    ```
@@ -692,8 +695,18 @@ case-identifying and renaming them only makes the log unreadable. Record the com
 ## 7. The diagnosis helper (`context/run_diagnosis.sh`)
 
 `run_diagnosis.sh <BUG_DIR>` runs the 5 diagnoses. It:
-- sets egress to **api.anthropic.com:443 only** (iptables DROP default + ACCEPT for the
-  API + established connections); requires `--cap-add=NET_ADMIN` on the docker run (§11);
+- **authenticates via the `ccs yscope-anthropic` profile**: the container receives that
+  profile's env (`ANTHROPIC_BASE_URL=https://llm-gateway.yscope.io` + `ANTHROPIC_AUTH_TOKEN`
+  — a long-lived API bearer token to the org's Anthropic-backed gateway — plus the
+  model-default and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` flags) through
+  `docker run --env-file`, produced by `context/extract-yscope-anthropic-env.sh`. The
+  script **refuses to run** unless `ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN` are set, so
+  it can never silently fall back to a login prompt or a different endpoint. The token is a
+  secret — the env-file lives outside the repo (chmod 600) and is never committed (§11);
+- sets egress to **the model gateway only** (`$GATEWAY_HOST:443`, parsed from
+  `ANTHROPIC_BASE_URL` — i.e. `llm-gateway.yscope.io`; iptables DROP default + ACCEPT for the
+  gateway + established connections); requires `--cap-add=NET_ADMIN` and
+  `--add-host <gateway>:<ip>` on the docker run so the pin survives the DROP policy (§11);
 - builds a **throwaway staging dir** containing **only** `symptom.md`, `source/`, and
   `logs/symptom.log` (the **merged** GB-scale production+reproduction log — stage it
   **read-only via hardlink/symlink, not a copy**, since it can be several GB and is staged
@@ -706,7 +719,8 @@ case-identifying and renaming them only makes the log unreadable. Record the com
   (default `high`), matching the paper's "Claude Opus 4.7, thinking=high"; override per run via
   env only if you intentionally change the subject;
 - hardens the session: `--bare` (skip CLAUDE.md auto-discovery, auto-memory, plugins,
-  hooks, keychain — no project/user memory leaks in), `--no-session-persistence`,
+  hooks, keychain — no project/user memory leaks in) — this works because auth is the
+  env bearer token, which needs no keychain, `--no-session-persistence`,
   `--exclude-dynamic-system-prompt-sections`;
 - denies non-essential tools: `--disallowed-tools 'Bash,Write,Edit,WebFetch,WebSearch,
   Task,NotebookEdit'` — the agent can only Read/Grep/Glob the staging tree; it cannot shell
@@ -785,16 +799,21 @@ auditable.
   failure path and visible in the log. Leave everything else untouched.
 - **The fix touches multiple files/branches:** ground truth lists all of them; a run must
   name all to PASS.
-- **Is the API call "internet"?** No. Diagnosis egress is restricted to `api.anthropic.com`
-  only. The "no internet" rule means the model cannot fetch external pages, search, or
-  reach its training corpus; it must reason from the provided files.
+- **Is the API call "internet"?** No. Diagnosis egress is restricted to the model gateway
+  (`llm-gateway.yscope.io`, the org's Anthropic-backed gateway) only. The "no internet" rule
+  means the model cannot fetch external pages, search, or reach its training corpus; it
+  must reason from the provided files. (The endpoint is the org gateway rather than
+  api.anthropic.com directly — a deliberate choice for credential stability: the
+  yscope-anthropic profile uses a long-lived API bearer token instead of expiring OAuth, so
+  runs no longer break on host token rotation. Egress is locked to that one host, so the
+  no-internet guarantee is preserved.)
 
 ---
 
 ## 11. Docker (per-bug containers, never on bare metal)
 
 **You (the agent) run on the host** in a Claude Code session, where your git/GitHub
-credentials and `ANTHROPIC_API_KEY` already work — so per-milestone `git commit`/`push`
+credentials already work — so per-milestone `git commit`/`push`
 (§13) happens on the host with no credential gymnastics. You spin up **disposable
 `clods-eval` containers** only for the per-bug steps that need the system's toolchain
 or network isolation. Each bug lives on a different version of the system and needs a
@@ -851,21 +870,40 @@ in the mounted `source/`), then rebuild + re-run `reproduce.sh` inside a contain
 regenerate the anonymized standalone `logs/repro.log`, and re-run the M3 merge to regenerate
 the merged `logs/symptom.log`. Verify zero original-identifier leakage across both logs (§6).
 
-**Diagnose (M6):** network locked to the API only. The entrypoint applies the iptables
-allowlist before launching Claude Code, so even if a web tool slipped through, egress
-would be dropped. The agent issues this from the host; outputs land in the mounted
-`diagnosis/`. Mount the bug dir **read-write** (the script writes `diagnosis/run_N.md`)
-— this is safe: `run_diagnosis.sh` stages only `symptom.md`+`source/`+`logs/` into a
-throwaway dir and runs the agent there with `Bash`/`Write`/`Edit` denied, so the agent can
-neither reach `private/` nor modify anything.
+**Diagnose (M6):** network locked to the model gateway only. The entrypoint applies the
+iptables allowlist (egress = `$GATEWAY_HOST:443` only, parsed from `ANTHROPIC_BASE_URL`)
+before launching Claude Code, so even if a web tool slipped through, egress would be
+dropped. The agent issues this from the host; outputs land in the mounted `diagnosis/`.
+Mount the bug dir **read-write** (the script writes `diagnosis/run_N.md`) — this is safe:
+`run_diagnosis.sh` stages only `symptom.md`+`source/`+`logs/` into a throwaway dir and runs
+the agent there with `Bash`/`Write`/`Edit` denied, so the agent can neither reach
+`private/` nor modify anything.
+
+The subject is Claude Opus 4.7 reached through the `ccs yscope-anthropic` profile. First
+materialize that profile's env into a **gitignored** env-file (the helper strips the
+`export `/single-quote shell formatting that `ccs env --format raw` emits, which
+`docker --env-file` would otherwise pass through verbatim and break auth):
 
 ```bash
+# 1. produce the credential env-file (SECRET — lives in /tmp, chmod 600, never committed)
+bash context/extract-yscope-anthropic-env.sh /tmp/ysa.env
+
+# 2. pin the gateway IP so /etc/hosts resolves it after the DROP policy kills DNS
+GW_IP="$(getent ahostsv4 llm-gateway.yscope.io | awk '{print $1}' | sort -u | head -1)"
+
+# 3. run the 5x network-locked diagnosis
 docker run --rm --cap-add=NET_ADMIN \
+  --add-host "llm-gateway.yscope.io:$GW_IP" \
+  --env-file /tmp/ysa.env \
   -v "$PWD/evaluations/<SYSTEM>/<BUGID>:/bug" \
-  -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
   --entrypoint /opt/clods/run_diagnosis.sh \
   clods-eval /bug
 ```
+
+`/tmp/ysa.env` contains `ANTHROPIC_AUTH_TOKEN` — delete it after the run. If you mount the
+tracked `context/run_diagnosis.sh` instead of the baked-in entrypoint (the image's copy may
+lag the tracked file), add `-v "$PWD/context:/clods-context:ro"` and run
+`bash /clods-context/run_diagnosis.sh /bug`.
 
 **Grade (M7) and summary (M8):** run on the host — no container, no network needed.
 

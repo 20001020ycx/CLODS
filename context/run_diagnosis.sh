@@ -3,8 +3,11 @@
 #
 # Runs the LLM diagnosis 5 times. Each run is a FRESH, stateless, single-turn Claude Code
 # process (claude -p), so no prior conversation/session context leaks between runs or from
-# the orchestrator agent. Web tools are denied and outbound traffic is restricted to
-# api.anthropic.com only (the "no internet" rule from the methodology).
+# the orchestrator agent. Web tools are denied and outbound traffic is restricted to the
+# model gateway only (the yscope-anthropic endpoint, https://llm-gateway.yscope.io) — the
+# "no internet" rule from the methodology. The subject is Claude Opus 4.7 reached through
+# the `ccs yscope-anthropic` profile (the org's Anthropic-backed gateway) via an API bearer
+# token, NOT an OAuth login and NOT api.anthropic.com directly; see "Credentials" below.
 #
 # Clean-session guarantees (paper validity):
 #   * Each run is `claude -p` with no --continue/--resume  -> brand-new process, no history.
@@ -19,6 +22,15 @@
 #   * Model + effort are pinned (CLODS_MODEL / CLODS_EFFORT env, default claude-opus-4-7 /
 #     high) so the subject is reproducible and matches the paper's "Claude Opus 4.7,
 #     thinking=high".
+#   * Credentials: the container receives the yscope-anthropic profile env
+#     (ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN, plus the model-default / non-essential-
+#     traffic flags) via `docker run --env-file`, produced by
+#     `context/extract-yscope-anthropic-env.sh`. The token is a long-lived API bearer token
+#     (NOT expiring OAuth), so runs no longer break on host token rotation. The token is a
+#     SECRET — the env-file lives outside the repo (e.g. /tmp, chmod 600) and is NEVER
+#     committed. The script refuses to run unless ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN
+#     are present, so it can never silently fall back to a login prompt or a different
+#     endpoint. See METHODOLOGY.md §11.
 #
 # Writes each run's full single-turn answer to <BUG_DIR>/diagnosis/run_N.md (and stderr to
 # run_N.stderr). Idempotent: an existing non-empty run_N.md is skipped, so a killed agent
@@ -39,25 +51,46 @@ for f in "$SYMPTOM_FILE" "$SOURCE_DIR" "$LOG_FILE"; do
     [ -e "$f" ] || { echo "ERROR: missing required input $f" >&2; exit 1; }
 done
 
-# Pinned subject. Override per-run via env if you need a different model/effort, but for
-# the published experiment keep these fixed for reproducibility. NOTE: pin a full model
-# ID, NOT the `opus` alias — the alias drifts to whatever is "latest" on run day.
+# ---- Pinned subject: Claude Opus 4.7 via the yscope-anthropic profile ----------------
+# The diagnosis subject is Claude Opus 4.7 (`claude-opus-4-7`, effort high), reached through
+# the `ccs yscope-anthropic` profile — the org's Anthropic-backed gateway. Auth is an API
+# bearer token (ANTHROPIC_AUTH_TOKEN) to that gateway (ANTHROPIC_BASE_URL), NOT an OAuth
+# login and NOT api.anthropic.com directly: a long-lived token avoids the OAuth
+# access-token-expiry / host-rotation 401s that broke the earlier subscribed-account runs.
+# Override per-run via env only if you intentionally change the subject. NOTE: pin a full
+# model ID, NOT the `opus` alias — the alias drifts to whatever is "latest" on run day.
 MODEL="${CLODS_MODEL:-claude-opus-4-7}"   # Opus 4.7
 EFFORT="${CLODS_EFFORT:-high}"
 
-# How to invoke the CLI. Default `claude` is the container path (ANTHROPIC_API_KEY is
-# passed in via -e). On a host whose Claude auth is managed by the CCS launcher (no raw
-# API key exposed — `ccs env anthropic` returns no vars), set:
-#   CLAUDE_CMD="ccs anthropic"  CLAUDE_PURITY_FLAG="--safe-mode"
-# because `--bare` refuses CCS keychain/cliproxy auth ("Not logged in"), whereas
-# --safe-mode keeps auth while still disabling CLAUDE.md/skills/plugins/hooks. Both are
-# left unquoted below so a multi-word wrapper prefix (e.g. "ccs anthropic") word-splits.
+# The container MUST receive the yscope-anthropic env. Refuse to run without it, so we
+# never silently fall back to an anonymous/login-prompt or a different endpoint. Inject via
+# `docker run --env-file` (see context/extract-yscope-anthropic-env.sh + METHODOLOGY §11).
+: "${ANTHROPIC_BASE_URL:?run_diagnosis.sh: ANTHROPIC_BASE_URL must be set (the yscope-anthropic gateway URL; inject via --env-file)}"
+: "${ANTHROPIC_AUTH_TOKEN:?run_diagnosis.sh: ANTHROPIC_AUTH_TOKEN must be set (the yscope-anthropic API token; inject via --env-file)}"
+
+# Derive the egress host from the configured endpoint (the yscope-anthropic gateway). The
+# docker run must pin this host's IP with --add-host <host>:<ip> so /etc/hosts resolves it
+# after the iptables DROP policy kills DNS (getent then reads /etc/hosts, no network DNS).
+GATEWAY_HOST="$(python3 - <<'PY'
+import os, urllib.parse as u
+print(u.urlparse(os.environ.get("ANTHROPIC_BASE_URL", "")).hostname or "")
+PY
+)"
+[ -n "$GATEWAY_HOST" ] || { echo "ERROR: cannot parse gateway host from ANTHROPIC_BASE_URL='$ANTHROPIC_BASE_URL'" >&2; exit 1; }
+
+# How to invoke the CLI. Default `claude` is the container path; the yscope-anthropic env
+# (above) authenticates it, so the strongest purity flag `--bare` works here — env-token
+# auth needs no keychain, and `--bare` skips CLAUDE.md/skills/plugins/hooks/keychain. (On a
+# host without the env injected, run via the wrapper: CLAUDE_CMD="ccs yscope-anthropic",
+# which sets the same env.) Left unquoted below so a multi-word prefix word-splits.
 CLAUDE_CMD="${CLAUDE_CMD:-claude}"
 PURITY_FLAG="${CLAUDE_PURITY_FLAG:---bare}"
 
-# ---- Lock the network: DROP everything, then allow only the Anthropic API ---
+# ---- Lock the network: DROP everything, then allow only the model gateway ------------
 # Best-effort: if we lack NET_ADMIN, warn but continue (the prompt + denied web tools
-# still enforce the rule at the agent layer).
+# still enforce the rule at the agent layer). The yscope-anthropic env sets
+# CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1, so no statsig/telemetry sub-calls are made —
+# only the gateway host needs to be reachable.
 lock_network() {
     if ! iptables -L >/dev/null 2>&1; then
         echo "WARN: no NET_ADMIN; relying on denied web tools + prompt (no iptables lock)." >&2
@@ -71,12 +104,12 @@ lock_network() {
     iptables -A OUTPUT -o lo -j ACCEPT
     iptables -A INPUT  -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
     iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-    for host in api.anthropic.com statsig.anthropic.com; do
+    for host in "$GATEWAY_HOST"; do
         for ip in $(getent ahostsv4 "$host" | awk '{print $1}' | sort -u); do
             iptables -A OUTPUT -d "$ip" -p tcp --dport 443 -j ACCEPT
         done
     done
-    echo "Network locked: egress restricted to api.anthropic.com:443." >&2
+    echo "Network locked: egress restricted to $GATEWAY_HOST:443 (the yscope-anthropic gateway)." >&2
 }
 lock_network
 

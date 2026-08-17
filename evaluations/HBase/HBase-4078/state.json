@@ -6,7 +6,7 @@
   "source_repo": "https://github.com/apache/hbase.git",
   "fix_commit": "df9b82c082571b7dfca4380bffaa38f3fd058927",
   "pre_fix_commit": "9814ffbaf0eca469bbded025a1dca81271c6d4e6",
-  "anonymized_commit": null,
+  "anonymized_commit": "n/a \u2014 regenerated deterministically by private/anonymize.sh (replay script + private/anonymization_map.json + private/deps-fix.patch + pre_fix_commit), per METHODOLOGY M4 step 3's second option",
   "symptom_short": "After a transient filesystem incident, a store file that cannot be opened is left inside the region's live column-family directory: the region server reports it as un-openable on every region open and never serves or removes it",
   "milestones": [
     {
@@ -77,15 +77,23 @@
     },
     {
       "id": "M4",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T18:55:00Z",
+      "finished": "2026-08-17T19:30:00Z",
+      "attempts": 3,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "source/ (13 failure-path files, gitignored)",
+        "logs/repro.log (Log A, gitignored)",
+        "logs/symptom.log (Log B, merged, LLM-facing, gitignored)",
+        "private/anonymization_map.json",
+        "private/anonymize.sh",
+        "private/verify_anon.py",
+        "private/.production-rename.json"
+      ],
+      "note": "Anonymized per METHODOLOGY M4/sec.6 and regenerated BOTH logs from the anonymized build. (a) BUG-ID SCRUB: HBASE-4078 appears nowhere; the only Apache JIRA id in the failure-path source (a comment 'after data loss in hdfs for whatever reason (upgrade, etc.): HBASE-646' in loadStoreFiles) was rewritten away. (b) DISTINCTIVE TERM: none exists in the pre-fix tree - the term a reader would grep ('validateStoreFile', from the fix commit title 'Validate store files after flush/compaction') is introduced BY the fix. (c) FAILURE-PATH TYPE/METHOD RENAMES: class Store -> FamilyStore (Store.java -> FamilyStore.java) - it holds BOTH root-cause sites and the symptom site and is the logger name on every failure-path line; plus the case-identifying method names internalFlushCache -> writeSnapshotFile, completeCompaction -> installCompactionResult, loadStoreFiles -> openStoreFiles, compactStore -> mergeStoreFiles, and HStore -> FamilyStore (the class's historical name, left in javadoc/comments). DELIBERATELY KEPT as generic (they carry no case-identifying information and appear verbatim in the production log): StoreFile(.Reader), StoreFlusher, HRegion, HRegionServer, MemStoreFlusher, CompactSplitThread, CompactionRequest, OpenRegionHandler, HFile, HFileReaderV2, FixedFileTrailer, DroppedSnapshotException. (d) LOG-STATEMENT REWRITES (17 entries, one longest-key-first pass): the symptom line 'Failed open of X; presumption is that file was corrupted at flush and lost edits picked up by commit log replay. Verify!' -> 'Cannot read X; leaving it out of this column family's file list. Check the file.'; 'Renaming flushed file at' -> 'Moving new store file'; 'Failed move of compacted file' -> 'Could not place merged file'; 'Compaction failed' -> 'Merge failed'; 'Failed open of region=' -> 'Could not bring region online: region='; 'Starting/Completed [major] compaction of' -> 'Beginning/Finished [major] merge of'; 'Replay of HLog required. Forcing server shutdown' -> 'Write-ahead log must be replayed; shutting this server down'; etc. The ticket quotes no log text, so the whole failure-path literal set was rewritten rather than just a quoted snippet. 156 substitutions in 28 files; the anonymized tree at repos/hbase4078-anon BUILDS ('mvn -Dmaven.test.skip=true package' BUILD SUCCESS - note maven-compiler-plugin 2.0.2 cannot parse javac 8's bootstrap-classpath warning and fails the first whole-tree compile, so anonymize.sh compiles twice, exactly as the pre-fix tree needs at M2) and still REPRODUCES: 4 files cut short in .tmp (39822970->21902633 compaction output, 8916503->4904076 and 2x 8883353->4885844 flush outputs), ALL FOUR promoted into the live cf/ directory, .tmp empty, 1 'Merge failed', 1 regionserver abort, 3 DroppedSnapshotException, 42 'Invalid HFile version' and 17 'Cannot read ...' reports across region opens. source/ = the 13 files of the completed causal chain (FamilyStore, StoreFile, StoreFlusher, HRegion, HRegionServer, MemStoreFlusher, CompactSplitThread, CompactionRequest, OpenRegionHandler, HFile, HFileReaderV2, FixedFileTrailer, DroppedSnapshotException). logs/repro.log (Log A) = 133 MB / 751070 lines written directly by the anonymized binaries. logs/symptom.log (Log B, LLM-facing) = 3.19 GB = 11945370 production + 747348 reproduction records; merge_logs.py --rename applies the SAME vocabulary to the production stream (HStore/loadStoreFiles/internalFlushCache -> the anonymized names, the compaction phrases, and two prose lower-casings) so the reproduction lines are not the only differently-worded ones. The shared production log is never modified. VERIFICATION (private/verify_anon.py, one streaming pass over source/, logs/repro.log, the WHOLE 3.19 GB logs/symptom.log and symptom.md): 0 hits for HBASE-4078, \\bStore\\b, \\bHStore\\b, \\binternalFlushCache\\b, \\bcompleteCompaction\\b, \\bloadStoreFiles\\b, \\bcompactStore\\b, 'Failed open of', 'Renaming flushed file', 'presumption is that', 'corrupted at flush', 'Failed move of compacted file', 'Failed replacing compacted files', 'Compaction failed', 'Compaction Request failed', 'HBASE-646', 'Starting compaction of', 'Completed [major] compaction of', 'Replay of HLog required', 'Unable to rename'. The ONLY surviving pattern is the bare number 4078 (27 in Log A, 202 in Log B) - all of it ordinary counters in both portions ('responding to #4078' RPC call ids, 'writeChunk allocating new packet seqno=4078', ZooKeeper 'header:: 4078,1'), with no ticket reference anywhere; unavoidable in a multi-GB log and left as is. Two earlier passes were discarded and re-run: the first left 'HStore' (9 javadoc occurrences) and 'HBASE-646' in source/ and left loadStoreFiles/internalFlushCache/HStore/bare 'Store' prose in the production portion of the merged log; the map now covers all of them."
     },
     {
       "id": "M5",

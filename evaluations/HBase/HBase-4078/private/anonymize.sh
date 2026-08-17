@@ -76,10 +76,28 @@ for e in m["c_failure_path_type_renames"]["renames"]:
 PY
 [ $? -eq 0 ] || die "substitution pass failed"
 
+say "2b. emit the production-stream rename file used by the merge"
+python3 - "$MAP" "$BUG_DIR/private/.production-rename.json" <<'PY'
+import json, sys
+m = json.load(open(sys.argv[1]))
+json.dump(m["production_log_handling"]["substitutions"], open(sys.argv[2], "w"), indent=2)
+print("[anon] wrote", sys.argv[2])
+PY
+
 say "3. rebuild the anonymized tree"
 # -Dmaven.test.skip=true: the renames are applied to src/main/java only (the LLM never sees
 # the test tree), so test sources are not compiled.
-(cd "$ANON" && mvn -B -Dmaven.test.skip=true package 2>&1 | grep -vE "^Progress|Downloa" | tail -6)
+# maven-compiler-plugin 2.0.2 cannot parse javac 8's "bootstrap class path not set in
+# conjunction with -source 1.6" warning and fails the *first*, whole-tree compile on it; the
+# classes are written anyway, so the immediately following incremental compile succeeds. The
+# same thing happens on the pre-fix tree at M2. Hence: build, and build again if needed.
+for attempt in 1 2; do
+  (cd "$ANON" && mvn -B -Dmaven.test.skip=true package 2>&1 | grep -vE "^Progress|Downloa" \
+     | tee "$ANON/build.log" | tail -4)
+  grep -qF "BUILD SUCCESS" "$ANON/build.log" && break
+  echo "  (compile pass $attempt did not report success; retrying)"
+done
+grep -qF "BUILD SUCCESS" "$ANON/build.log" || grep -E "error:|\.java:\[" "$ANON/build.log" | head -20
 [ -f "$ANON/target/hbase-0.93-SNAPSHOT.jar" ] || die "anonymized tree does not build"
 mkdir -p "$ANON/target/lib" && cp -a "$PRE/target/lib/." "$ANON/target/lib/"
 

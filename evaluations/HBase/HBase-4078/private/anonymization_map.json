@@ -1,0 +1,113 @@
+{
+  "bug_id": "HBase-4078",
+  "spec": "METHODOLOGY.md M4 / §6 (paper revision plan): (a) bug-id scrub, (b) distinctive-term rename, (c) failure-path FILE/TYPE rename, (d) failure-path LOG-STATEMENT rewrite. Both logs are then regenerated from the anonymized build so their literals and stack frames match source/. Generic system identifiers in code bodies (region, regionserver, memstore, store file, compaction, flush, HFile, HDFS paths, package paths) are KEPT — the LLM may know it is HBase.",
+  "regeneration": "private/anonymize.sh (deterministic: pre-fix tree + deps-fix.patch -> one longest-key-first pass driven by this file -> file renames -> mvn package -> source/), then SRC_DIR=<anon tree> reproduce.sh => logs/repro.log, then private/merge_logs.py => logs/symptom.log.",
+
+  "a_bug_id_scrub": {
+    "patterns": ["HBASE-4078", "4078"],
+    "note": "The pre-fix source does not contain the id. Store.java's loadStoreFiles carries a DIFFERENT ticket id in a log literal ('HBASE-646 DATA LOSS?'), which is rewritten away under (d) so no Apache JIRA id survives on the failure path. Checked across source/, logs/repro.log, the whole merged logs/symptom.log and symptom.md."
+  },
+
+  "b_distinctive_term_renames": [],
+  "b_note": "This ticket has no distinctive bug-naming term in the PRE-FIX tree: the term a reader would grep ('validateStoreFile', from the fix commit 'Validate store files after flush/compaction') is introduced BY the fix and does not exist here. The case-identifying handles are the class/method names at the two promotion sites and the log literals they emit, which (c) and (d) cover.",
+
+  "c_failure_path_type_renames": {
+    "why": "Blocks 'I recognize Store.completeCompaction / Store.internalFlushCache promoting before opening → this is HBASE-4078' mapping from parametric memory. The file name and the public type are renamed together and every reference follows (imports, calls, the logger name printed on each line, and the at pkg.Cls.method(File.java:NN) stack frames, which are regenerated from the anonymized build). The grader translates the LLM's anonymized answer back through this table (§8).",
+    "renames": [
+      {"original": "Store", "anonymized": "FamilyStore", "is_type": true,
+       "role": "the class holding BOTH root-cause sites (the flush promotion and the compaction promotion) AND the symptom site (the open-time skip); it is also the logger name on every failure-path line",
+       "file": "src/main/java/org/apache/hadoop/hbase/regionserver/Store.java -> FamilyStore.java"},
+
+      {"original": "internalFlushCache", "anonymized": "writeSnapshotFile", "is_type": false,
+       "role": "root-cause site A — the method that renames the flushed file into the live store directory before opening it. Distinct token from HRegion.internalFlushcache (lower-case c), which is untouched."},
+      {"original": "completeCompaction", "anonymized": "installCompactionResult", "is_type": false,
+       "role": "root-cause site B — the method that renames the compaction output into the live store directory before opening it"},
+      {"original": "loadStoreFiles", "anonymized": "openStoreFiles", "is_type": false,
+       "role": "symptom site — the open-time loop whose catch(IOException){continue;} silently skips the promoted file"},
+      {"original": "compactStore", "anonymized": "mergeStoreFiles", "is_type": false,
+       "role": "produces the compaction output that site B promotes"},
+      {"original": "HStore", "anonymized": "FamilyStore", "is_type": false,
+       "role": "the class's historical name, still used in javadoc/comments of the failure-path files (9 occurrences); it is also what HBase 1.2.7 calls the class in the production portion of the merged log, so both are mapped onto the same neutral name"}
+    ],
+    "kept_generic": {
+      "note": "On the completed causal chain but deliberately NOT renamed: they are generic HBase infrastructure that every HBase log and every HBase bug touches, they carry no case-identifying information, and renaming them would only make the log unreadable. They all also appear verbatim in the shared production log.",
+      "classes": ["StoreFile", "StoreFile.Reader", "StoreFlusher", "HRegion", "HRegionServer",
+                  "MemStoreFlusher", "CompactSplitThread", "CompactionRequest", "OpenRegionHandler",
+                  "HFile", "HFileReaderV2", "FixedFileTrailer", "DroppedSnapshotException"]
+    }
+  },
+
+  "d_failure_path_log_statement_rewrites": {
+    "why": "So the symptom-log strings cannot be string-matched to any known report. The wording changes; the kind of information (level, subsystem tag, the path/counts each line carries) is preserved, so the log still reads like real system output. Keys are given as the exact source text (some are code-level substrings) because several literals are split across concatenations.",
+    "rewrites": [
+      {"original": "Failed open of region=", "anonymized": "Could not bring region online: region=",
+       "where": "handler/OpenRegionHandler.java — listed first because it is longer than the next key and must win the longest-key-first pass"},
+      {"original": "Failed open of ", "anonymized": "Cannot read ",
+       "where": "Store.loadStoreFiles — the symptom line"},
+      {"original": "; presumption is that file was ", "anonymized": "; leaving it out of ",
+       "where": "Store.loadStoreFiles — same statement, second fragment"},
+      {"original": "corrupted at flush and lost edits picked up by commit log replay. ", "anonymized": "this column family's file list. ",
+       "where": "Store.loadStoreFiles — same statement, third fragment (this is the fragment that editorialises about the cause)"},
+      {"original": "Verify!", "anonymized": "Check the file.",
+       "where": "Store.loadStoreFiles — same statement, fourth fragment"},
+      {"original": "because its empty. HBASE-646 DATA LOSS?", "anonymized": "because it has no content.",
+       "where": "Store.loadStoreFiles — removes an Apache JIRA id from the failure path"},
+      {"original": "Renaming flushed file at ", "anonymized": "Moving new store file ",
+       "where": "Store.internalFlushCache — the flush promotion (root-cause site A); the message keeps its ' to <dst>' tail"},
+      {"original": "Unable to rename ", "anonymized": "Could not move ",
+       "where": "Store.internalFlushCache — the failed-rename branch of site A"},
+      {"original": "\"Added \" + sf + \", entries=\"", "anonymized": "\"Registered \" + sf + \", records=\"",
+       "where": "Store.internalFlushCache — code-level key, because the bare word 'Added ' is far too generic to substitute"},
+      {"original": "Starting compaction of ", "anonymized": "Beginning merge of ",
+       "where": "Store.compact"},
+      {"original": "\"Completed\" + (cr.isMajor() ? \" major \" : \" \") + \"compaction of \"", "anonymized": "\"Finished\" + (cr.isMajor() ? \" major \" : \" \") + \"merge of \"",
+       "where": "Store.compact — code-level key so both the major and the minor wording change together"},
+      {"original": "Failed move of compacted file ", "anonymized": "Could not place merged file ",
+       "where": "Store.completeCompaction — the failed-rename branch of site B"},
+      {"original": "Failed replacing compacted files in ", "anonymized": "Could not swap in merged files for ",
+       "where": "Store.completeCompaction"},
+      {"original": "Compaction Request failed for region ", "anonymized": "Merge request rejected for region ",
+       "where": "Store.requestCompaction"},
+      {"original": "Compaction failed ", "anonymized": "Merge failed ",
+       "where": "compactions/CompactionRequest.java — how the failed compaction surfaces"},
+      {"original": "Replay of HLog required. Forcing server shutdown", "anonymized": "Write-ahead log must be replayed; shutting this server down",
+       "where": "MemStoreFlusher — the abort reason after the flush promotion fails"},
+      {"original": "(upgrade, etc.): HBASE-646", "anonymized": "(upgrade, etc.)",
+       "where": "Store.loadStoreFiles — a code COMMENT, not a log statement; removes the last Apache JIRA id from the failure-path source"}
+    ]
+  },
+
+  "production_log_handling": {
+    "shared_log": "production-logs/HBase/production.log (3.06 GB, 11 945 370 records, HBase 1.2.7 under YCSB + chaos monkey) — READ-ONLY, never modified.",
+    "why": "The production portion is real HBase output and uses the same vocabulary, so a rewrite applied only to the reproduction would make exactly the reproduction lines stand out. These substitutions are therefore applied to the PRODUCTION STREAM at merge time (merge_logs.py --rename), which writes a new merged file and never touches the shared log.",
+    "substitutions": {
+      "HStore": "FamilyStore",
+      "loadStoreFiles": "openStoreFiles",
+      "internalFlushCache": "writeSnapshotFile",
+      "Starting compaction of ": "Beginning merge of ",
+      "Completed compaction of ": "Finished merge of ",
+      "Completed major compaction of ": "Finished major merge of ",
+      "Number of Store Files": "Number of store files",
+      "Procedure Store": "Procedure store"
+    },
+    "not_substituted": "The other (d) literals do not occur in the production log at all (checked: 'Failed open of', 'Renaming flushed file', 'Failed move of compacted file', 'Compaction failed', 'Replay of HLog required' → 0 hits), so no production rewrite is needed for them. HBase 1.2.7 calls the class HStore where this 2011 tree calls it Store; mapping both onto FamilyStore keeps the merged log internally consistent. The last two entries are prose, not class references ('description=Number of Store Files' in JMX bean dumps, 'Recover Procedure Store log lease'): they are lower-cased only so that a strict grep for the bare word Store over the whole merged log returns zero, with no change of meaning.",
+    "bare_number_note": "'HBASE-4078' occurs nowhere. The bare number 4078 does occur in both portions as an ordinary counter value — RPC call ids ('responding to #4078') and HDFS packet sequence numbers ('writeChunk allocating new packet seqno=4078'). Those are unavoidable in a multi-GB log, carry no ticket reference, and are left as they are."
+  },
+
+  "failure_path_files": [
+    "org/apache/hadoop/hbase/regionserver/FamilyStore.java",
+    "org/apache/hadoop/hbase/regionserver/StoreFile.java",
+    "org/apache/hadoop/hbase/regionserver/StoreFlusher.java",
+    "org/apache/hadoop/hbase/regionserver/HRegion.java",
+    "org/apache/hadoop/hbase/regionserver/HRegionServer.java",
+    "org/apache/hadoop/hbase/regionserver/MemStoreFlusher.java",
+    "org/apache/hadoop/hbase/regionserver/CompactSplitThread.java",
+    "org/apache/hadoop/hbase/regionserver/compactions/CompactionRequest.java",
+    "org/apache/hadoop/hbase/regionserver/handler/OpenRegionHandler.java",
+    "org/apache/hadoop/hbase/io/hfile/HFile.java",
+    "org/apache/hadoop/hbase/io/hfile/HFileReaderV2.java",
+    "org/apache/hadoop/hbase/io/hfile/FixedFileTrailer.java",
+    "org/apache/hadoop/hbase/DroppedSnapshotException.java"
+  ],
+  "failure_path_note": "The completed causal chain, root cause -> symptom: (1) FamilyStore.mergeStoreFiles / the memstore flush writes a new file into the region's .tmp dir; (2) FamilyStore.installCompactionResult and FamilyStore.writeSnapshotFile move it into the live column-family directory and only afterwards open it (the two sites the fix changed); (3) the open fails inside StoreFile.open -> HFile.createReader -> HFile.pickReaderVersion -> FixedFileTrailer.readFromStream; (4) the exception unwinds through CompactionRequest ('Merge failed') for the compaction path and through HRegion.internalFlushcache -> DroppedSnapshotException -> MemStoreFlusher -> HRegionServer.abort for the flush path; (5) at every later region open (OpenRegionHandler -> HRegion.initialize -> new FamilyStore) FamilyStore.openStoreFiles catches the IOException and continues, so the promoted file is silently skipped and never removed. HFileReaderV2/StoreFlusher/CompactSplitThread are included because they are on the chain, even though they emit no failure-path line."
+}

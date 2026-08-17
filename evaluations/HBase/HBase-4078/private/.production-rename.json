@@ -1,0 +1,10 @@
+{
+  "HStore": "FamilyStore",
+  "loadStoreFiles": "openStoreFiles",
+  "internalFlushCache": "writeSnapshotFile",
+  "Starting compaction of ": "Beginning merge of ",
+  "Completed compaction of ": "Finished merge of ",
+  "Completed major compaction of ": "Finished major merge of ",
+  "Number of Store Files": "Number of store files",
+  "Procedure Store": "Procedure store"
+}

@@ -19,8 +19,13 @@
 set -uo pipefail
 
 BUG_DIR=/work/evaluations/HBase/HBase-4078
-SRC=/work/repos/HBase-HBase-4078
+# M3 runs against the pre-fix tree and writes the pre-anonymization logs; M4 re-runs the
+# very same script against the anonymized tree (SRC_DIR) and writes the anonymized ones.
+SRC=${SRC_DIR:-/work/repos/HBase-HBase-4078}
 RUN=${RUN_DIR:-/work/repos/hbase4078-run}
+OUT=${OUT_LOG:-$BUG_DIR/private/symptom.orig.log}
+MERGED=${MERGED_LOG:-$BUG_DIR/private/merged.orig.log}
+RENAME_JSON=${RENAME_JSON:-}
 TABLE=usertable
 export JAVA_HOME=${JAVA_HOME:-/usr/lib/jvm/java-8-openjdk-amd64}
 export PATH=$JAVA_HOME/bin:$PATH
@@ -340,10 +345,10 @@ grep -c "Failed open of" "$RUN"/logs/hbase-regionserver-*.log 2>/dev/null
 grep -h "Failed open of" "$RUN"/logs/hbase-regionserver-*.log 2>/dev/null | head -8
 
 echo "--- assertion 4: compaction / flush / abort errors in the servers' own logs"
-for pat in "Compaction failed" "Compaction Request failed" "ABORTING" "DroppedSnapshotException" \
-           "Trailer" "CorruptHFile"; do
+for pat in "Compaction failed" "Merge failed" "ABORTING" "DroppedSnapshotException" \
+           "Invalid HFile version" "Failed open of" "Cannot read "; do
   printf '    %-28s %s\n' "$pat" \
-    "$(grep -hc "$pat" "$RUN"/logs/hbase-regionserver-*.log 2>/dev/null | paste -sd+ | bc 2>/dev/null)"
+    "$(cat "$RUN"/logs/hbase-regionserver-*.log 2>/dev/null | grep -cF "$pat")"
 done
 echo "--- the store-file open failure, as the servers logged it:"
 grep -h -A6 "Failed open of" "$RUN"/logs/hbase-regionserver-*.log 2>/dev/null | head -20
@@ -351,8 +356,7 @@ grep -h -A6 "Failed open of" "$RUN"/logs/hbase-regionserver-*.log 2>/dev/null | 
 ############################################################################
 say "9. collect the reproduction log (Log A)"
 ############################################################################
-mkdir -p "$BUG_DIR/private"
-OUT=$BUG_DIR/private/symptom.orig.log
+mkdir -p "$(dirname "$OUT")"
 : > "$OUT"
 for f in "$RUN"/logs/hbase-master.log "$RUN"/logs/hbase-regionserver-1.log \
          "$RUN"/logs/hbase-regionserver-2.log "$RUN"/logs/hbase-client.log; do
@@ -366,9 +370,14 @@ wc -l "$OUT"
 say "10. merge the reproduction into the shared production log (Log B)"
 PROD=/work/production-logs/HBase/production.log
 if [ -s "$PROD" ]; then
+  mkdir -p "$(dirname "$MERGED")"
+  # --rename (M4 only) applies the same vocabulary to the production stream, so the
+  # reproduction lines are not the only differently-worded ones; the shared production log
+  # itself is never modified.
   python3 "$BUG_DIR/private/merge_logs.py" --production "$PROD" --repro "$OUT" \
-    --out "$BUG_DIR/private/merged.orig.log" --interleave position
-  ls -la "$BUG_DIR/private/merged.orig.log"
+    --out "$MERGED" --interleave position \
+    ${RENAME_JSON:+--rename "$RENAME_JSON"}
+  ls -la "$MERGED"
 else
   echo "no production log for HBase — merge skipped"
 fi

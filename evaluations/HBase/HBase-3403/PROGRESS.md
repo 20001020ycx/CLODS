@@ -19,7 +19,7 @@
 | M2 | Build from source at pre-fix | DONE | true | success | JDK 8 + hadoop 0.20.2 + thrift dropped; main & test compile |
 | M3 | Reproduce + merge into production log | DONE | true | success | repro FAILs as intended; Log A 7 415 lines, Log B 3.06 GB merged |
 | M4 | Anonymize failure path, rebuild, re-merge | DONE | true | success | 4 classes + 7 methods + 22 log literals; rebuilt, re-reproduced, re-merged; VERIFY OK |
-| M5 | symptom.md + ground truth | PENDING | null | pending | |
+| M5 | symptom.md + ground truth | DONE | true | success | bare-observable symptom; two-part ground-truth bar; VERIFY OK |
 | M6 | LLM diagnosis ×5 | PENDING | null | pending | |
 | M7 | Grade runs | PENDING | null | pending | |
 | M8 | Summary & finalize | PENDING | null | pending | |
@@ -145,3 +145,20 @@
   - `source/` is not kept as a separate git repo; it is regenerated deterministically by
     `private/anonymize.sh` from `pre_fix_commit` + `deps-fix.patch` + `repro-test.patch`
     (`anonymized_commit: null`).
+- 2026-08-17T02:41:01Z M5 DONE (success=true) — diagnosis inputs + answer key.
+  - `symptom.md` is the **bare observable**: one framing line, the two `ERROR:` lines exactly as
+    `logs/symptom.log` prints them, and the merged-log pointer ("The log for this run is
+    `logs/symptom.log`") — no `>>> SYMPTOM` marker and no line number, so the LLM has to grep
+    the 2.9 GB log for the failure itself.
+  - Anti-cheat re-read, sentence by sentence: it states **no** trigger (no split, no crash, no
+    lost region server), no mechanism or timeline, no at-fault component/class/method/branch,
+    no buggy overload or path, no "what stays correct" narrowing comparison, and no JIRA id.
+  - `private/ground_truth.md` records (1) the root-causing line —
+    `MetaEditor.offlineParentInMeta` lines 80–83 (anonymized `CatalogWriter.offlineSplitParent`)
+    writing `SERVER_QUALIFIER`/`STARTCODE_QUALIFIER` as `EMPTY_BYTE_ARRAY`; (2) the deciding
+    branch — `MetaReader.getServerUserRegions:578` (anonymized
+    `CatalogScanner.getRegionsOfServer`) `pair.getSecond() == null || !…equals(hsi)` → `continue`,
+    and the consequently unreached `processDeadRegion:179` `hri.isOffline() && hri.isSplit()` →
+    `fixupDaughters`; plus the secondary fix hunks that are explicitly **not** the root cause and
+    the two-part PASS bar (§8: both (a) and (b), no partial credit).
+  - `private/verify_anon.sh` re-run with `symptom.md` in scope: **VERIFY OK** (all zero).

@@ -10,7 +10,7 @@ pre-fix `dddee0d50ff77c93a2b39f408bf11f60e397ebf4`). Anonymized names are as the
 
 **Real:** `src/main/java/org/apache/hadoop/hbase/catalog/MetaEditor.java`,
 method `offlineParentInMeta(CatalogTracker, HRegionInfo parent, HRegionInfo a, HRegionInfo b)`,
-pre-fix lines **81–84**.
+pre-fix lines **80–83** (identical line numbers in the anonymized `CatalogWriter.java`).
 
 **Anonymized:** `source/src/main/java/org/apache/hadoop/hbase/catalog/CatalogWriter.java`,
 method `offlineSplitParent(...)`.
@@ -35,7 +35,8 @@ split.
 ## 2. The exact branch/condition that dictates the failure path
 
 **Real:** `src/main/java/org/apache/hadoop/hbase/catalog/MetaReader.java`,
-`getServerUserRegions(CatalogTracker, HServerInfo hsi)`, pre-fix line **578**.
+`getServerUserRegions(CatalogTracker, HServerInfo hsi)`, pre-fix line **578**
+(same line number in the anonymized `CatalogScanner.java`).
 **Anonymized:** `CatalogScanner.getRegionsOfServer(...)`.
 
 ```java
@@ -57,7 +58,7 @@ regions the crashed server was carrying.
 
 - `process()` iterates only over the `hris` map returned above (pre-fix lines 151–157), so the
   parent's row is never passed to `processDeadRegion`;
-- `processDeadRegion(...)` pre-fix line **179**:
+- `processDeadRegion(...)` pre-fix line **179** (same line in the anonymized `LostServerHandler.java`):
   ```java
   if (hri.isOffline() && hri.isSplit()) {         // <-- never evaluated for the parent
     fixupDaughters(result, assignmentManager, catalogTracker);

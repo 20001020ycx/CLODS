@@ -93,15 +93,18 @@
     },
     {
       "id": "M5",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T02:40:49Z",
+      "finished": "2026-08-17T02:40:49Z",
+      "attempts": 1,
+      "by": "agent-run-8b54496c",
+      "artifacts": [
+        "evaluations/HBase/HBase-3403/symptom.md",
+        "evaluations/HBase/HBase-3403/private/ground_truth.md"
+      ],
+      "note": "symptom.md = the bare observable only: one framing line plus the two ERROR lines exactly as logs/symptom.log prints them (region has a directory on HDFS with no catalog row and no server; consistency check failed for usertable), then the merged-log pointer form 'The log for this run is logs/symptom.log' (no >>> SYMPTOM marker, no line number -- the LLM must grep the 2.9 GB merged log). Re-read sentence by sentence: no trigger (no split, no crash, no lost server), no mechanism or timeline, no at-fault component/class/branch, no buggy overload, no 'what stays correct' narrowing comparison, no JIRA id. ground_truth.md gives (1) the root-causing line MetaEditor.offlineParentInMeta lines 80-83 (anonymized CatalogWriter.offlineSplitParent) writing SERVER_QUALIFIER/STARTCODE_QUALIFIER as EMPTY_BYTE_ARRAY, (2) the deciding branch MetaReader.getServerUserRegions:578 (anonymized CatalogScanner.getRegionsOfServer) 'pair.getSecond() == null || !equals(hsi) -> continue', and the consequently unreached ServerShutdownHandler.processDeadRegion:179 'hri.isOffline() && hri.isSplit()' -> fixupDaughters; plus the secondary fix hunks that are explicitly NOT the root cause, and the two-part PASS bar. Anonymization + cause-leak verification re-run with symptom.md included: VERIFY OK (all zero)."
     },
     {
       "id": "M6",

@@ -161,3 +161,14 @@ records).
 - The lost daughter's `.META.` row is deleted rather than being lost to a real crash race
   (see step 4 above); the resulting cluster state is identical, and the master's shutdown
   recovery — the code under test — runs completely untouched.
+
+## M4 addendum — how the anonymized logs are regenerated
+
+`private/anonymize.sh` re-runs this same `reproduce.sh` against the anonymized tree and then
+re-applies the merge. Two container paths differ from the M3 invocation: the anonymized tree
+and the maven local repository are bind-mounted at the **neutral** paths `/src` and `/m2`
+(`SRC=/src SETTINGS=/m2/settings.anon.xml`). This matters for validity — in the first M4
+attempt the JVM's own log recorded `/work/repos/HBase-3403-anon/...` and
+`/work/repos/m2-HBase-3403/...`, putting the bug id into the LLM-facing log 147 times. With
+the neutral mounts the host keeps its per-bug directory names while nothing the JVM logs
+carries the id. `private/verify_anon.sh` audits this (and everything else) after every run.

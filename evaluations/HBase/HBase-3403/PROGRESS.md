@@ -18,7 +18,7 @@
 | M1 | Identify fix / pre-fix commit | DONE | true | success | fix `0d31ac5f37`, pre-fix `dddee0d50f`, `private/fix.diff` saved |
 | M2 | Build from source at pre-fix | DONE | true | success | JDK 8 + hadoop 0.20.2 + thrift dropped; main & test compile |
 | M3 | Reproduce + merge into production log | DONE | true | success | repro FAILs as intended; Log A 7 415 lines, Log B 3.06 GB merged |
-| M4 | Anonymize failure path, rebuild, re-merge | PENDING | null | pending | |
+| M4 | Anonymize failure path, rebuild, re-merge | DONE | true | success | 4 classes + 7 methods + 22 log literals; rebuilt, re-reproduced, re-merged; VERIFY OK |
 | M5 | symptom.md + ground truth | PENDING | null | pending | |
 | M6 | LLM diagnosis ×5 | PENDING | null | pending | |
 | M7 | Grade runs | PENDING | null | pending | |
@@ -98,3 +98,50 @@
     delete the offlined parent mid-scenario; `src/test/resources/log4j.properties` raised to
     DEBUG with the production log's `%d %-5p [%t] %c: %m%n` layout (levels + layout only).
   - Write-up: `reproduce.md`.
+- 2026-08-17T02:39:57Z M4 DONE (success=true) — failure path anonymized, rebuilt, re-reproduced,
+  re-merged, zero leakage. Replay: `bash private/anonymize.sh`; audit: `bash private/verify_anon.sh`.
+  - **Failure path (completed causal chain, §6).** Traced end to end rather than taken as
+    fix-diff ∪ stack-trace, because the symptom is a consistency report with no stack:
+    `SplitTransaction` (commits the split) → `MetaEditor.offlineParentInMeta` (root cause) →
+    `ServerManager.expireServer` (dispatcher, in neither discovery input) →
+    `ServerShutdownHandler.process` → `MetaReader.getServerUserRegions` (the deciding branch)
+    → `ServerShutdownHandler.processDeadRegion`/`fixupDaughters` (repair never reached) →
+    `HBaseFsck.checkRegionConsistency` (symptom site).
+  - **Renamed types/files:** `MetaEditor`→`CatalogWriter`, `MetaReader`→`CatalogScanner`,
+    `ServerShutdownHandler`→`LostServerHandler`, `MetaServerShutdownHandler`→`MetaLostServerHandler`;
+    in the test tree `TestSplitCrashRecovery`→`TestClusterWorkload` (its abort stack frame would
+    otherwise name the scenario) and `TestMetaReaderEditor`→`TestCatalogReaderWriter`.
+  - **Renamed distinctive methods:** `offlineParentInMeta`→`offlineSplitParent`,
+    `fixupDaughters`/`fixupDaughter`→`recoverSplitChildren`/`recoverSplitChild`,
+    `addDaughter`→`addSplitChild`, `getServerUserRegions`→`getRegionsOfServer`,
+    `processDeadRegion`→`processLostRegion`.
+  - **Rewritten log literals:** 22 in total — 7 in `CatalogWriter`, 9 in `LostServerHandler`,
+    6 in `HBaseFsck` including both strings the JIRA report quotes
+    ("… on HDFS, but not listed in META or deployed on any region server." and
+    "Found inconsistency in table …").
+  - **Deliberately kept generic:** `SplitTransaction`, `HBaseFsck`, `AssignmentManager`,
+    `ServerManager`, `CatalogTracker`, `HRegionInfo`. `SplitTransaction`'s own log literals are
+    kept byte-identical on purpose: HBase 1.2.7 emits exactly those strings throughout the
+    shared production log, so rewriting them would make the reproduction stand out instead of
+    blend in. Only `HBaseFsck`'s literals are rewritten, not its name (it is `hbck`, the
+    generic operator tool).
+  - **Regenerated from the anonymized tree:** `logs/repro.log` (7 414 lines) — the symptom
+    still reproduces identically (assertion fires; `hbck` reports the region) — and
+    `logs/symptom.log` (12 002 241 lines, 2.9 GB) = 7 361 anonymized reproduction records
+    re-merged into the unchanged 11 945 370-record shared production log.
+  - **Attempt 1 was discarded:** it leaked the bug id through *container paths* — the JVM's own
+    log recorded `/work/repos/HBase-3403-anon/...` and `/work/repos/m2-HBase-3403/...` (147
+    hits). Fixed by bind-mounting those two directories at the neutral container paths `/src`
+    and `/m2`, so host directories keep their per-bug names while nothing the JVM logs carries
+    the id. The whole M4 run was redone from scratch, not patched.
+  - **Verification (`private/verify_anon.sh`, VERIFY OK):** every original class, method and log
+    literal, and every case form of the bug id, = 0 across `source/`, `logs/repro.log`, the
+    whole 2.9 GB `logs/symptom.log` and `symptom.md`; positive controls confirm the anonymized
+    forms are present. **Documented exception:** the bare token `3403` occurs 183× in the
+    *production* portion as genuine HBase/Hadoop/ZooKeeper RPC sequence numbers
+    (`... sending #3403`, `header:: 3403,8`). The shared production log is read-only (§13) and
+    those digits predate this bug's selection; the check asserts instead that no occurrence
+    anywhere is ticket-shaped (`hbase|jira|issue|bug` + `3403` = 0).
+  - `source/` is not kept as a separate git repo; it is regenerated deterministically by
+    `private/anonymize.sh` from `pre_fix_commit` + `deps-fix.patch` + `repro-test.patch`
+    (`anonymized_commit: null`).

@@ -1,0 +1,84 @@
+{
+  "bug": "HBase-3403",
+  "principle": "Stop the LLM from mapping the symptom to the specific JIRA case; do NOT hide that the system is HBase. Generic system identifiers (region, daughter, parent, .META., regionserver, HRegionInfo, package paths) are kept.",
+  "failure_path": {
+    "description": "Completed causal chain from root cause to symptom, traced end to end (the symptom is a consistency report, not a stack trace, so fix-diff u stack-trace under-approximates and the intermediate classes were added by reading the code path).",
+    "chain": [
+      "SplitTransaction.stepsAfterPONR/createDaughters (regionserver) - commits the split and calls the catalog editor, then registers the daughters; the crash window sits between these two",
+      "MetaEditor.offlineParentInMeta -> CatalogWriter.offlineSplitParent - ROOT CAUSE: blanks SERVER/STARTCODE on the parent's catalog row",
+      "ServerManager.expireServer -> creates the shutdown handler for the lost server (intermediate dispatcher, in neither the fix diff nor any stack trace)",
+      "ServerShutdownHandler.process -> LostServerHandler.process - asks the catalog which regions the lost server carried",
+      "MetaReader.getServerUserRegions -> CatalogScanner.getRegionsOfServer - THE DECIDING BRANCH: skips rows whose server is null, so the offlined parent is dropped",
+      "ServerShutdownHandler.processDeadRegion/fixupDaughters/fixupDaughter -> LostServerHandler.processLostRegion/recoverSplitChildren/recoverSplitChild - the repair that is consequently never reached",
+      "HBaseFsck.checkRegionConsistency - SYMPTOM SITE: reports the region that is on HDFS with no catalog row and no server"
+    ],
+    "renamed_classes": ["MetaEditor", "MetaReader", "ServerShutdownHandler", "MetaServerShutdownHandler"],
+    "deliberately_kept_generic": {
+      "SplitTransaction": "HBase's ordinary split machinery; appears verbatim (74 lines) in the shared production log, so renaming it would make the reproduction stand out rather than blend in",
+      "HBaseFsck": "the shipped hbck operator tool - generic vocabulary; its log literals ARE rewritten, which is what the JIRA quotes",
+      "AssignmentManager, ServerManager, CatalogTracker, HRegionInfo, HConstants, HRegion, HMaster, CatalogJanitor": "generic HBase identifiers, not case-identifying"
+    }
+  },
+  "bug_id_scrub": {
+    "HBASE-3403": "absent from the pre-fix tree, source/, both logs and symptom.md (verified: 0 hits)",
+    "3403": "absent from the pre-fix source tree and from the whole 3 GB production log (verified: 0 hits)"
+  },
+  "files": {
+    "src/main/java/org/apache/hadoop/hbase/catalog/MetaEditor.java": "src/main/java/org/apache/hadoop/hbase/catalog/CatalogWriter.java",
+    "src/main/java/org/apache/hadoop/hbase/catalog/MetaReader.java": "src/main/java/org/apache/hadoop/hbase/catalog/CatalogScanner.java",
+    "src/main/java/org/apache/hadoop/hbase/master/handler/ServerShutdownHandler.java": "src/main/java/org/apache/hadoop/hbase/master/handler/LostServerHandler.java",
+    "src/main/java/org/apache/hadoop/hbase/master/handler/MetaServerShutdownHandler.java": "src/main/java/org/apache/hadoop/hbase/master/handler/MetaLostServerHandler.java",
+    "src/test/java/org/apache/hadoop/hbase/util/TestSplitCrashRecovery.java": "src/test/java/org/apache/hadoop/hbase/util/TestClusterWorkload.java (test tree only; renamed because the reproduction's abort stack frame would otherwise name the scenario)",
+    "src/test/java/org/apache/hadoop/hbase/catalog/TestMetaReaderEditor.java": "src/test/java/org/apache/hadoop/hbase/catalog/TestCatalogReaderWriter.java (test tree only; renamed so the tree still compiles)"
+  },
+  "types": {
+    "MetaEditor": "CatalogWriter",
+    "MetaReader": "CatalogScanner",
+    "ServerShutdownHandler": "LostServerHandler",
+    "MetaServerShutdownHandler": "MetaLostServerHandler",
+    "TestSplitCrashRecovery": "TestClusterWorkload",
+    "TestMetaReaderEditor": "TestCatalogReaderWriter"
+  },
+  "terms": {
+    "offlineParentInMeta": "offlineSplitParent",
+    "fixupDaughters": "recoverSplitChildren",
+    "fixupDaughter": "recoverSplitChild",
+    "addDaughter": "addSplitChild",
+    "getServerUserRegions": "getRegionsOfServer",
+    "processDeadRegion": "processLostRegion",
+    "testDaughterAfterServerCrash": "testRegionWorkload"
+  },
+  "log_literals": {
+    "CatalogWriter (was MetaEditor)": {
+      "Added region X to META": "Recorded region X in the catalog",
+      "Offlined parent region X in META": "Took split parent X out of service in the catalog",
+      "Added daughter X in region Y...": "Recorded split child X in region Y...",
+      "Updated row X in region Y with server=...": "Refreshed catalog row X in region Y with server=...",
+      "Deleted region X from META": "Dropped region X from the catalog",
+      "Deleted daughter reference X, qualifier=...": "Dropped split-child pointer X, qualifier=...",
+      "Updated region X in META": "Refreshed region X in the catalog"
+    },
+    "LostServerHandler (was ServerShutdownHandler)": {
+      "X is NOT in deadservers; it should be!": "X is missing from the lost-server list; it should be there!",
+      "Splitting logs for X": "Recovering write-ahead logs of X",
+      "Received exception accessing META during server shutdown of X, retrying META read": "Catalog read failed while recovering X, will try the catalog again",
+      "Removed X from list of regions to assign because in RIT": "Dropping X from the re-host list; it is already mid-transition",
+      "Reassigning N region(s) that S was carrying (skipping M regions(s) that are already in transition)": "Re-hosting N region(s) last served by S (M already mid-transition, left alone)",
+      "Finished processing of shutdown of X": "Completed recovery of X",
+      "Offlined and split region X; checking daughter presence": "Region X is an out-of-service split parent; verifying its children are recorded",
+      "Fixup; missing daughter X": "Repairing; unrecorded split child X",
+      "Daughter X present": "Split child X already recorded"
+    },
+    "HBaseFsck (class name kept; these are the strings the JIRA report quotes)": {
+      "Region X offline, split, parent, ignoring.": "Region X is an out-of-service split parent; skipping.",
+      "Region X on HDFS, but not listed in META or deployed on any region server.": "Region X has a directory on HDFS with no catalog row, and no region server is serving it.",
+      "Found inconsistency in table T": "Consistency check failed for table T",
+      "Table T is inconsistent.": "Table T did not pass the consistency check.",
+      "N inconsistencies detected.": "N problem(s) detected.",
+      "Status: INCONSISTENT": "Status: FAILED"
+    },
+    "SplitTransaction": "deliberately NOT rewritten - HBase 1.2.7 emits the identical literals throughout the shared production log, so rewriting them in the reproduction would make it stand out"
+  },
+  "production_stream_renames": "none needed: of every original identifier and literal renamed above, only 'SplitTransaction' occurs in production-logs/HBase/production.log (74 lines) and it is deliberately kept, so merge_logs.py runs without --rename and the production portion is copied byte-for-byte",
+  "replay": "bash evaluations/HBase/HBase-3403/private/anonymize.sh regenerates repos/HBase-3403-anon, source/, logs/repro.log and logs/symptom.log deterministically from repos/HBase-HBase-3403 (pre_fix_commit + deps-fix.patch + repro-test.patch)."
+}

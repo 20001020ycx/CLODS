@@ -14,7 +14,7 @@ set -euo pipefail
 BUG_DIR=/work/evaluations/HBase/HBase-3403
 SRC=${SRC:-/work/repos/HBase-HBase-3403}          # M3: pre-fix tree; M4: anonymized tree
 OUT_LOG=${OUT_LOG:-$BUG_DIR/private/symptom.orig.log}
-SETTINGS=/work/repos/m2-HBase-3403/settings.xml
+SETTINGS=${SETTINGS:-/work/repos/m2-HBase-3403/settings.xml}
 TEST=${TEST:-TestSplitCrashRecovery}
 
 export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64

@@ -74,15 +74,22 @@
     },
     {
       "id": "M4",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T02:39:32Z",
+      "finished": "2026-08-17T02:39:32Z",
+      "attempts": 2,
+      "by": "agent-run-8b54496c",
+      "artifacts": [
+        "evaluations/HBase/HBase-3403/source/ (474 java files)",
+        "evaluations/HBase/HBase-3403/logs/repro.log (7414 lines)",
+        "evaluations/HBase/HBase-3403/logs/symptom.log (12002241 lines, 2.9 GB merged)",
+        "evaluations/HBase/HBase-3403/private/anonymization_map.json",
+        "evaluations/HBase/HBase-3403/private/anonymize.sh",
+        "evaluations/HBase/HBase-3403/private/verify_anon.sh"
+      ],
+      "note": "Failure-path anonymization per METHODOLOGY 6. Renamed classes+files MetaEditor->CatalogWriter, MetaReader->CatalogScanner, ServerShutdownHandler->LostServerHandler, MetaServerShutdownHandler->MetaLostServerHandler (test tree: TestSplitCrashRecovery->TestClusterWorkload, TestMetaReaderEditor->TestCatalogReaderWriter); renamed the distinctive methods offlineParentInMeta->offlineSplitParent, fixupDaughters/fixupDaughter->recoverSplitChildren/recoverSplitChild, addDaughter->addSplitChild, getServerUserRegions->getRegionsOfServer, processDeadRegion->processLostRegion; rewrote all 22 failure-path log literals (7 in CatalogWriter, 9 in LostServerHandler, 6 in HBaseFsck incl. both strings the JIRA quotes). SplitTransaction, HBaseFsck, AssignmentManager, ServerManager kept as generic HBase vocabulary (SplitTransaction's literals are left byte-identical because HBase 1.2.7 emits them throughout the production log; rewriting would make the reproduction stand out). Rebuilt and re-reproduced from the anonymized tree (same observable: assertion fires, hbck reports the region). Attempt 1 leaked the bug id through container paths (/work/repos/HBase-3403-anon, /work/repos/m2-HBase-3403 appeared in the JVM's own log); fixed by bind-mounting those at the neutral container paths /src and /m2, and the run was redone from scratch. merge_logs.py --interleave position re-merged the anonymized repro (7361 records) into the unchanged shared production log (11945370 records) -> logs/symptom.log. private/verify_anon.sh: VERIFY OK - every original class/method/literal and every case of the bug id = 0 across source/, logs/repro.log, the whole 2.9 GB logs/symptom.log and symptom.md. Documented exception: the bare token 3403 occurs 183x in the production portion as genuine RPC/ZooKeeper sequence numbers ('sending #3403', 'header:: 3403,8'); the shared production log is read-only, and no occurrence anywhere is ticket-shaped (hbase/jira/issue/bug + 3403 = 0). source/ is regenerated deterministically by private/anonymize.sh from pre_fix_commit + deps-fix.patch + repro-test.patch, so no separate anonymized git commit is kept (anonymized_commit=null)."
     },
     {
       "id": "M5",

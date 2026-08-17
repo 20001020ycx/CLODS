@@ -23,8 +23,8 @@ milestone carries `status` + `success` + `outcome`.
 | M3 | Reproduce the failure + merge into production log | DONE | true | success |
 | M4 | Anonymize, rebuild, re-confirm reproduction | DONE | true | success |
 | M5 | Prepare diagnosis inputs & ground truth | DONE | true | success |
-| M6 | Run LLM diagnosis x5 (network locked) | PENDING | null | pending |
-| M7 | Grade each run vs ground truth | PENDING | null | pending |
+| M6 | Run LLM diagnosis x5 (network locked) | DONE | true | success |
+| M7 | Grade each run vs ground truth | DONE | true | success |
 | M8 | Write summary & finalize | PENDING | null | pending |
 
 ## Log
@@ -73,3 +73,13 @@ milestone carries `status` + `success` + `outcome`.
   `AssignmentManager`'s TimeoutMonitor `case OPENING:` 1646 + the missing `data == null` guard); AUXILIARY = site A alone,
   the only site this reproduction can testify to (all 9 700+ timeouts are `PENDING_OPEN`; zero `OPENING` timeouts and zero
   master-side NPEs). Gate clean across `source/`, both logs and `symptom.md`.
+- 2026-08-17T13:32Z M6 DONE success=true — 5 single-turn diagnoses (`claude-opus-4-7`, effort high, egress locked to
+  `api.anthropic.com:443`, `Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit` denied, staging dir holding only
+  `source/` + `logs/symptom.log` + `symptom.md`, no follow-ups). All 5 completed first time; all stderr empty.
+  Harness: `private/run_diagnosis.prodlog.sh`, byte-identical to Zookeeper-1900's copy of `context/run_diagnosis.sh`
+  (two documented deltas: the M6 prompt text and hardlink-not-copy staging). `context/` was not modified.
+- 2026-08-17T13:33Z M7 DONE success=true — **0/5** under the pre-registered two-site bar; **5/5** under the on-path
+  (site A) bar. Every run named `RegionStateZK.transitionNode` (= `ZKAssign.transitionNode`) lines 670-673 *and* the
+  missing `existingBytes == null` guard, with the NoNodeException→`null` condition that produces it; three also derived
+  the trigger (the unassigned znode being created/deleted underneath the bring-up) from the log alone. None named the
+  master-side twin (`AssignmentManager` TimeoutMonitor `case OPENING:`), which this reproduction never exercises.

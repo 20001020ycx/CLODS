@@ -115,27 +115,40 @@
     },
     {
       "id": "M6",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T13:22:00Z",
+      "finished": "2026-08-17T13:32:02Z",
+      "attempts": 1,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "diagnosis/run_1.md",
+        "diagnosis/run_2.md",
+        "diagnosis/run_3.md",
+        "diagnosis/run_4.md",
+        "diagnosis/run_5.md",
+        "private/run_diagnosis.prodlog.sh"
+      ],
+      "note": "5 independent single-turn diagnoses against the MERGED 3.1 GB production log, model claude-opus-4-7 effort high, egress iptables-locked to api.anthropic.com:443, Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, --safe-mode --no-session-persistence --exclude-dynamic-system-prompt-sections, no follow-ups, throwaway staging dir under /tmp holding ONLY source/ + logs/symptom.log + symptom.md (private/ is never copied in and the container mounts only the bug dir, so the answer key is unreachable). HARNESS: context/ is read-only for agents and the tracked context/run_diagnosis.sh has not caught up with two current requirements, so private/run_diagnosis.prodlog.sh is used - it is BYTE-IDENTICAL to the copy Zookeeper-1900 used, i.e. the tracked script with exactly two deltas: (1) the M6 prompt text, (2) the hardlink-not-copy staging of the GB-scale log (falls back to a copy here because the stage is in /tmp). Command: docker run --rm --cap-add=NET_ADMIN --add-host api.anthropic.com:<ip> -v <bug dir>:/bug -v <scratch oauth config>:/root/.claude -e CLAUDE_CONFIG_DIR=/root/.claude -e IS_SANDBOX=1 -e CLAUDE_PURITY_FLAG=--safe-mode --entrypoint bash clods-eval -lc 'bash /bug/private/run_diagnosis.prodlog.sh /bug'. All 5 runs completed first time, all 5 stderr files empty, answers 3.5-5.2 kB. The scratch credential copy lives in the session scratchpad, not in the repo."
     },
     {
       "id": "M7",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T13:33:00Z",
+      "finished": "2026-08-17T13:32:54Z",
+      "attempts": 1,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "diagnosis/run_1.grade.json",
+        "diagnosis/run_2.grade.json",
+        "diagnosis/run_3.grade.json",
+        "diagnosis/run_4.grade.json",
+        "diagnosis/run_5.grade.json"
+      ],
+      "note": "0/5 PASS under the pre-registered PRIMARY (two-site) bar; 5/5 under the AUXILIARY (on-path) bar. ALL FIVE runs found the root-causing line inside the 3.1 GB merged production log, under class names they had never seen: the unguarded 'byte[] existingBytes = ZKOps.getDataNoWatch(zkw, node, stat); RegionStateRecord.fromBytes(existingBytes);' at RegionStateZK.java:670-673 (= ZKAssign.transitionNode 670-673), and all five stated the exact missing branch - 'if (existingBytes == null) return -1' - together with the condition that produces the null (ZKOps.getDataNoWatch's catch (KeeperException.NoNodeException) branch, because the /hbase/unassigned/<encoded> znode does not exist). Three runs went further and derived the trigger from the log alone, which symptom.md never states: run 3 'a race between master OFFLINE-znode creation/cleanup and the RS bring-up handler', run 5 'the OFFLINE znode the region server was asked to transition has already been deleted' (grounded on the raw ZK reply error code -101 immediately before each NPE). NONE of the five named site B, the master-side twin the same commit fixed (AssignmentManager/RegionPlacementManager TimeoutMonitor 'case OPENING:' dereference of a null getDataNoWatch result): 0 hits for 'RegionPlacementManager' or 'TimeoutMonitor' across all five answers. That is expected and was pre-registered as such - the reproduction never enters that branch (all 9,700+ regions-in-transition timeouts are PENDING_OPEN; zero OPENING timeouts, zero master NPEs), so the symptom log contains no evidence for it. All five also (correctly) point out that the NPE is thrown one frame deeper, in the 2-arg SerdeUtil/Writables.getWritable overload whose null guard lives only in the 4-arg overload, and offer it as an alternative fix; the real fix left that method alone, so it is credit-neutral context, not a wrong claim. One noise artefact worth recording: run 1's 'Trigger in this run' paragraph is anchored on a PRODUCTION-noise line (the -ROOT- region 70236052 at 19:08 on a different host in the 2026-08-14 window) rather than on the reproduction's own incident - the merged log misleading the trigger narrative, as in Zookeeper-1900 run 2, though here it did not change the site verdict. Each grade JSON carries site_a/site_b and both bars so either can be applied without a re-run."
     },
     {
       "id": "M8",

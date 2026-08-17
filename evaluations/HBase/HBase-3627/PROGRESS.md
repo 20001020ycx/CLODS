@@ -19,7 +19,7 @@ milestone carries `status` + `success` + `outcome`.
 |---|---|---|---|---|
 | M0 | Scaffold & claim the bug folder | DONE | true | success |
 | M1 | From JIRA: fix commit + pre-fix commit | DONE | true | success |
-| M2 | Check out pre-fix, build from source, fix deps | PENDING | null | pending |
+| M2 | Check out pre-fix, build from source, fix deps | DONE | true | success |
 | M3 | Reproduce the failure + merge into production log | PENDING | null | pending |
 | M4 | Anonymize, rebuild, re-confirm reproduction | PENDING | null | pending |
 | M5 | Prepare diagnosis inputs & ground truth | PENDING | null | pending |
@@ -37,3 +37,10 @@ milestone carries `status` + `success` + `outcome`.
   `AssignmentManager`'s TimeoutMonitor `OPENING` case; the `OpenRegionHandler` LOG.warn and the javadoc edits are non-behavioural.
   Pre-fix = `86e9f5f8c9`. Saved `private/fix.diff` (+ `private/fix.trunk.diff` = trunk twin `cf3284dfb9`, and
   `private/fix.addendum.diff` = `23606d0645`, a later same-titled commit that only widens a LeaseException catch — unrelated).
+- 2026-08-17T02:06Z M2 DONE success=true — `mvn -DskipTests -Dmaven.javadoc.skip=true package` on the pre-fix tree inside
+  `clods-eval:HBase-HBase-3627` (base + `openjdk-8-jdk`, `JAVA_HOME` pinned to JDK 8 because the pom compiles `-source 1.6`).
+  Artifacts: `target/hbase-0.90.2-SNAPSHOT.jar` + `-tests.jar`. Dep fixes: `private/install-deps.sh` installs the exact
+  `hadoop-core-0.20-append-r1056497`, `avro-1.3.3` and `thrift-0.2.0` jars out of the `hbase-0.90.2.tar.gz` release tarball
+  (their original repos — people.apache.org, repository.codehaus.org — are dead), plus Central's `hadoop-test-0.20.2.jar`
+  under the append coordinate (test scope only); one source edit in `private/deps-fix.patch`
+  (`InputSampler.java:320`, add a `(K[])` cast javac 8 requires and javac 6 did not).

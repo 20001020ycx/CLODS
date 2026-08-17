@@ -1,0 +1,13 @@
+diff --git a/src/main/java/org/apache/hadoop/hbase/mapreduce/hadoopbackport/InputSampler.java b/src/main/java/org/apache/hadoop/hbase/mapreduce/hadoopbackport/InputSampler.java
+index c3e0a68004..1a7e5c8d85 100644
+--- a/src/main/java/org/apache/hadoop/hbase/mapreduce/hadoopbackport/InputSampler.java
++++ b/src/main/java/org/apache/hadoop/hbase/mapreduce/hadoopbackport/InputSampler.java
+@@ -317,7 +317,7 @@ public class InputSampler<K,V> extends Configured implements Tool  {
+     final InputFormat inf = 
+         ReflectionUtils.newInstance(job.getInputFormatClass(), conf);
+     int numPartitions = job.getNumReduceTasks();
+-    K[] samples = sampler.getSample(inf, job);
++    K[] samples = (K[]) sampler.getSample(inf, job);
+     LOG.info("Using " + samples.length + " samples");
+     RawComparator<K> comparator =
+       (RawComparator<K>) job.getSortComparator();

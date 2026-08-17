@@ -108,15 +108,17 @@
     },
     {
       "id": "M6",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T02:43:00Z",
+      "finished": "2026-08-17T13:01:22Z",
+      "attempts": 2,
+      "by": "agent-run-8b54496c",
+      "artifacts": [
+        "evaluations/HBase/HBase-3403/diagnosis/run_1.md .. run_5.md"
+      ],
+      "note": "5 independent single-turn diagnoses, claude-opus-4-7 / effort high, network locked to api.anthropic.com:443 (iptables default-DROP verified in the run log), no follow-up prompts. Harness: private/run_diagnosis.prodlog.sh = context/run_diagnosis.sh with only the two documented deltas (the merged-log prompt text; hardlink-not-copy staging); context/ untouched. Staging held ONLY source/, symptom.md and the hardlinked 3.0 GB logs/symptom.log -- verified live inside the container that private/ was absent. Auth: the host uses CCS OAuth rather than a raw API key, so a scratch copy of the credentials was mounted at /root/.claude with CLAUDE_PURITY_FLAG=--safe-mode and IS_SANDBOX=1 (same recipe as Zookeeper-1900); TMPDIR=/stage was bind-mounted from the same filesystem so the 3 GB merged log could be hardlinked into staging instead of copied 5x. Runs 1-4 completed on the first batch (~14-22 min each). Run 5 needed two retries for infrastructure reasons only, both discarded without being graded: the first returned 'You've hit your session limit' (account rate limit) and the second '401 OAuth access token has been revoked' (the copied token had rotated); after refreshing the credential copy the run completed normally. Every graded run is a full, fresh, single-turn answer; all five stderr files are empty."
     },
     {
       "id": "M7",

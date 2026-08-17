@@ -20,7 +20,7 @@
 | M3 | Reproduce + merge into production log | DONE | true | success | repro FAILs as intended; Log A 7 415 lines, Log B 3.06 GB merged |
 | M4 | Anonymize failure path, rebuild, re-merge | DONE | true | success | 4 classes + 7 methods + 22 log literals; rebuilt, re-reproduced, re-merged; VERIFY OK |
 | M5 | symptom.md + ground truth | DONE | true | success | bare-observable symptom; two-part ground-truth bar; VERIFY OK |
-| M6 | LLM diagnosis ×5 | PENDING | null | pending | |
+| M6 | LLM diagnosis ×5 | DONE | true | success | 5 single-turn runs, network locked, no follow-ups |
 | M7 | Grade runs | PENDING | null | pending | |
 | M8 | Summary & finalize | PENDING | null | pending | |
 
@@ -162,3 +162,24 @@
     `fixupDaughters`; plus the secondary fix hunks that are explicitly **not** the root cause and
     the two-part PASS bar (§8: both (a) and (b), no partial credit).
   - `private/verify_anon.sh` re-run with `symptom.md` in scope: **VERIFY OK** (all zero).
+- 2026-08-17T13:01:38Z M6 DONE (success=true) — 5 independent single-turn diagnoses.
+  - Subject pinned: `claude-opus-4-7`, `--effort high`, `--safe-mode --no-session-persistence
+    --exclude-dynamic-system-prompt-sections --disallowed-tools Bash,Write,Edit,WebFetch,
+    WebSearch,Task,NotebookEdit --permission-mode bypassPermissions`. **No follow-up prompts.**
+  - Network: `iptables -P OUTPUT DROP` with a single ACCEPT to `api.anthropic.com:443`
+    ("Network locked" confirmed at the head of the run log).
+  - Isolation: staging held **only** `source/`, `symptom.md` and the hardlinked 3.0 GB
+    `logs/symptom.log` — verified live inside the running container that `private/` was absent.
+  - Harness deviation (same as the ZooKeeper bugs): `private/run_diagnosis.prodlog.sh` is
+    `context/run_diagnosis.sh` with exactly two deltas — §5/M6's merged-log prompt text, and
+    §7's hardlink-instead-of-copy staging. `context/` was not modified.
+  - Auth deviation: this host has no `ANTHROPIC_API_KEY` (CCS manages OAuth), so a scratch copy
+    of the credentials was mounted at `/root/.claude` with `CLAUDE_PURITY_FLAG=--safe-mode` and
+    `IS_SANDBOX=1`, exactly as recorded for `Zookeeper-1900`. `TMPDIR=/stage` is a bind mount on
+    the same filesystem as the bug dir so the merged log is hardlinked, not copied five times.
+  - Run 5 required two retries for **infrastructure** reasons; both outputs were discarded
+    without being graded and are not in `diagnosis/`: (1) `You've hit your session limit`
+    (account rate limit), (2) `401 OAuth access token has been revoked` (the credential copy had
+    rotated in the ~10 h since it was taken). After refreshing the credential copy the run
+    completed normally. All five graded runs are complete single-turn answers; all five
+    `run_N.stderr` are empty.

@@ -1,0 +1,124 @@
+{
+  "bug_id": "HBase-3627",
+  "system": "HBase",
+  "jira": "HBASE-3627",
+  "jira_url": "https://issues.apache.org/jira/browse/HBASE-3627",
+  "source_repo": "https://github.com/apache/hbase.git",
+  "fix_commit": null,
+  "pre_fix_commit": null,
+  "anonymized_commit": null,
+  "symptom_short": null,
+  "milestones": [
+    {
+      "id": "M0",
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T01:53:25Z",
+      "finished": "2026-08-17T01:53:55Z",
+      "attempts": 1,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "evaluations/HBase/HBase-3627/"
+      ],
+      "note": "Folder scaffolded (private/ source/ logs/ diagnosis/); PROGRESS.md + state.json created; bug claimed in COORDINATION.log."
+    },
+    {
+      "id": "M1",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M2",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M3",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M4",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M5",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M6",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M7",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M8",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    }
+  ],
+  "result": null
+}

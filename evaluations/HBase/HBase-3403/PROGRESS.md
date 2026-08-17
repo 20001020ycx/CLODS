@@ -17,7 +17,7 @@
 | M0 | Scaffold & claim | DONE | true | success | folder + trackers created |
 | M1 | Identify fix / pre-fix commit | DONE | true | success | fix `0d31ac5f37`, pre-fix `dddee0d50f`, `private/fix.diff` saved |
 | M2 | Build from source at pre-fix | DONE | true | success | JDK 8 + hadoop 0.20.2 + thrift dropped; main & test compile |
-| M3 | Reproduce + merge into production log | PENDING | null | pending | |
+| M3 | Reproduce + merge into production log | DONE | true | success | repro FAILs as intended; Log A 7 415 lines, Log B 3.06 GB merged |
 | M4 | Anonymize failure path, rebuild, re-merge | PENDING | null | pending | |
 | M5 | symptom.md + ground truth | PENDING | null | pending | |
 | M6 | LLM diagnosis ×5 | PENDING | null | pending | |
@@ -73,3 +73,28 @@
        `InputFormat`, so the call erases to `Object[]`; javac 6 accepted it, javac 8 does not.
        Off the failure path, purely a toolchain-compat fix.
   - Result: `main` (467 sources) and the full test tree both compile; `MVN_EXIT=0`.
+- 2026-08-17T02:15:37Z M3 DONE (success=true) — the bug reproduces on the pre-fix tree.
+  - Test: `org.apache.hadoop.hbase.util.TestSplitCrashRecovery#testDaughterAfterServerCrash`
+    (`private/repro-test.patch`). Split a `usertable` region on a 2-RS mini cluster, drop the
+    daughter's `.META.` row (the crash window; upstream's own fix-test simulates it the same
+    way), abort the region server, poll `.META.` for 180 s, then run the shipped `HBaseFsck`.
+  - Verdict: FAIL as intended —
+    `region usertable,,1786932488231.6751938fd298a88f2f50496c0afca9aa. is still absent from
+    .META. 180s after the server that carried it was lost` (assertion goes to surefire's
+    report file, not into the symptom log). `hbck` independently reports
+    `Status: INCONSISTENT` / 2 inconsistencies in its own output.
+  - Log A `private/symptom.orig.log`: 7 415 lines, the system's own DEBUG log4j + hbck output;
+    no injected line anywhere (the test class logs nothing of its own; no probe added to
+    production code).
+  - Log B `private/merged.orig.log`: 12 002 242 lines / 3.06 GB — Log A retimed onto the
+    production span (`2026-08-14 19:06:45,717 .. 19:31:38,751`, 11 945 370 records) and spread
+    across all 20 per-host sections of the shared, unmodified
+    `production-logs/HBase/production.log` by `private/merge_logs.py --interleave position`
+    (Zookeeper-1851's tool, body copied unmodified). `position` rather than the spec's literal
+    timestamp merge for the same reason as the ZooKeeper bugs: the production log is a bundle
+    of per-host sections, not one sorted timeline.
+  - Test-only infrastructure (all disclosed in `reproduce.md`): the test class itself;
+    `hbase.catalogjanitor.interval=Integer.MAX_VALUE` (config, not code) so the janitor cannot
+    delete the offlined parent mid-scenario; `src/test/resources/log4j.properties` raised to
+    DEBUG with the production log's `%d %-5p [%t] %c: %m%n` layout (levels + layout only).
+  - Write-up: `reproduce.md`.

@@ -1,0 +1,265 @@
+diff --git a/src/test/java/org/apache/hadoop/hbase/util/TestSplitCrashRecovery.java b/src/test/java/org/apache/hadoop/hbase/util/TestSplitCrashRecovery.java
+new file mode 100644
+index 0000000000..7bd3df1ca6
+--- /dev/null
++++ b/src/test/java/org/apache/hadoop/hbase/util/TestSplitCrashRecovery.java
+@@ -0,0 +1,232 @@
++/**
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.apache.hadoop.hbase.util;
++
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertNotSame;
++import static org.junit.Assert.assertTrue;
++
++import java.io.IOException;
++import java.util.List;
++
++import org.apache.commons.logging.Log;
++import org.apache.commons.logging.LogFactory;
++import org.apache.hadoop.hbase.HBaseTestingUtility;
++import org.apache.hadoop.hbase.HConstants;
++import org.apache.hadoop.hbase.HRegionInfo;
++import org.apache.hadoop.hbase.MiniHBaseCluster;
++import org.apache.hadoop.hbase.client.Delete;
++import org.apache.hadoop.hbase.client.Get;
++import org.apache.hadoop.hbase.client.HBaseAdmin;
++import org.apache.hadoop.hbase.client.HTable;
++import org.apache.hadoop.hbase.client.Result;
++import org.apache.hadoop.hbase.regionserver.HRegion;
++import org.apache.hadoop.hbase.regionserver.HRegionServer;
++import org.apache.hadoop.hbase.util.JVMClusterUtil.RegionServerThread;
++import org.junit.AfterClass;
++import org.junit.Before;
++import org.junit.BeforeClass;
++import org.junit.Test;
++
++/**
++ * Drives a region split on a live mini cluster, kills the region server that
++ * carried the split, and then checks -- with the shipped consistency checker --
++ * whether the cluster is still consistent once the master has finished
++ * processing the crashed server.
++ *
++ * <p>Everything logged during the run is the system's own log4j/console output;
++ * this class prints nothing of its own into the captured log.
++ */
++public class TestSplitCrashRecovery {
++  private static final Log LOG = LogFactory.getLog(TestSplitCrashRecovery.class);
++
++  /** How long to give the master to finish processing the dead server. */
++  private static final long RECOVERY_TIMEOUT_MS = 180000;
++
++  private static final HBaseTestingUtility TESTING_UTIL = new HBaseTestingUtility();
++
++  private HBaseAdmin admin = null;
++  private MiniHBaseCluster cluster = null;
++
++  @BeforeClass public static void before() throws Exception {
++    // Keep the catalog janitor from clearing the offlined parent out of .META.
++    // while the scenario is running (config only -- no code change).
++    TESTING_UTIL.getConfiguration().setInt("hbase.catalogjanitor.interval",
++      Integer.MAX_VALUE);
++    TESTING_UTIL.startMiniCluster(2);
++  }
++
++  @AfterClass public static void after() throws Exception {
++    TESTING_UTIL.shutdownMiniCluster();
++  }
++
++  @Before public void setup() throws IOException {
++    TESTING_UTIL.ensureSomeRegionServersAvailable(2);
++    this.admin = new HBaseAdmin(TESTING_UTIL.getConfiguration());
++    this.cluster = TESTING_UTIL.getMiniHBaseCluster();
++  }
++
++  /**
++   * Split a region, lose the daughter's <code>.META.</code> row (as happens when
++   * the region server dies in the window between committing the split and
++   * writing the daughters up into <code>.META.</code>), crash the server, and
++   * then wait for the master to make the cluster whole again.
++   */
++  @Test (timeout = 900000) public void testDaughterAfterServerCrash()
++  throws Exception {
++    final byte [] tableName = Bytes.toBytes("usertable");
++
++    HTable t = TESTING_UTIL.createTable(tableName, HConstants.CATALOG_FAMILY);
++    List<HRegion> regions = cluster.getRegions(tableName);
++    assertEquals(1, regions.size());
++    HRegionInfo hri = regions.get(0).getRegionInfo();
++
++    int tableRegionIndex = ensureTableRegionNotOnSameServerAsMeta(admin, hri);
++
++    // Keep the balancer out of the way of our placements.
++    this.admin.balanceSwitch(false);
++
++    // Put a bit of load into the table so it is splittable.
++    TESTING_UTIL.loadTable(t, HConstants.CATALOG_FAMILY);
++
++    HRegionServer server = cluster.getRegionServer(tableRegionIndex);
++    int regionCount = server.getOnlineRegions().size();
++    split(hri, server, regionCount);
++
++    List<HRegion> daughters = cluster.getRegions(tableName);
++    assertTrue(daughters.size() >= 2);
++    byte [] lostDaughter = daughters.get(0).getRegionName();
++
++    // Reproduce the crash window: the daughter never made it up into .META.
++    removeRegionFromMeta(lostDaughter);
++
++    // Kill the server that was carrying the split.
++    cluster.abortRegionServer(tableRegionIndex);
++    waitForServerDown(server);
++
++    // Give the master its full chance to recover the crashed server's regions.
++    boolean recovered = waitForRegionInMeta(lostDaughter, RECOVERY_TIMEOUT_MS);
++
++    // Ask the shipped consistency checker to report on the cluster.  Its output
++    // is the tool's own; we neither add to nor filter it.
++    runConsistencyCheck();
++
++    assertTrue("region " + Bytes.toStringBinary(lostDaughter) +
++      " is still absent from .META. " + (RECOVERY_TIMEOUT_MS / 1000) +
++      "s after the server that carried it was lost", recovered);
++  }
++
++  private void runConsistencyCheck() throws Exception {
++    HBaseFsck fsck = new HBaseFsck(TESTING_UTIL.getConfiguration());
++    // Do not skip freshly written regions.
++    fsck.setTimeLag(0);
++    fsck.doWork();
++  }
++
++  private void split(final HRegionInfo hri, final HRegionServer server,
++      final int regionCount)
++  throws IOException, InterruptedException {
++    this.admin.split(hri.getRegionNameAsString());
++    while (server.getOnlineRegions().size() <= regionCount) {
++      Thread.sleep(100);
++    }
++  }
++
++  private void waitForServerDown(final HRegionServer server)
++  throws InterruptedException {
++    while (server.getOnlineRegions().size() > 0) {
++      Thread.sleep(100);
++    }
++  }
++
++  /**
++   * @return True if <code>regionName</code> has a row in <code>.META.</code>
++   * before the timeout expires.
++   */
++  private boolean waitForRegionInMeta(final byte [] regionName,
++      final long timeoutMs)
++  throws IOException, InterruptedException {
++    HTable meta = new HTable(TESTING_UTIL.getConfiguration(),
++      HConstants.META_TABLE_NAME);
++    try {
++      long deadline = System.currentTimeMillis() + timeoutMs;
++      while (System.currentTimeMillis() < deadline) {
++        Result r = meta.get(new Get(regionName));
++        if (r != null && !r.isEmpty()) return true;
++        Thread.sleep(1000);
++      }
++      Result r = meta.get(new Get(regionName));
++      return r != null && !r.isEmpty();
++    } finally {
++      meta.close();
++    }
++  }
++
++  private void removeRegionFromMeta(final byte [] regionName)
++  throws IOException {
++    HTable meta = new HTable(TESTING_UTIL.getConfiguration(),
++      HConstants.META_TABLE_NAME);
++    try {
++      meta.delete(new Delete(regionName));
++    } finally {
++      meta.close();
++    }
++  }
++
++  /**
++   * Ensure the single table region is not on the same server as the single
++   * <code>.META.</code> region, so that crashing the table's server does not
++   * drag <code>.META.</code> down with it.
++   * @return Index of the server hosting the table region.
++   */
++  private int ensureTableRegionNotOnSameServerAsMeta(final HBaseAdmin admin,
++      final HRegionInfo hri)
++  throws Exception {
++    MiniHBaseCluster cluster = TESTING_UTIL.getMiniHBaseCluster();
++    int metaServerIndex = cluster.getServerWithMeta();
++    assertTrue(metaServerIndex != -1);
++    HRegionServer metaRegionServer = cluster.getRegionServer(metaServerIndex);
++    int tableRegionIndex = cluster.getServerWith(hri.getRegionName());
++    assertTrue(tableRegionIndex != -1);
++    HRegionServer tableRegionServer = cluster.getRegionServer(tableRegionIndex);
++    if (metaRegionServer.getServerName().equals(
++        tableRegionServer.getServerName())) {
++      HRegionServer hrs = getOtherRegionServer(cluster, metaRegionServer);
++      admin.move(hri.getEncodedNameAsBytes(), Bytes.toBytes(hrs.getServerName()));
++    }
++    while (true) {
++      tableRegionIndex = cluster.getServerWith(hri.getRegionName());
++      if (tableRegionIndex != -1 && tableRegionIndex != metaServerIndex) break;
++      Thread.sleep(100);
++    }
++    tableRegionIndex = cluster.getServerWith(hri.getRegionName());
++    assertTrue(tableRegionIndex != -1);
++    assertNotSame(metaServerIndex, tableRegionIndex);
++    return tableRegionIndex;
++  }
++
++  private HRegionServer getOtherRegionServer(final MiniHBaseCluster cluster,
++      final HRegionServer notThisOne) {
++    for (RegionServerThread rst: cluster.getRegionServerThreads()) {
++      HRegionServer hrs = rst.getRegionServer();
++      if (hrs.getServerName().equals(notThisOne.getServerName())) continue;
++      return hrs;
++    }
++    return null;
++  }
++}
+diff --git a/src/test/resources/log4j.properties b/src/test/resources/log4j.properties
+index 9d42f7457b..cac9d4c954 100644
+--- a/src/test/resources/log4j.properties
++++ b/src/test/resources/log4j.properties
+@@ -1,5 +1,5 @@
+ # Define some default values that can be overridden by system properties
+-hbase.root.logger=INFO,console
++hbase.root.logger=DEBUG,console
+ hbase.log.dir=.
+ hbase.log.file=hbase.log
+ 
+@@ -36,12 +36,12 @@ log4j.appender.DRFA.layout.ConversionPattern=%d %-5p [%t] %C{2}(%L): %m%n
+ log4j.appender.console=org.apache.log4j.ConsoleAppender
+ log4j.appender.console.target=System.err
+ log4j.appender.console.layout=org.apache.log4j.PatternLayout
+-log4j.appender.console.layout.ConversionPattern=%d %-5p [%t] %C{2}(%L): %m%n
++log4j.appender.console.layout.ConversionPattern=%d %-5p [%t] %c: %m%n
+ 
+ # Custom Logging levels
+ 
+ #log4j.logger.org.apache.hadoop.fs.FSNamesystem=DEBUG
+ 
+-log4j.logger.org.apache.hadoop=WARN
+-log4j.logger.org.apache.zookeeper=ERROR
++log4j.logger.org.apache.hadoop=INFO
++log4j.logger.org.apache.zookeeper=INFO
+ log4j.logger.org.apache.hadoop.hbase=DEBUG

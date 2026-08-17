@@ -55,15 +55,22 @@
     },
     {
       "id": "M3",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-17T02:15:13Z",
+      "finished": "2026-08-17T02:15:13Z",
+      "attempts": 1,
+      "by": "agent-run-8b54496c",
+      "artifacts": [
+        "evaluations/HBase/HBase-3403/reproduce.sh",
+        "evaluations/HBase/HBase-3403/reproduce.md",
+        "evaluations/HBase/HBase-3403/private/symptom.orig.log",
+        "evaluations/HBase/HBase-3403/private/merged.orig.log",
+        "evaluations/HBase/HBase-3403/private/repro-test.patch",
+        "evaluations/HBase/HBase-3403/private/merge_logs.py"
+      ],
+      "note": "Reproduced on the pre-fix tree with a mini cluster test (org.apache.hadoop.hbase.util.TestSplitCrashRecovery): split a usertable region, drop the daughter's .META. row (the crash window upstream's own fix-test simulates the same way), abort the region server, wait 180s for master recovery, then run the shipped HBaseFsck. Detection is a test assertion (daughter never returns to .META.) plus hbck's own report; no log line is injected. Log A private/symptom.orig.log = 7415 lines; Log B private/merged.orig.log = 12002242 lines / 3.06 GB = Log A retimed onto the production span and spread across all 20 per-host sections of production-logs/HBase/production.log via private/merge_logs.py --interleave position (Zookeeper-1851's tool, body unmodified; the HBase production log is a per-host bundle, so a literal timestamp merge would collapse the repro into the first section). Full write-up in reproduce.md."
     },
     {
       "id": "M4",

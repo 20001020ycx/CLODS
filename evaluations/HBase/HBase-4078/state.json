@@ -113,15 +113,22 @@
     },
     {
       "id": "M6",
-      "status": "PENDING",
-      "outcome": "pending",
+      "status": "IN_PROGRESS",
+      "outcome": "in_progress",
       "success": null,
-      "started": null,
+      "started": "2026-08-17T19:39:00Z",
       "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "attempts": 2,
+      "by": "agent-run-4ee9c5a7",
+      "artifacts": [
+        "private/run_diagnosis.prodlog.sh",
+        "diagnosis/run_1.md",
+        "diagnosis/run_2.md",
+        "diagnosis/run_3.QUOTA-FAILED.txt",
+        "diagnosis/run_4.QUOTA-FAILED.txt",
+        "diagnosis/run_5.QUOTA-FAILED.txt"
+      ],
+      "note": "2 of 5 runs COMPLETED; runs 3-5 are blocked by the model gateway's DAILY QUOTA, not by anything about this bug: each returned 'API Error: Request rejected (429) - Daily quota exceeded for model group \"claude-opus-4-7\". The quota resets at 2026-08-18T08:00:00-04:00.' (the same wall HBase-3403 hit today, see its run_4/5.QUOTA-FAILED.txt - the quota is shared). Their bodies were renamed to diagnosis/run_N.QUOTA-FAILED.txt so the harness's idempotency check (skip a non-empty run_N.md) will re-run exactly those three; run_1.md and run_2.md are complete, stderr-clean and must NOT be re-run. TO RESUME (after 2026-08-18T12:00Z), from the repo root: bash context/extract-yscope-anthropic-paper-validation-env.sh /tmp/ysa.env ; GW_IP=$(getent ahostsv4 llm-gateway.yscope.io | awk '{print $1}' | sort -u | head -1) ; docker run --rm --cap-add=NET_ADMIN --add-host llm-gateway.yscope.io:$GW_IP --env-file /tmp/ysa.env -e IS_SANDBOX=1 -v $PWD/evaluations/HBase/HBase-4078:/bug --entrypoint bash clods-eval /bug/private/run_diagnosis.prodlog.sh /bug ; then delete /tmp/ysa.env. HARNESS: private/run_diagnosis.prodlog.sh is context/run_diagnosis.sh with EXACTLY two deltas and nothing else (diff = 3 hunks: this header, plus the two) - (1) the sec.5/M6 prompt text 'the production log at <STAGE>/logs/symptom.log (this is a large, realistic production log - grep it for the symptom rather than reading it whole)', (2) sec.7's hardlink-not-copy staging of the 3.19 GB merged log. context/ was NOT modified. One deployment-level addition was needed at docker run: -e IS_SANDBOX=1, because Claude Code 2.1.197 refuses --permission-mode bypassPermissions as root ('--dangerously-skip-permissions cannot be used with root/sudo privileges') and the container must be root for the iptables lock; it changes no isolation property (verified by a control run). Egress iptables-locked to llm-gateway.yscope.io:443 only (--add-host pins the IP so the DROP policy cannot break DNS), auth = the yscope-anthropic-paper-validation bearer token via --env-file, model claude-opus-4-7 effort high, --bare --no-session-persistence --exclude-dynamic-system-prompt-sections, Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, throwaway staging dir holding ONLY source/ + logs/symptom.log + symptom.md, single turn, no follow-ups. PRELIMINARY (both completed runs, not yet graded at M7): both traced the SYMPTOM path exhaustively and correctly - FamilyStore.openStoreFiles' catch(IOException){WARN; continue;} at 268-273, StoreFile.createReader -> HFile.pickReaderVersion -> FixedFileTrailer.readFromStream:306 -> HFile.checkFormatVersion's 'version < 1 || version > 2' at HFile.java:473 - and both concluded the root cause is 'the HFile trailer is corrupt' plus the swallow-and-continue policy. NEITHER named either site the fix changed: 0 mentions of writeSnapshotFile (= internalFlushCache) or installCompactionResult (= completeCompaction), and neither asked how an unreadable file came to be in the live column-family directory. Run 2 explicitly calls the skip 'not a second bug ... the intentional policy', the opposite of the ticket's judgment."
     },
     {
       "id": "M7",

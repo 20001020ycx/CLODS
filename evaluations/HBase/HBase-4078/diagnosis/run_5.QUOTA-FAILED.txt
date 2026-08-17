@@ -1,0 +1,1 @@
+API Error: Request rejected (429) · Daily quota exceeded for model group "claude-opus-4-7". The quota resets at 2026-08-18T08:00:00-04:00.

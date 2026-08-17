@@ -100,3 +100,4 @@
 2026-08-17T19:09:34Z Zookeeper-1851 extra M6 batch via gateway: 0/4 (run 5 quota-blocked)
 2026-08-17T19:38:00Z HBase-4078 M4 DONE success (Store->FamilyStore + 17 log literals; both logs regenerated; leakage gate clean)
 2026-08-17T19:39:16Z HBase-4078 M5 DONE success (bare-observable symptom + two-site ground truth)
+2026-08-17T19:49:15Z HBase-4078 M6 IN_PROGRESS: 2/5 runs done, 3 blocked by claude-opus-4-7 daily quota (resets 2026-08-18T12:00Z)

@@ -20,7 +20,7 @@
 | M3 | Reproduce + merge into production log | DONE | true | success | 4 short files promoted into the live store dir; 139.7 MB repro log merged into 3.19 GB |
 | M4 | Anonymize failure path, rebuild, re-reproduce | DONE | true | success | `Store`→`FamilyStore` + 17 log literals; both logs regenerated; gate clean |
 | M5 | Diagnosis inputs + ground truth | DONE | true | success | bare-observable symptom + two-site answer key |
-| M6 | LLM diagnosis ×5 | PENDING | null | pending | |
+| M6 | LLM diagnosis ×5 | IN_PROGRESS | null | in_progress | 2/5 done; runs 3-5 blocked by the gateway's daily quota (resets 2026-08-18 08:00 EDT) |
 | M7 | Grade runs | PENDING | null | pending | |
 | M8 | Summary & finalize | PENDING | null | pending | |
 
@@ -90,3 +90,19 @@
   - **Deliberately absent** (anti-cheat, and the reason this bug needs care): no trigger, no mechanism, no at-fault class/method/branch, and **no mention of the compaction, the flush, the failed compaction or the regionserver abort** — naming those would hand over the shape of the answer, since the two root-cause sites *are* the flush promotion and the compaction promotion.
   - `private/ground_truth.md` carries both the real and the anonymized names plus a translation table: **site A** `Store.internalFlushCache` 521-533 (`FamilyStore.writeSnapshotFile`) and **site B** `Store.completeCompaction` 1221-1232 (`FamilyStore.installCompactionResult`); the wrong condition at both is that the move out of `.tmp` is guarded only by *"did the rename succeed"* / *"was anything written"*, never by *"can the file be opened"* — the open happens only after the move. `loadStoreFiles`' `catch (IOException) { continue; }` is recorded as the consequence site and explicitly **not** a pass.
   - Pre-registered bar (§8/§10): both sites **and** the missing-validation condition; per-run sub-scores `site_a`, `site_b`, `condition_stated`, `symptom_site_only` keep alternative bars auditable without a re-run.
+- 2026-08-17T19:50:00Z agent-run-4ee9c5a7 — **M6 partially complete: 2 of 5 runs**. Runs 3-5 each returned `API Error: Request rejected (429) · Daily quota exceeded for model group "claude-opus-4-7". The quota resets at 2026-08-18T08:00:00-04:00.` — the shared gateway quota (HBase-3403 hit the same wall today). Their bodies were renamed to `diagnosis/run_N.QUOTA-FAILED.txt` so the harness's idempotency rule (skip a non-empty `run_N.md`) re-runs exactly those three; `run_1.md` and `run_2.md` are complete, stderr-clean, and must not be re-run.
+
+  **Resume after 2026-08-18T12:00Z**, from the repo root:
+  ```bash
+  bash context/extract-yscope-anthropic-paper-validation-env.sh /tmp/ysa.env
+  GW_IP=$(getent ahostsv4 llm-gateway.yscope.io | awk '{print $1}' | sort -u | head -1)
+  docker run --rm --cap-add=NET_ADMIN --add-host "llm-gateway.yscope.io:$GW_IP" \
+    --env-file /tmp/ysa.env -e IS_SANDBOX=1 \
+    -v "$PWD/evaluations/HBase/HBase-4078:/bug" \
+    --entrypoint bash clods-eval /bug/private/run_diagnosis.prodlog.sh /bug
+  rm -f /tmp/ysa.env
+  ```
+
+  **Harness.** `private/run_diagnosis.prodlog.sh` is `context/run_diagnosis.sh` with exactly two deltas (diff = 3 hunks: its header, plus these): the §5/M6 prompt text, and §7's hardlink-not-copy staging of the 3.19 GB merged log. `context/` was **not** modified. One deployment-level addition was required on the `docker run`: `-e IS_SANDBOX=1`, because Claude Code 2.1.197 refuses `--permission-mode bypassPermissions` as root ("--dangerously-skip-permissions cannot be used with root/sudo privileges") and the container must be root for the iptables lock; it changes no isolation property (verified with a control run). Egress iptables-locked to `llm-gateway.yscope.io:443` only, model `claude-opus-4-7` effort `high`, `--bare --no-session-persistence --exclude-dynamic-system-prompt-sections`, Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit denied, staging holds only `source/` + `logs/symptom.log` + `symptom.md`, single turn, no follow-ups.
+
+  **Preliminary (ungraded) reading of runs 1-2.** Both traced the *symptom* path exhaustively and correctly — `FamilyStore.openStoreFiles`' `catch (IOException) { WARN; continue; }` at 268-273, `StoreFile.createReader` → `HFile.pickReaderVersion` → `FixedFileTrailer.readFromStream:306` → `HFile.checkFormatVersion`'s `version < 1 || version > 2` at `HFile.java:473` — and both concluded the root cause is "the HFile trailer is corrupt" plus the swallow-and-continue policy. **Neither named either site the fix changed** (0 mentions of `writeSnapshotFile` = `internalFlushCache`, or `installCompactionResult` = `completeCompaction`); neither asked how an unreadable file came to be in the live column-family directory in the first place. Run 2 goes further and calls the skip "not a second bug … the *intentional* policy" — the opposite of the ticket's judgment.

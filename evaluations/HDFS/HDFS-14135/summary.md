@@ -38,12 +38,14 @@ condition — poll up to 10 s until a fresh blocking probe connect actually time
 skips the check (`AssumptionViolatedException`) when saturation cannot be reached.
 
 ## Grading
-PASS required naming the exact root-causing line(s) **and** the exact branch conditions.
-All five runs did both, from the anonymized source plus the merged production log alone, with
-no follow-up prompts. Runs 3 and 4 attached an incorrect kernel-level rationale (`somaxconn`
-clamping) to an otherwise correct code-level diagnosis; the rubric scores the code location and
-the logical condition, both of which were right, so they score PASS with the caveat recorded in
-their grade JSONs.
+Scored on **root-cause identification only** — the exact root-causing line(s) **and** the exact
+branch conditions. Whatever repair a run proposed is not part of the verdict. All five located
+the root cause from the anonymized source plus the merged production log alone, with no
+follow-up prompts. Runs 3 and 4 attached an incorrect kernel-level rationale (`somaxconn`
+clamping) to an otherwise correct code-level diagnosis; since the root-causing line and the
+deciding branch are right in both, they score PASS, with the caveat recorded in their grade
+JSONs. Run 3 is the weakest of the five: its account of *why* the accept queue is not full
+contradicts the actual mechanism.
 
 ## Discussion
 This bug is the *easy* end of the spectrum for a static reasoner, and the result shows it:

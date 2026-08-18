@@ -1,6 +1,6 @@
 {
   "verdict": "PASS",
-  "justification": "Names the exact root-causing lines (the fillPendingConnectQueue/consumeConnectionBacklog body, 355-362) and states both required conditions: the non-blocking connect loop returns before the handshakes have saturated the backlog-1 accept queue, and the connect-deadline check's catch (SocketTimeoutException) -> assertExceptionContains(\"...: connect timed out\") then sees a read deadline. It also derives the correct discriminator (only the tests that call the helper fail). This is the defect the upstream fix repairs by waiting for a probe connect to time out.",
+  "justification": "Names the exact root-causing lines (the fillPendingConnectQueue/consumeConnectionBacklog body, 355-362) and states both required conditions: the non-blocking connect loop returns before the handshakes have saturated the backlog-1 accept queue, and the connect-deadline check's catch (SocketTimeoutException) -> assertExceptionContains(\"...: connect timed out\") then sees a read deadline. It also derives the correct discriminator (only the tests that call the helper fail). Root cause located exactly: the helper body plus the condition under which it returns early.",
   "claimed_lines": [
     "TestWebHdfsClientDeadlines.java:355-362 fillPendingConnectQueue() \u2014 the non-blocking connect loop",
     "TestWebHdfsClientDeadlines.java:70-72 PENDING_CONNECT_CLIENTS=129 / LISTEN_QUEUE_LENGTH=1 / SHORT_SOCKET_TIMEOUT=200",

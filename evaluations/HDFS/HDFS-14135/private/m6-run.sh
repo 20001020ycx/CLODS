@@ -25,7 +25,13 @@ CRED="$(mktemp -d /tmp/clods-cred-XXXX)"
 STAGE_VOL="$ROOT/repos/.diagstage-HDFS-14135"
 LOGF="$BUG_DIR/private/m6-harness.log"
 
-cleanup() { rm -rf "$CRED"; }
+# the container runs as root and leaves root-owned files in the credential copy, so remove
+# it from inside a container as well
+cleanup() {
+    rm -rf "$CRED" 2>/dev/null || \
+        docker run --rm -v "$(dirname "$CRED"):/c" --entrypoint bash clods-eval \
+            -lc "rm -rf /c/$(basename "$CRED")" >/dev/null 2>&1 || true
+}
 trap cleanup EXIT
 
 install -m 600 "$CRED_SRC/.credentials.json" "$CRED/.credentials.json"

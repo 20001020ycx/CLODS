@@ -1,0 +1,45 @@
+=== M6 provenance (subject/endpoint evidence) ===
+date: 2026-08-18T02:52:36Z
+api.anthropic.com pinned to: 160.79.104.10
+ANTHROPIC_BASE_URL=<unset>   ANTHROPIC_AUTH_TOKEN=<unset>   ANTHROPIC_API_KEY=<unset>
+credential kind: ['claudeAiOauth', 'mcpOAuth'] max
+160.79.104.10	api.anthropic.com
+=== harness ===
+Network locked: egress restricted to api.anthropic.com:443.
+=== diagnosis run 1/5 (model=claude-opus-4-7 effort=high cmd=claude) ===
+=== diagnosis run 2/5 (model=claude-opus-4-7 effort=high cmd=claude) ===
+=== diagnosis run 3/5 (model=claude-opus-4-7 effort=high cmd=claude) ===
+=== diagnosis run 4/5 (model=claude-opus-4-7 effort=high cmd=claude) ===
+=== diagnosis run 5/5 (model=claude-opus-4-7 effort=high cmd=claude) ===
+Done. 5 diagnoses written under /bug/diagnosis
+=== iptables after lock ===
+-P INPUT DROP
+-P FORWARD DROP
+-P OUTPUT DROP
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -o lo -j ACCEPT
+-A OUTPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -d 160.79.104.10/32 -p tcp -m tcp --dport 443 -j ACCEPT
+
+=== notes (written by the orchestrating agent, not by the harness) ===
+* Subject/endpoint: Claude Opus 4.7 via the `ccs anthropic` ACCOUNT = the Claude subscription
+  login (claudeAiOauth, subscriptionType=max) straight to api.anthropic.com, matching the most
+  recent bugs in this workspace (HBase-3627 M6 re-run). The container carried NO
+  ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN / ANTHROPIC_API_KEY (see the header above), so no
+  `yscope-*` gateway profile was or could be used.
+* Harness: private/run_diagnosis.prodlog.sh — byte-identical body to HBase-3627's copy (only its
+  header comment differs). 5 fresh `claude -p` processes, --safe-mode, --no-session-persistence,
+  --exclude-dynamic-system-prompt-sections, Bash/Write/Edit/WebFetch/WebSearch/Task/NotebookEdit
+  denied, model claude-opus-4-7 effort high, staging = symptom.md + source/ + logs/symptom.log only.
+* Staging volume: repos/.diagstage-HDFS-14135 mounted at /stage with TMPDIR=/stage, so the 7.4 GB
+  merged log is staged on the SSD rather than the container overlay. The harness hardlinks when it
+  can and falls back to a copy across mounts (the case here).
+* A pre-batch probe (one trivial prompt) confirmed model access before the real runs; it used a
+  separate throwaway credential copy that was deleted afterwards.
+* The iptables dump above is the state after the lock: default DROP on INPUT/FORWARD/OUTPUT with a
+  single ACCEPT to 160.79.104.10:443 (api.anthropic.com).
+* Caveat inherited from the tracked harness: the lock is IPv4-only (iptables, not ip6tables); the
+  container has no IPv6 route, so this is theoretical here.
+* Command used (host side): bash evaluations/HDFS/HDFS-14135/private/m6-run.sh
+* All 5 runs exited 0 with empty run_N.stderr.

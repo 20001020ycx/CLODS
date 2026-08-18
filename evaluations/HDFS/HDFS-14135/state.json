@@ -5,7 +5,7 @@
   "source_repo": "https://github.com/apache/hadoop.git",
   "fix_commit": "6b8107ad97251267253fa045ba03c4749f95f530",
   "pre_fix_commit": "b7fba78fb63a0971835db87292822fd8cd4aa7ad",
-  "anonymized_commit": null,
+  "anonymized_commit": "71f580f39d7f24972e7df07fa002ae7ca4dba7e9",
   "symptom_short": "a WebHDFS request that is expected to fail while connecting instead connects and fails on the read deadline, reported as a failed expectation",
   "milestones": [
     {
@@ -75,15 +75,23 @@
     },
     {
       "id": "M4",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-18T02:34:23Z",
+      "finished": "2026-08-18T02:51:06Z",
+      "attempts": 2,
+      "by": "agent-run-53a0adfb",
+      "artifacts": [
+        "source/",
+        "logs/repro.log",
+        "logs/symptom.log",
+        "private/anonymization_map.json",
+        "private/anonymize.sh",
+        "private/anon_map_build.py",
+        "private/verify_anon.sh"
+      ],
+      "note": "Renamed the case-identifying test file/type (TestWebHdfsTimeouts -> TestWebHdfsClientDeadlines), its helper/constants/test-method names, and rewrote the failure-path log and failure-message literals; rebuilt and re-reproduced (3 of 3 repetitions failed, 7 checks total). source/ = 319 java files, anon commit 71f580f. logs/repro.log 18,467 lines; logs/symptom.log 49,712,463 lines (26,323,996 production + 15,186 reproduction records). Leakage verification all clean. Attempt 1 was discarded: the build tree's bug-id-bearing path leaked into the log via Jetty, so the build tree was renamed to repos/hadoop-webhdfs-build and the whole M4 pipeline re-run."
     },
     {
       "id": "M5",

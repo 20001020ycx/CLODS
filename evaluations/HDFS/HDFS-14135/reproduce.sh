@@ -52,7 +52,12 @@ if [ ! -f "$SRC_TREE/cp-test.txt" ]; then
     (cd "$HDFS_MOD" && mvn org.apache.maven.plugins:maven-dependency-plugin:3.1.1:build-classpath \
         -Dmdep.outputFile="$SRC_TREE/cp-test.txt" -DincludeScope=test -q)
 fi
-CP="$HDFS_MOD/target/test-classes:$HDFS_MOD/target/classes:$(cat "$SRC_TREE/cp-test.txt")"
+# The client classes come first: the sibling jars in ~/.m2 are the *unmodified* install
+# from M2, so the tree being exercised must win over them (this matters at M4, where the
+# hdfs-client sources carry the rewritten failure-path log literals).
+CP="$HDFS_MOD/target/test-classes:$HDFS_MOD/target/classes"
+CP="$CP:$SRC_TREE/hadoop-hdfs-project/hadoop-hdfs-client/target/classes"
+CP="$CP:$(cat "$SRC_TREE/cp-test.txt")"
 
 mkdir -p "$RUN/wl"
 javac -nowarn -cp "$CP" -d "$RUN/wl" "$BUG_DIR/private/repro/Workload.java" 2>"$RUN/javac.log"

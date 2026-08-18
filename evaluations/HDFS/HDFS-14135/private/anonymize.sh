@@ -21,7 +21,10 @@
 set -euo pipefail
 
 REPO="${REPO:-/work/repos/HDFS-HDFS-14135}"
-ANON_REPO="${ANON_REPO:-/work/repos/HDFS-HDFS-14135-anon}"
+# Deliberately NOT named after the bug: the build tree's absolute path is printed into the
+# reproduction log by Jetty/Hadoop (webapp resource paths), so a bug-id-bearing path would
+# leak the JIRA id straight into the LLM-facing log (METHODOLOGY §6(a)).
+ANON_REPO="${ANON_REPO:-/work/repos/hadoop-webhdfs-build}"
 BUG_DIR="${BUG_DIR:-/work/evaluations/HDFS/HDFS-14135}"
 PROD_LOG="${PROD_LOG:-/work/production-logs/HDFS/production.log}"
 PRE_FIX="${PRE_FIX:-b7fba78fb63a0971835db87292822fd8cd4aa7ad}"
@@ -30,6 +33,9 @@ MAP="$BUG_DIR/private/anonymization_map.json"
 TEST_DIR_REL="hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/web"
 CLIENT_DIR_REL="hadoop-hdfs-project/hadoop-hdfs-client/src/main/java/org/apache/hadoop/hdfs/web"
 COMMON_TEST_REL="hadoop-common-project/hadoop-common/src/test/java/org/apache/hadoop/test"
+
+# containers run as root against a host-owned clone
+git config --global --add safe.directory '*' || true
 
 echo "[anonymize] 1/6 worktree at the pre-fix commit"
 if [ ! -d "$ANON_REPO" ]; then

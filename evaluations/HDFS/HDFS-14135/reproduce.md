@@ -12,8 +12,11 @@ java.lang.AssertionError:  Expected to find 'localhost:35917: connect timed out'
 unexpected exception: java.net.SocketTimeoutException: localhost:35917: Read timed out
 ```
 
-It is **intermittent**: in the captured run one of three identical repetitions failed (1 of
-its 16 checks), the other two passed.
+It is **intermittent**: the suite is run three times per capture, and the number of failing
+checks varies run to run and capture to capture. In the pre-anonymization M3 capture one of
+the three repetitions failed (1 of its 16 checks) and the other two passed; in the M4
+capture that produced the LLM-facing log — taken while the host was busier — all three
+failed, with 3 / 3 / 1 of their 16 checks.
 
 ## How to run it
 
@@ -89,10 +92,10 @@ the failure-path literals are the renamed ones (see `private/anonymization_map.j
 
 `reproduce.sh` asserts, from the collected log and the traffic driver's result file:
 
-| assertion | observed |
+| assertion | observed (M4 capture, the one behind the LLM-facing log) |
 |---|---|
-| at least one repetition fails | suite run 1 exit=1, `Tests run: 16, Failures: 1`; runs 2 and 3 `OK (16 tests)` |
-| a read deadline is reported where a connect deadline was expected | `Expected to find 'localhost:35917: connect timed out' but got unexpected exception: java.net.SocketTimeoutException: localhost:35917: Read timed out` |
+| at least one repetition fails | `Tests run: 16, Failures: 3` / `Failures: 3` / `Failures: 1` (M3 capture: 1 failing repetition of 3) |
+| a read deadline is reported where a connect deadline was expected | `Expected to find 'localhost:40019: connect timed out' but got unexpected exception: java.net.SocketTimeoutException: localhost:40019: Read timed out` (7 such lines) |
 | ordinary WebHDFS traffic completed | `written=3 read=3 checksums=3 renamed=3 listed=4 deleted=1 error=` |
 
 `Workload.java` **never writes to stdout or stderr** — its observations go to
@@ -105,8 +108,8 @@ output or the test runner's own failure report.
 
 | | file | what it is |
 |---|---|---|
-| **Log A** | `private/symptom.orig.log` (pre-anon) → `logs/repro.log` (anon) | the standalone reproduction: 2 WebHDFS/MiniDFSCluster sessions + 3 suite repetitions, **17 990 lines / 3.5 MB / 15 244 records**. Kept for reference; **never given to the LLM**. |
-| **Log B** | `private/merged.orig.log` (pre-anon) → `logs/symptom.log` (anon) | Log A merged into the shared production log — **49 711 986 lines / 7.4 GB** = 26 323 996 production + 15 244 reproduction records. This is what the LLM gets. |
+| **Log A** | `private/symptom.orig.log` (pre-anon, 17 990 lines / 15 244 records) → `logs/repro.log` (anon, **18 467 lines / 3.6 MB / 15 186 records**) | the standalone reproduction: 2 WebHDFS/MiniDFSCluster sessions + 3 suite repetitions. Kept for reference; **never given to the LLM**. |
+| **Log B** | `private/merged.orig.log` (pre-anon) → `logs/symptom.log` (anon) | Log A merged into the shared production log — **49 712 463 lines / 7.4 GB** = 26 323 996 production + 15 186 reproduction records. This is what the LLM gets. |
 
 The shared production log is `production-logs/HDFS/production.log` (7.0 GB, 26 323 996
 records, HDFS DEBUG under YCSB + chaos monkey, span `2026-08-14 19:23:20,772 ..
@@ -128,10 +131,11 @@ therefore collapse the whole reproduction into the first section as one contiguo
 block. `position` keeps the specified **retiming** rule unchanged (linear warp of the
 reproduction span onto the production span, preserving relative ordering and gaps) and
 changes only the interleaving key to proportional record position. Measured spread: the
-reproduction's five session boundaries land at merged lines 1 / 26.2 M / 26.9 M / 27.5 M /
-28.2 M, i.e. one reproduction record roughly every 1 727 production records across the file.
+reproduction's five session boundaries land in the first line and then around 53–57 % of the
+merged file, i.e. one reproduction record roughly every 1 733 production records across the
+file.
 
-Consequence worth knowing: the reproduction's real 33-second span is warped onto the
+Consequence worth knowing: the reproduction's real ~34-second span is warped onto the
 production log's 7.5-minute span (≈13×), so a 200 ms deadline in the reproduction appears as
 a ≈2.7 s gap between neighbouring reproduction records. The *content* of every line —
 including the deadline values the code prints — is untouched.
@@ -149,6 +153,11 @@ including the deadline values the code prints — is untouched.
 - `private/repro/loop.sh` — the calibration harness used to measure how often the suite
   fails at a given loopback latency (not part of the reproduction itself).
 - `private/merge_logs.py` — the M3 step-8 merge (read-only on the shared production log).
+- `private/anonymize.sh` + `private/anon_map_build.py` + `private/verify_anon.sh` — the M4
+  rename/rebuild/re-merge/verify pipeline. It builds in a **neutrally named** worktree
+  (`repos/hadoop-webhdfs-build`, not `…HDFS-14135…`): Jetty prints the build tree's absolute
+  path into the DEBUG log, so a bug-id-bearing path would put the JIRA id straight into the
+  LLM-facing log. The first M4 attempt did exactly that and was discarded and re-run.
 - No production source was changed at M3. The only dependency fix is toolchain-level
   (protobuf 2.5.0 compiler, `private/deps-fix.patch` + `private/Dockerfile`); no `pom.xml`
   was edited.

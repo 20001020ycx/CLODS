@@ -2,9 +2,9 @@
   "bug_id": "HDFS-14135",
   "system": "HDFS",
   "jira": "https://issues.apache.org/jira/browse/HDFS-14135",
-  "source_repo": null,
-  "fix_commit": null,
-  "pre_fix_commit": null,
+  "source_repo": "https://github.com/apache/hadoop.git",
+  "fix_commit": "6b8107ad97251267253fa045ba03c4749f95f530",
+  "pre_fix_commit": "b7fba78fb63a0971835db87292822fd8cd4aa7ad",
   "anonymized_commit": null,
   "symptom_short": null,
   "milestones": [
@@ -25,15 +25,17 @@
     },
     {
       "id": "M1",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-18T01:46:20Z",
+      "finished": "2026-08-18T01:55:49Z",
+      "attempts": 1,
+      "by": "agent-run-53a0adfb",
+      "artifacts": [
+        "private/fix.diff"
+      ],
+      "note": "Verified trunk fix 6b8107ad972: wait for the socket backlog to become saturated and skip timeout assertions if saturation cannot be established; parent b7fba78fb63 is the pre-fix tree."
     },
     {
       "id": "M2",

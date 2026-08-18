@@ -1,0 +1,89 @@
+commit 6b8107ad97251267253fa045ba03c4749f95f530
+Author: Masatake Iwasaki <iwasakims@apache.org>
+Date:   Fri Jun 21 14:33:41 2019 +0900
+
+    HDFS-14135. TestWebHdfsTimeouts Fails intermittently in trunk. Contributed by Ayush Saxena.
+    
+    Signed-off-by: Masatake Iwasaki <iwasakims@apache.org>
+
+diff --git a/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/web/TestWebHdfsTimeouts.java b/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/web/TestWebHdfsTimeouts.java
+index 7b445153884..a693ac3d5e9 100644
+--- a/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/web/TestWebHdfsTimeouts.java
++++ b/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/web/TestWebHdfsTimeouts.java
+@@ -35,6 +35,7 @@
+ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.List;
++import java.util.concurrent.TimeoutException;
+ 
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+@@ -47,6 +48,7 @@
+ import org.apache.hadoop.security.authentication.client.ConnectionConfigurator;
+ import org.apache.hadoop.test.GenericTestUtils;
+ import org.junit.After;
++import org.junit.AssumptionViolatedException;
+ import org.junit.Before;
+ import org.junit.runner.RunWith;
+ import org.junit.runners.Parameterized;
+@@ -85,6 +87,7 @@ public HttpURLConnection configure(HttpURLConnection conn) throws IOException {
+       return conn;
+     }
+   });
++  private volatile boolean failedToConsumeBacklog;
+ 
+   public enum TimeoutSource { ConnectionFactory, Configuration };
+ 
+@@ -123,6 +126,7 @@ public void setUp() throws Exception {
+ 
+     clients = new ArrayList<SocketChannel>();
+     serverThread = null;
++    failedToConsumeBacklog = false;
+   }
+ 
+   @After
+@@ -213,6 +217,7 @@ public void testRedirectConnectTimeout() throws Exception {
+       fs.getFileChecksum(new Path("/file"));
+       fail("expected timeout");
+     } catch (SocketTimeoutException e) {
++      assumeBacklogConsumed();
+       GenericTestUtils.assertExceptionContains(
+           fs.getUri().getAuthority() + ": connect timed out", e);
+     }
+@@ -246,6 +251,7 @@ public void testTwoStepWriteConnectTimeout() throws Exception {
+       os = fs.create(new Path("/file"));
+       fail("expected timeout");
+     } catch (SocketTimeoutException e) {
++      assumeBacklogConsumed();
+       GenericTestUtils.assertExceptionContains(
+           fs.getUri().getAuthority() + ": connect timed out", e);
+     } finally {
+@@ -359,6 +365,28 @@ private void consumeConnectionBacklog() throws IOException {
+       client.connect(nnHttpAddress);
+       clients.add(client);
+     }
++    try {
++      GenericTestUtils.waitFor(() -> {
++        try (SocketChannel c = SocketChannel.open()) {
++          c.socket().connect(nnHttpAddress, 100);
++        } catch (SocketTimeoutException e) {
++          return true;
++        } catch (IOException e) {
++          LOG.debug("unexpected exception: " + e);
++        }
++        return false;
++      }, 100, 10000);
++    } catch (TimeoutException | InterruptedException e) {
++      failedToConsumeBacklog = true;
++      assumeBacklogConsumed();
++    }
++  }
++
++  private void assumeBacklogConsumed() {
++    if (failedToConsumeBacklog) {
++      throw new AssumptionViolatedException(
++          "failed to fill up connection backlog.");
++    }
+   }
+ 
+   /**

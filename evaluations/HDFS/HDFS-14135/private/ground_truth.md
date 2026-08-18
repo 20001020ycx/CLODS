@@ -125,6 +125,28 @@ fail is the signature of this defect.
 
 ---
 
+## 2b. Measured kernel behaviour (recorded so the mechanism claims above are auditable)
+
+Direct measurement on the reproduction host (Linux 5.15, `somaxconn=4096`,
+`tcp_max_syn_backlog=4096`, `tcp_syncookies=1`), replaying the helper's exact trick and reading
+the listening socket's accept-queue depth from `/proc/net/tcp{,6}`:
+
+- `new ServerSocket(0, 1)` yields an accept queue of **2** — Linux applies
+  `min(backlog, somaxconn)`, i.e. `somaxconn` is an upper **cap**, never a floor. The claim that
+  the kernel enlarges a backlog of 1 to `somaxconn` is **false on this host**.
+- Immediately after the 129 non-blocking connects return, the queue already reads **2/2 (full)**,
+  with or without the 2 ms loopback delay, and stays full when re-sampled after 1 ms … 5 s.
+- Consequently an isolated client connect timed out (the *intended* behaviour) in **50/50**
+  attempts across both network conditions.
+
+So the minimal harness does **not** reproduce the client slipping through, even though the full
+suite does (7 failing checks across 3 repetitions). The consequence for this answer key: §1's
+root-causing line and §2's two conditions are established — they are exactly what the upstream
+fix changed — but the fine-grained kernel-level *trigger* inside the full-suite context (why the
+client's connect occasionally succeeds when the queue measures full in isolation) is **not
+established by measurement here**, and no run should be credited or penalised for its story
+about it.
+
 ## 3. PASS criteria (METHODOLOGY §8)
 
 A run PASSes **only** if it names both:

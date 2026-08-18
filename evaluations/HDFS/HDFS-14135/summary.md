@@ -37,6 +37,18 @@ which sees `": Read timed out"` instead. The fix turns the assumption into a che
 condition — poll up to 10 s until a fresh blocking probe connect actually times out — and
 skips the check (`AssumptionViolatedException`) when saturation cannot be reached.
 
+## What was measured about the kernel (added after grading)
+Replaying the helper's trick in isolation on the reproduction host and reading the listening
+socket's accept-queue depth from `/proc/net/tcp{,6}`: `new ServerSocket(0, 1)` gives a queue of
+**2** (Linux applies `min(backlog, somaxconn)` — `somaxconn` is a cap, not a floor), the queue
+reads **full immediately** after the 129 non-blocking connects and stays full from 1 ms to 5 s,
+and an isolated client connect correctly timed out in **50/50** attempts with and without the
+2 ms delay. Two consequences: (a) the "Linux clamps the backlog *up* to `somaxconn`, so it never
+fills" story in runs 3 and 4 is **false on this host**; (b) the minimal harness does not
+reproduce the client slipping through, so the fine-grained kernel-level trigger inside the full
+suite is **not established by measurement** — the code-level defect (the helper asserts an
+invariant it never checks) is what is established, and is what upstream changed.
+
 ## Grading
 Scored on **root-cause identification only** — the exact root-causing line(s) **and** the exact
 branch conditions. Whatever repair a run proposed is not part of the verdict. All five located

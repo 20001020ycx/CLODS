@@ -95,15 +95,18 @@
     },
     {
       "id": "M5",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-18T02:51:21Z",
+      "finished": "2026-08-18T02:51:56Z",
+      "attempts": 1,
+      "by": "agent-run-53a0adfb",
+      "artifacts": [
+        "symptom.md",
+        "private/ground_truth.md"
+      ],
+      "note": "symptom.md = the pasted AssertionError from logs/symptom.log (42 words) + the log pointer; no trigger, mechanism, component, branch or narrowing comparison. ground_truth.md gives the fix's exact lines (the consumeConnectionBacklog/fillPendingConnectQueue body) and both required branch conditions, in real and anonymized names. Gate: zero bug-id/original-identifier hits; the observable is one grep away in the merged log (1 hit for the quoted line, 7 AssertionError lines)."
     },
     {
       "id": "M6",

@@ -1,0 +1,124 @@
+{
+  "bug_id": "HDFS-14135",
+  "system": "HDFS",
+  "jira": "https://issues.apache.org/jira/browse/HDFS-14135",
+  "source_repo": null,
+  "fix_commit": null,
+  "pre_fix_commit": null,
+  "anonymized_commit": null,
+  "symptom_short": null,
+  "milestones": [
+    {
+      "id": "M0",
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-18T01:44:58Z",
+      "finished": "2026-08-18T01:44:58Z",
+      "attempts": 1,
+      "by": "agent-run-53a0adfb",
+      "artifacts": [
+        "PROGRESS.md",
+        "state.json"
+      ],
+      "note": "Created and claimed the per-bug evaluation workspace."
+    },
+    {
+      "id": "M1",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M2",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M3",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M4",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M5",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M6",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M7",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    },
+    {
+      "id": "M8",
+      "status": "PENDING",
+      "outcome": "pending",
+      "success": null,
+      "started": null,
+      "finished": null,
+      "attempts": 0,
+      "by": null,
+      "artifacts": [],
+      "note": ""
+    }
+  ],
+  "result": null
+}

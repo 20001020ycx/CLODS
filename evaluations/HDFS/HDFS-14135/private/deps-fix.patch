@@ -1,0 +1,24 @@
+# deps-fix.patch — HDFS-14135 (pre-fix commit b7fba78fb63a0971835db87292822fd8cd4aa7ad,
+# apache/hadoop trunk, 2019-07-25, version 3.3.0-SNAPSHOT)
+#
+# NO build-file edit was required: the pre-fix tree compiles unmodified on the container's
+# JDK 11 + Maven 3.6.3 once the toolchain provides the protobuf compiler the build pins.
+#
+# The single dependency fix is at the TOOLCHAIN level, not in any pom.xml:
+#
+#   hadoop-project/pom.xml pins <protobuf.version>2.5.0</protobuf.version> and invokes
+#   ${env.HADOOP_PROTOC_PATH}; hadoop-maven-plugins' protoc goal aborts with
+#       "'protoc --version' did not return a version"
+#   because Ubuntu 22.04 ships protobuf 3.x and upstream published no 2.5.0 Linux binary.
+#
+#   Fix: build protobuf 2.5.0 from source into /opt/protobuf-2.5.0 in a per-bug image layered
+#   on clods-eval (see private/Dockerfile), and export
+#       PATH=/opt/protobuf-2.5.0/bin:$PATH
+#       LD_LIBRARY_PATH=/opt/protobuf-2.5.0/lib
+#       HADOOP_PROTOC_PATH=/opt/protobuf-2.5.0/bin/protoc
+#   protobuf 2.5.0 predates C++11 defaults, so it is configured with
+#       CXXFLAGS="-std=gnu++98 -fpermissive -w"
+#   to compile under gcc 11.
+#
+# Reproduce the image with:
+#   docker build -t clods-eval:HDFS-HDFS-14135 -f private/Dockerfile .

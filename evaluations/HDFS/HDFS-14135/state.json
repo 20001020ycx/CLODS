@@ -39,15 +39,19 @@
     },
     {
       "id": "M2",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-18T01:57:11Z",
+      "finished": "2026-08-18T02:16:31Z",
+      "attempts": 1,
+      "by": "agent-run-53a0adfb",
+      "artifacts": [
+        "private/deps-fix.patch",
+        "private/Dockerfile",
+        "reproduce.sh"
+      ],
+      "note": "Built hadoop-hdfs (+deps) from the pre-fix tree with 'mvn -pl hadoop-hdfs-project/hadoop-hdfs -am package -DskipTests -DskipITs -Dcheckstyle.skip -Drat.skip -Dmaven.javadoc.skip=true' on JDK 11/Maven 3.6.3. Only toolchain fix: protobuf 2.5.0 compiler built from source into the per-bug image (Ubuntu 22.04 ships protobuf 3.x); no pom edits were needed."
     },
     {
       "id": "M3",

@@ -6,7 +6,7 @@
   "fix_commit": "6b8107ad97251267253fa045ba03c4749f95f530",
   "pre_fix_commit": "b7fba78fb63a0971835db87292822fd8cd4aa7ad",
   "anonymized_commit": null,
-  "symptom_short": null,
+  "symptom_short": "a WebHDFS request that is expected to fail while connecting instead connects and fails on the read deadline, reported as a failed expectation",
   "milestones": [
     {
       "id": "M0",
@@ -55,15 +55,23 @@
     },
     {
       "id": "M3",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-18T02:33:42Z",
+      "finished": "2026-08-18T02:33:42Z",
+      "attempts": 1,
+      "by": "agent-run-53a0adfb",
+      "artifacts": [
+        "reproduce.sh",
+        "reproduce.md",
+        "private/symptom.orig.log",
+        "private/merged.orig.log",
+        "private/repro/Workload.java",
+        "private/repro/log4j-repro.properties",
+        "private/merge_logs.py"
+      ],
+      "note": "Reproduced intermittently (1 of 3 suite repetitions failed, 1 of its 16 checks) with 2 ms of loopback latency; real MiniDFSCluster WebHDFS traffic captured in the same DEBUG log. Log A 17,990 lines; Log B 49,711,986 lines (26,323,996 production + 15,244 reproduction records)."
     },
     {
       "id": "M4",

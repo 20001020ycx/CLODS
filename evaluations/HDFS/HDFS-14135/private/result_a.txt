@@ -1,0 +1,7 @@
+written=3
+read=3
+checksums=3
+renamed=3
+listed=4
+deleted=1
+error=

@@ -1,0 +1,43 @@
+{
+  "bug": "the JIRA id and its bare number appear nowhere in source/ or the logs",
+  "identifiers": {
+    "TestWebHdfsTimeouts": "TestWebHdfsClientDeadlines",
+    "consumeConnectionBacklog": "fillPendingConnectQueue",
+    "startSingleTemporaryRedirectResponseThread": "startOneShotRedirectResponder",
+    "CLIENTS_TO_CONSUME_BACKLOG": "PENDING_CONNECT_CLIENTS",
+    "CONNECTION_BACKLOG": "LISTEN_QUEUE_LENGTH",
+    "testConnectTimeout": "testListFilesConnectDeadline",
+    "testReadTimeout": "testListFilesReadDeadline",
+    "testAuthUrlConnectTimeout": "testDelegationTokenConnectDeadline",
+    "testAuthUrlReadTimeout": "testDelegationTokenReadDeadline",
+    "testRedirectConnectTimeout": "testChecksumRedirectConnectDeadline",
+    "testRedirectReadTimeout": "testChecksumRedirectReadDeadline",
+    "testTwoStepWriteConnectTimeout": "testCreateRedirectConnectDeadline",
+    "testTwoStepWriteReadTimeout": "testCreateRedirectReadDeadline"
+  },
+  "log_literals": {
+    "expected timeout": "expected a socket deadline",
+    "unexpected IOException in server thread": "responder thread aborted on I/O error",
+    "open URL connection": "establishing HTTP connection",
+    "Not enabling OAuth2 in WebHDFS": "OAuth2 support is disabled for WebHDFS",
+    "open file: ": "opening file: "
+  },
+  "failure_path": {
+    "renamed": {
+      "hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/web/TestWebHdfsTimeouts.java": "hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/web/TestWebHdfsClientDeadlines.java"
+    },
+    "kept_generic": [
+      "hadoop-hdfs-client/src/main/java/org/apache/hadoop/hdfs/web/WebHdfsFileSystem.java",
+      "hadoop-hdfs-client/src/main/java/org/apache/hadoop/hdfs/web/URLConnectionFactory.java",
+      "hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/web/WebHdfsTestUtil.java",
+      "hadoop-common/src/test/java/org/apache/hadoop/test/GenericTestUtils.java"
+    ],
+    "chain": [
+      "TestWebHdfsTimeouts.consumeConnectionBacklog() \u2014 root cause: returns as soon as the non-blocking connect() calls have been issued",
+      "TestWebHdfsTimeouts.test*ConnectTimeout() \u2014 drives the WebHDFS operation that is expected to hit a connect deadline",
+      "WebHdfsFileSystem$AbstractRunner.run/connect/runWithRetry \u2014 issues the HTTP request",
+      "URLConnectionFactory.openConnection \u2014 creates the HttpURLConnection and applies the connect/read deadlines",
+      "GenericTestUtils.assertExceptionContains \u2014 where the wrong deadline surfaces as the observable failure"
+    ]
+  }
+}

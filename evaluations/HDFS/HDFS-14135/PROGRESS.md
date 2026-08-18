@@ -16,7 +16,7 @@
 | M5 | Prepare diagnosis inputs and ground truth | DONE | success | true | 2026-08-18T02:51:21Z | 2026-08-18T02:51:56Z | 1 | agent-run-53a0adfb | `symptom.md`, `private/ground_truth.md` | Bare observable (the pasted AssertionError) + log pointer, 42 words, no cause/trigger/mechanism; answer key lists the fix's exact lines and both branch conditions in real and anonymized names. |
 | M6 | Run five diagnoses | DONE | success | true | 2026-08-18T02:52:07Z | 2026-08-18T03:07:11Z | 1 | agent-run-53a0adfb | `diagnosis/run_1..5.md`, `private/run_diagnosis.prodlog.sh`, `private/m6-run.sh`, `private/m6-harness.log` | 5 fresh single-turn runs, Opus 4.7 effort high via the ccs anthropic subscription account, egress locked to api.anthropic.com:443; all exited 0 with empty stderr; no follow-ups. |
 | M7 | Grade diagnoses | DONE | success | true | 2026-08-18T03:07:23Z | 2026-08-18T03:08:19Z | 1 | agent-run-53a0adfb | `diagnosis/run_1..5.grade.json` | 5 PASS / 0 FAIL. Every run named the helper body (pre-fix 355-362) and the failing catch/assert branch; runs 3 and 4 carry a recorded caveat about an incorrect kernel-level explanation. |
-| M8 | Summarize and finalize | PENDING | pending | null | — | — | 0 | — | — | — |
+| M8 | Summarize and finalize | DONE | success | true | 2026-08-18T03:09:01Z | 2026-08-18T03:09:01Z | 1 | agent-run-53a0adfb | `summary.md` | successes = 5/5; `state.json.result` set. |
 
 ## Log
 
@@ -31,3 +31,4 @@
 - 2026-08-18T02:51:56Z — M5 DONE: symptom.md and private/ground_truth.md written and gated (no bug id, no original identifiers, no cause leak); success=true.
 - 2026-08-18T03:07:11Z — M6 DONE: 5 network-locked diagnoses written to `diagnosis/`; success=true.
 - 2026-08-18T03:08:19Z — M7 DONE: all five runs graded against `private/ground_truth.md` (5 PASS); success=true.
+- 2026-08-18T03:09:01Z — M8 DONE: summary.md written, result 5/5; success=true.

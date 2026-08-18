@@ -141,16 +141,30 @@
     },
     {
       "id": "M8",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-18T03:09:01Z",
+      "finished": "2026-08-18T03:09:01Z",
+      "attempts": 1,
+      "by": "agent-run-53a0adfb",
+      "artifacts": [
+        "summary.md",
+        "PROGRESS.md",
+        "state.json"
+      ],
+      "note": "successes=5/5; summary.md written and state.json.result set."
     }
   ],
-  "result": null
+  "result": {
+    "successes": 5,
+    "total": 5,
+    "per_run": [
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS",
+      "PASS"
+    ]
+  }
 }

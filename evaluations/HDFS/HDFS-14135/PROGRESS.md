@@ -15,7 +15,7 @@
 | M4 | Anonymize failure path | DONE | success | true | 2026-08-18T02:34:23Z | 2026-08-18T02:51:06Z | 2 | agent-run-53a0adfb | `source/`, `logs/repro.log`, `logs/symptom.log`, `private/anonymization_map.json`, `private/anonymize.sh`, `private/anon_map_build.py`, `private/verify_anon.sh` | Test file/type, helper, constants, test-method names renamed and failure-path literals rewritten; rebuilt and re-reproduced (3/3 repetitions failed, 7 checks). `source/` = 319 java files, anon commit `71f580f`. Logs regenerated from the anonymized tree: repro.log 18,467 lines, symptom.log 49,712,463 lines. Leakage verification all clean. |
 | M5 | Prepare diagnosis inputs and ground truth | DONE | success | true | 2026-08-18T02:51:21Z | 2026-08-18T02:51:56Z | 1 | agent-run-53a0adfb | `symptom.md`, `private/ground_truth.md` | Bare observable (the pasted AssertionError) + log pointer, 42 words, no cause/trigger/mechanism; answer key lists the fix's exact lines and both branch conditions in real and anonymized names. |
 | M6 | Run five diagnoses | DONE | success | true | 2026-08-18T02:52:07Z | 2026-08-18T03:07:11Z | 1 | agent-run-53a0adfb | `diagnosis/run_1..5.md`, `private/run_diagnosis.prodlog.sh`, `private/m6-run.sh`, `private/m6-harness.log` | 5 fresh single-turn runs, Opus 4.7 effort high via the ccs anthropic subscription account, egress locked to api.anthropic.com:443; all exited 0 with empty stderr; no follow-ups. |
-| M7 | Grade diagnoses | PENDING | pending | null | — | — | 0 | — | — | — |
+| M7 | Grade diagnoses | DONE | success | true | 2026-08-18T03:07:23Z | 2026-08-18T03:08:19Z | 1 | agent-run-53a0adfb | `diagnosis/run_1..5.grade.json` | 5 PASS / 0 FAIL. Every run named the helper body (pre-fix 355-362) and the failing catch/assert branch; runs 3 and 4 carry a recorded caveat about an incorrect kernel-level explanation. |
 | M8 | Summarize and finalize | PENDING | pending | null | — | — | 0 | — | — | — |
 
 ## Log
@@ -30,3 +30,4 @@
 - 2026-08-18T02:51:06Z — M4 DONE: attempt 1 discarded (the build tree's bug-id-bearing path leaked into the log through Jetty's webapp resource paths); rebuilt in `repos/hadoop-webhdfs-build`, re-reproduced, re-merged and verified clean; success=true.
 - 2026-08-18T02:51:56Z — M5 DONE: symptom.md and private/ground_truth.md written and gated (no bug id, no original identifiers, no cause leak); success=true.
 - 2026-08-18T03:07:11Z — M6 DONE: 5 network-locked diagnoses written to `diagnosis/`; success=true.
+- 2026-08-18T03:08:19Z — M7 DONE: all five runs graded against `private/ground_truth.md` (5 PASS); success=true.

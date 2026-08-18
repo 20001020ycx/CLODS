@@ -127,15 +127,17 @@
     },
     {
       "id": "M7",
-      "status": "PENDING",
-      "outcome": "pending",
-      "success": null,
-      "started": null,
-      "finished": null,
-      "attempts": 0,
-      "by": null,
-      "artifacts": [],
-      "note": ""
+      "status": "DONE",
+      "outcome": "success",
+      "success": true,
+      "started": "2026-08-18T03:07:23Z",
+      "finished": "2026-08-18T03:08:19Z",
+      "attempts": 1,
+      "by": "agent-run-53a0adfb",
+      "artifacts": [
+        "diagnosis/run_1..5.grade.json"
+      ],
+      "note": "All 5 runs named the root-causing helper body (consumeConnectionBacklog / fillPendingConnectQueue, pre-fix 355-362) and the failing branch (catch SocketTimeoutException -> assertExceptionContains \"...: connect timed out\" seeing a read deadline): 5 PASS. Runs 3 and 4 carry a recorded caveat \u2014 their kernel-level explanation (somaxconn clamping) is wrong, but the code location and logical condition match ground truth."
     },
     {
       "id": "M8",

@@ -1,0 +1,22 @@
+{
+  "verdict": "PASS",
+  "justification": "Names the exact root-causing lines (the fillPendingConnectQueue/consumeConnectionBacklog body, 355-362) and states both required conditions: the non-blocking connect loop returns before the handshakes have saturated the backlog-1 accept queue, and the connect-deadline check's catch (SocketTimeoutException) -> assertExceptionContains(\"...: connect timed out\") then sees a read deadline. It also derives the correct discriminator (only the tests that call the helper fail). This is the defect the upstream fix repairs by waiting for a probe connect to time out.",
+  "claimed_lines": [
+    "TestWebHdfsClientDeadlines.java:355-362 fillPendingConnectQueue() \u2014 the non-blocking connect loop",
+    "TestWebHdfsClientDeadlines.java:70-72 PENDING_CONNECT_CLIENTS=129 / LISTEN_QUEUE_LENGTH=1 / SHORT_SOCKET_TIMEOUT=200",
+    "TestWebHdfsClientDeadlines.java:155-156 and :185-186 assertExceptionContains(\"...: connect timed out\")"
+  ],
+  "claimed_branches": [
+    "configureBlocking(false) + connect() only initiate the SYN; finishConnect() is never called, so on return from fillPendingConnectQueue there is no guarantee the kernel accept queue is full",
+    "if the client's SYN arrives while the accept queue still has room the handshake completes and the 200 ms read timeout fires instead of the connect timeout; the catch/assertExceptionContains for \": connect timed out\" then fails",
+    "the read-deadline tests do not call fillPendingConnectQueue and therefore cannot regress this way"
+  ],
+  "gt_lines": [
+    "TestWebHdfsTimeouts.consumeConnectionBacklog() body, pre-fix lines 355-362 (anonymized: TestWebHdfsClientDeadlines.fillPendingConnectQueue()) \u2014 the non-blocking SocketChannel connect loop that returns without confirming the accept queue is saturated; the fix appends a GenericTestUtils.waitFor probe (blocking connect with a 100 ms deadline, polling 100 ms up to 10 s) plus the failedToConsumeBacklog field / assumeBacklogConsumed()",
+    "the assumeBacklogConsumed() calls added inside the catch (SocketTimeoutException) blocks of testRedirectConnectTimeout (pre-fix line 216) and testTwoStepWriteConnectTimeout (pre-fix line 249)"
+  ],
+  "gt_branches": [
+    "the loop's only exit condition is the fixed count i < CLIENTS_TO_CONSUME_BACKLOG (129), not the state it stands for; combined with client.configureBlocking(false) the connect() calls only initiate handshakes, so the accept queue of new ServerSocket(0, CONNECTION_BACKLOG=1) can still have room when the helper returns",
+    "the connect-deadline checks then take the wrong arm: catch (SocketTimeoutException e) -> GenericTestUtils.assertExceptionContains(authority + \": connect timed out\", e) receives a \": Read timed out\" exception (or no exception at all -> fail(\"expected timeout\"))"
+  ]
+}

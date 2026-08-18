@@ -1,14 +1,15 @@
 {
   "verdict": "FAIL",
-  "justification": "Site A HIT: 'RegionStateZK.java:671-673 - transitionNode must handle existingBytes == null (znode absent) as the documented \"Unassigned node for this region does not exist\" case and return -1'. Exact branch stated, including the NoNodeException->null source of the null. Site B MISSED (0 mentions of the master timeout monitor). Ranks the SerdeUtil 2-arg overload first by 'severity', but the required site and branch are named explicitly, which the rubric asks for.",
+  "justification": "Site A HIT: 'The correct fix is in RegionStateZK.transitionNode (around line 672) - after reading existingBytes, add an if (existingBytes == null) { LOG.warn(...); return -1; }' with the NoNodeException->null condition stated explicitly. Site B MISSED. Note: its log citation is a PRODUCTION-noise line (the -ROOT- region 70236052 from the HBase 1.2.7 noise cluster, whose own wording is 'because node does not exist') rather than one of the reproduction's records - the conclusion is right, the evidence it points at is from the wrong cluster.",
   "claimed_lines": [
-    "RegionStateZK.java:671-673 (transitionNode) - no null-check between the getDataNoWatch read and fromBytes",
-    "SerdeUtil.java:73-76 [credit-neutral]",
-    "RegionStateRecord.java:195-203 [credit-neutral]"
+    "RegionStateZK.java:670-673 (transitionNode)",
+    "RegionStateRecord.java:198 [credit-neutral]",
+    "SerdeUtil.java:73-76 [credit-neutral]"
   ],
   "claimed_branches": [
-    "ZKOps.getDataNoWatch catch (NoNodeException) at ZKOps.java:589 -> existingBytes == null; the absent null-check between lines 671 and 673 lets it flow into fromBytes; transitionNode should return -1 for the documented 'unassigned node does not exist' case"
+    "ZKOps.getDataNoWatch catch (KeeperException.NoNodeException) at ZKOps.java:589-592 returns null (znode absent); transitionNode reaches line 673 with no 'if (existingBytes == null) return -1;' check, contrary to its own javadoc contract at 525-528"
   ],
+  "log_evidence_cited": "production-noise record (region 70236052 = -ROOT- of the 1.2.7 noise cluster, 'because node does not exist (not an error)')",
   "gt_lines": [
     "ZKAssign.java:669-673 (anon RegionStateZK.java:669-673) - byte[] existingBytes = ZKUtil.getDataNoWatch(zkw, node, stat); RegionTransitionData existingData = RegionTransitionData.fromBytes(existingBytes);",
     "AssignmentManager.java:1644-1646 (anon RegionPlacementManager.java:1644-1646) - TimeoutMonitor case OPENING: RegionTransitionData data = ZKAssign.getDataNoWatch(watcher, node, stat); if (data.getEventType() == ...)"
@@ -20,5 +21,6 @@
   "site_a": "HIT",
   "site_b": "MISS",
   "primary_bar": "both fix sites (A and B) with their exact null-check branches -> FAIL",
-  "auxiliary_bar": "site A (the only site on the reproduced failure path) with its exact branch -> PASS"
+  "auxiliary_bar": "site A (the only site on the reproduced failure path) with its exact branch -> PASS",
+  "subject": "claude-opus-4-7, effort high, ccs `anthropic` subscription account (OAuth) via api.anthropic.com"
 }

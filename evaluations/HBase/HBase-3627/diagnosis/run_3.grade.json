@@ -1,13 +1,14 @@
 {
   "verdict": "FAIL",
-  "justification": "Site A HIT and best-reasoned of the five: names RegionStateZK.transitionNode 670-673, gives the exact missing 'existingBytes == null -> return -1' branch, and independently derives the trigger ('a race between master OFFLINE-znode creation/cleanup and the RS bring-up handler'), which symptom.md never states. Site B MISSED.",
+  "justification": "Site A HIT and the best-reasoned of the batch: exact line, exact missing branch, and it derives the TRIGGER (the master deleting/not-yet-creating the placement record while the bring-up is queued) from the log alone - symptom.md never states it. It also correctly ranks the SerdeUtil null-check as the defensive, non-root fix. Site B MISSED.",
   "claimed_lines": [
-    "RegionStateZK.java:670-673 (transitionNode)",
+    "RegionStateZK.java:670-673 / :672 (transitionNode)",
     "SerdeUtil.java:73-76 [credit-neutral]"
   ],
   "claimed_branches": [
-    "Branch A: ZKOps.getDataNoWatch catch (KeeperException.NoNodeException) at :589 returns null because /hbase/unassigned/<encodedName> does not exist at read time (master has not yet created or has already deleted it); Branch B: no null guard on the 2-arg getWritable. Fix: treat existingBytes == null as the documented -1 case in transitionNode"
+    "missing guard at RegionStateZK.java:672 ('the caller does not branch on existingBytes == null'); ZKOps.getDataNoWatch NoNodeException branch at 589-592 returns null because the /hbase/unassigned/<encoded> znode is missing at read time - 'the master had already cleared/never-created that placement record ... a race between master assignment/cleanup and the region server picking up M_RS_BRINGUP_REGION'"
   ],
+  "log_evidence_cited": "reproduction records (region 1edc8893..., 'since the node is absent')",
   "gt_lines": [
     "ZKAssign.java:669-673 (anon RegionStateZK.java:669-673) - byte[] existingBytes = ZKUtil.getDataNoWatch(zkw, node, stat); RegionTransitionData existingData = RegionTransitionData.fromBytes(existingBytes);",
     "AssignmentManager.java:1644-1646 (anon RegionPlacementManager.java:1644-1646) - TimeoutMonitor case OPENING: RegionTransitionData data = ZKAssign.getDataNoWatch(watcher, node, stat); if (data.getEventType() == ...)"
@@ -19,5 +20,6 @@
   "site_a": "HIT",
   "site_b": "MISS",
   "primary_bar": "both fix sites (A and B) with their exact null-check branches -> FAIL",
-  "auxiliary_bar": "site A (the only site on the reproduced failure path) with its exact branch -> PASS"
+  "auxiliary_bar": "site A (the only site on the reproduced failure path) with its exact branch -> PASS",
+  "subject": "claude-opus-4-7, effort high, ccs `anthropic` subscription account (OAuth) via api.anthropic.com"
 }

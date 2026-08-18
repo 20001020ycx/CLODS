@@ -9,6 +9,18 @@
 #      realistic production log — grep it for the symptom rather than reading it whole)".
 #   2. §7's staging rule — hardlink the GB-scale merged log into the staging dir instead of
 #      copying it five times.
+#
+# SUBJECT / ENDPOINT (operator instruction, 2026-08-17): the diagnosis subject is Claude Opus
+# 4.7 reached through the **`ccs anthropic` account** — the Claude subscription login (OAuth,
+# `claudeAiOauth` in ~/.ccs/instances/anthropic/.credentials.json, subscriptionType=max) going
+# directly to **api.anthropic.com** — NOT the `yscope-*` gateway profiles. The tracked
+# context/run_diagnosis.sh was rewritten on the same day to require the
+# yscope-anthropic-paper-validation gateway (ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN); this
+# copy deliberately does NOT, so the container carries no ANTHROPIC_BASE_URL/AUTH_TOKEN, the
+# iptables allowlist opens api.anthropic.com:443 only, and the credential mounted at
+# /root/.claude is the subscription account's. Evidence of the actual run (network-lock line,
+# pinned model/effort, staging contents, env check) is captured in private/m6-harness.log.
+# --safe-mode replaces --bare because --bare refuses the mounted OAuth credentials.
 # run_diagnosis.sh <BUG_DIR>  (BUG_DIR is expected mounted at /bug)
 #
 # Runs the LLM diagnosis 5 times. Each run is a FRESH, stateless, single-turn Claude Code

@@ -1,0 +1,23 @@
+{
+  "verdict": "FAIL",
+  "justification": "Site A HIT: names RegionStateZK.transitionNode lines 670-673 as the site, quotes the two-line read+deserialize, and states the exact missing branch ('should short-circuit when existingBytes == null (return -1)') together with the condition that makes it null (NoNodeException -> null in ZKOps.getDataNoWatch). Site B MISSED: no mention of RegionPlacementManager/TimeoutMonitor or of the master-side getDataNoWatch dereference (0 hits for 'RegionPlacementManager', 'TimeoutMonitor'). Extra fix candidate offered (SerdeUtil 2-arg overload) is the credit-neutral throw site, not a wrong claim. Note: the 'Trigger in this run' paragraph anchors on -ROOT- region 70236052 at 19:08, which is a PRODUCTION-noise line (a different host and a 2026-08-14 window), not the reproduction's incident - it does not affect the site verdict but shows the merged log misleading the trigger story.",
+  "claimed_lines": [
+    "RegionStateZK.java:670-673 (transitionNode) - ZKOps.getDataNoWatch result passed unchecked to RegionStateRecord.fromBytes",
+    "SerdeUtil.java:73-76 (getWritable 2-arg overload) - bytes.length before the null guard [credit-neutral extra]"
+  ],
+  "claimed_branches": [
+    "missing 'existingBytes == null' short-circuit in transitionNode; ZKOps.getDataNoWatch takes the KeeperException.NoNodeException branch and returns null because /hbase/unassigned/<region> does not exist"
+  ],
+  "gt_lines": [
+    "ZKAssign.java:669-673 (anon RegionStateZK.java:669-673) - byte[] existingBytes = ZKUtil.getDataNoWatch(zkw, node, stat); RegionTransitionData existingData = RegionTransitionData.fromBytes(existingBytes);",
+    "AssignmentManager.java:1644-1646 (anon RegionPlacementManager.java:1644-1646) - TimeoutMonitor case OPENING: RegionTransitionData data = ZKAssign.getDataNoWatch(watcher, node, stat); if (data.getEventType() == ...)"
+  ],
+  "gt_branches": [
+    "site A: missing 'if (existingBytes == null) return -1;' - getDataNoWatch returns null because the unassigned znode no longer exists (NoNodeException branch)",
+    "site B: missing 'if (data == null) { LOG.warn(...); break; }' - getDataNoWatch returns null for a region the master is timing out in state OPENING"
+  ],
+  "site_a": "HIT",
+  "site_b": "MISS",
+  "primary_bar": "both fix sites (A and B) with their exact null-check branches -> FAIL",
+  "auxiliary_bar": "site A (the only site on the reproduced failure path) with its exact branch -> PASS"
+}

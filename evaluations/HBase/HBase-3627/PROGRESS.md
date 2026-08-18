@@ -85,3 +85,13 @@ milestone carries `status` + `success` + `outcome`.
   master-side twin (`AssignmentManager` TimeoutMonitor `case OPENING:`), which this reproduction never exercises.
 - 2026-08-17T13:35Z M8 DONE success=true — `summary.md` written; `state.json.result` = **0/5** under the pre-registered
   two-site bar (`site_a_successes: 5`, `site_b_successes: 0`). Bug complete.
+- 2026-08-18T01:19Z **M6 RE-RUN + M7 RE-GRADE** (operator instruction: use the `ccs anthropic` **account** — the Claude
+  subscription login, OAuth to `api.anthropic.com` — not the `yscope-*` gateway profiles; `context/run_diagnosis.sh` had
+  just been rewritten to require the yscope gateway, so this bug keeps its own copy,
+  `private/run_diagnosis.prodlog.sh`, whose body is still byte-identical to Zookeeper-1900's). Provenance captured in
+  `private/m6-harness.log`: no `ANTHROPIC_BASE_URL`/`AUTH_TOKEN`/`API_KEY` in the container, credential =
+  `claudeAiOauth` (`subscriptionType=max`), `Network locked: egress restricted to api.anthropic.com:443`, and the
+  post-lock `iptables -S` shows `-P OUTPUT DROP` with a single ACCEPT to `160.79.104.10:443` (the yscope gateway
+  resolves but is not allowlisted). Result unchanged: **0/5** two-site, **5/5** site A + exact branch; run 4 wrote the
+  upstream guard out as a patch. The earlier batch (same account, same config) is kept verbatim under
+  `private/diagnosis-batch-1/`.

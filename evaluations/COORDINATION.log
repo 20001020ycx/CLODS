@@ -104,3 +104,4 @@
 2026-08-17T20:43:19Z HBase-4078 M6 retry still quota-blocked (trivial probe passes, real runs 429) - wait for 2026-08-18T12:00Z
 2026-08-17T21:08:00Z HBase-4078 M6 DONE (5 runs; 3-5 via operator subscription, Opus 4.7 verified)
 2026-08-17T21:08:00Z HBase-4078 M7 DONE 0/5 PASS (site A 2/5, site B 0/5); M8 DONE; bug COMPLETE 0/5
+2026-08-18T01:19:41Z HBase-3627 M6 re-run on ccs anthropic subscription account (api.anthropic.com); 0/5 two-site, 5/5 on-path unchanged

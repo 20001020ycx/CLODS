@@ -1,14 +1,14 @@
 {
   "verdict": "FAIL",
-  "justification": "Site A HIT: names the missing 'if (existingBytes == null)' branch at RegionStateZK.java:670-673 and grounds the null in the log (ZK reply error -101 = NoNodeException immediately before each NPE). Site B MISSED.",
+  "justification": "Site A HIT: names the two lines and the missing branch, and explicitly designates it 'the true root cause' over the SerdeUtil throw site ('SerdeUtil merely converts the missing precondition into a less helpful exception type'). It also names the race that deletes the znode. Site B MISSED. Same noise artefact as run 2: the quoted log line belongs to the production stream, not to the reproduction.",
   "claimed_lines": [
-    "RegionStateZK.java:670-673 (transitionNode)",
-    "SerdeUtil.java:73-76 [credit-neutral]",
-    "RegionStateRecord.java:198 [credit-neutral]"
+    "RegionStateZK.java:672-673 (transitionNode)",
+    "SerdeUtil.java:75 [credit-neutral]"
   ],
   "claimed_branches": [
-    "'There is no if (existingBytes == null) branch here'; ZKOps.getDataNoWatch returns null at :589-592 on NoNodeException - confirmed against the raw ZK reply error code -101 in the log - because the OFFLINE znode the server was asked to transition has already been deleted"
+    "'Between the read at line 671 and the fromBytes at line 673 there is no if (existingBytes == null) return -1; guard'; the null comes from ZKOps.getDataNoWatch on a missing /hbase/unassigned/<encodedName> znode - 'a normal race during OFFLINE->OPENING when the master hasn't created / has already cleaned the node'"
   ],
+  "log_evidence_cited": "production-noise record (region 70236052, 'because node does not exist (not an error)')",
   "gt_lines": [
     "ZKAssign.java:669-673 (anon RegionStateZK.java:669-673) - byte[] existingBytes = ZKUtil.getDataNoWatch(zkw, node, stat); RegionTransitionData existingData = RegionTransitionData.fromBytes(existingBytes);",
     "AssignmentManager.java:1644-1646 (anon RegionPlacementManager.java:1644-1646) - TimeoutMonitor case OPENING: RegionTransitionData data = ZKAssign.getDataNoWatch(watcher, node, stat); if (data.getEventType() == ...)"
@@ -20,5 +20,6 @@
   "site_a": "HIT",
   "site_b": "MISS",
   "primary_bar": "both fix sites (A and B) with their exact null-check branches -> FAIL",
-  "auxiliary_bar": "site A (the only site on the reproduced failure path) with its exact branch -> PASS"
+  "auxiliary_bar": "site A (the only site on the reproduced failure path) with its exact branch -> PASS",
+  "subject": "claude-opus-4-7, effort high, ccs `anthropic` subscription account (OAuth) via api.anthropic.com"
 }

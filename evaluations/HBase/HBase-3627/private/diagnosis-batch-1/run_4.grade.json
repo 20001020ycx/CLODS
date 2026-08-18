@@ -1,0 +1,23 @@
+{
+  "verdict": "FAIL",
+  "justification": "Site A HIT: explicitly proposes 'a if (existingBytes == null) return -1; in RegionStateZK.transitionNode right after line 671' and identifies the null-producing branch. Site B MISSED.",
+  "claimed_lines": [
+    "RegionStateZK.java:670-673 (transitionNode)",
+    "SerdeUtil.java:73-76 [credit-neutral]"
+  ],
+  "claimed_branches": [
+    "'if (existingBytes == null) return -1;' missing right after line 671; ZKOps.getDataNoWatch returns null on the NoNodeException branch (and on the other two catch branches) because the unassigned znode is absent"
+  ],
+  "gt_lines": [
+    "ZKAssign.java:669-673 (anon RegionStateZK.java:669-673) - byte[] existingBytes = ZKUtil.getDataNoWatch(zkw, node, stat); RegionTransitionData existingData = RegionTransitionData.fromBytes(existingBytes);",
+    "AssignmentManager.java:1644-1646 (anon RegionPlacementManager.java:1644-1646) - TimeoutMonitor case OPENING: RegionTransitionData data = ZKAssign.getDataNoWatch(watcher, node, stat); if (data.getEventType() == ...)"
+  ],
+  "gt_branches": [
+    "site A: missing 'if (existingBytes == null) return -1;' - getDataNoWatch returns null because the unassigned znode no longer exists (NoNodeException branch)",
+    "site B: missing 'if (data == null) { LOG.warn(...); break; }' - getDataNoWatch returns null for a region the master is timing out in state OPENING"
+  ],
+  "site_a": "HIT",
+  "site_b": "MISS",
+  "primary_bar": "both fix sites (A and B) with their exact null-check branches -> FAIL",
+  "auxiliary_bar": "site A (the only site on the reproduced failure path) with its exact branch -> PASS"
+}

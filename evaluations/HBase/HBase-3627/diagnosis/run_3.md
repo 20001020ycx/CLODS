@@ -1,46 +1,85 @@
-Confirmed. Here is the root cause.
+## Root Cause
 
-## Root cause
-
-The NPE is a null-`byte[]` dereference in `SerdeUtil.getWritable`, triggered when `RegionStateZK.transitionNode` reads an **absent** `/hbase/unassigned/<encodedName>` znode and passes the resulting `null` straight into deserialization.
+The NPE is a **missing null-check on a ZooKeeper znode that has already been deleted (or was never created)**. The state-transition path assumes the `/hbase/unassigned/<region>` znode always exists, but the ZK read path is explicitly documented to return `null` when the node is absent — and that `null` is fed straight into a deserializer that dereferences it.
 
 ## The failure path, line by line
 
-1. `RegionBringupHandler.transitionZookeeperOfflineToOpening` (`RegionBringupHandler.java:297`) calls `RegionStateZK.transitionNodeOpening(...)`, which resolves through `RegionStateZK.java:545` → `RegionStateZK.java:552` into the private `transitionNode(...)`.
+**1. Log evidence.** In the exact same thread just before the NPE:
 
-2. In `RegionStateZK.transitionNode` (`RegionStateZK.java:670-673`):
-   ```java
-   byte [] existingBytes = ZKOps.getDataNoWatch(zkw, node, stat);
-   RegionStateRecord existingData = RegionStateRecord.fromBytes(existingBytes);
-   ```
-   `ZKOps.getDataNoWatch` (`ZKOps.java:582-602`) catches `KeeperException.NoNodeException` at line 589 and **returns `null`** (see log line 2910: `Could not read the contents of node /hbase/unassigned/70236052 because node does not exist (not an error)`). `existingBytes` is `null` and is passed through unchecked.
+```
+19:10:09,091 DEBUG ... zookeeper.ZKOps: regionserver:60020-...
+   Could not read the contents of node /hbase/unassigned/1edc8893101fabdaabacd236d93e22ae
+   since the node is absent (not necessarily an error)
+19:10:09,097 ERROR ... executor.TaskHandler: Handler died on an unexpected error, task M_RS_BRINGUP_REGION
+java.lang.NullPointerException
+   at org.apache.hadoop.hbase.util.SerdeUtil.getWritable(SerdeUtil.java:75)
+   ...
+```
 
-3. `RegionStateRecord.fromBytes` (`RegionStateRecord.java:195-203`) does not null-check `bytes`; it calls `SerdeUtil.getWritable(bytes, data)` at line 198 with `bytes == null`.
+That "since the node is absent" message is emitted only from `ZKOps.getDataNoWatch` on the `NoNodeException` branch (source/java/org/apache/hadoop/hbase/zookeeper/ZKOps.java:589-592) — so the ZooKeeper read returned `null`.
 
-4. `SerdeUtil.getWritable(byte[], Writable)` (`SerdeUtil.java:73-76`):
-   ```java
-   public static Writable getWritable(final byte [] bytes, final Writable w)
-   throws IOException {
-     return getWritable(bytes, 0, bytes.length, w);   // line 75  <-- NPE
-   }
-   ```
-   The two-arg overload dereferences `bytes.length` **before** delegating to the four-arg overload — so it throws `NullPointerException` on the argument evaluation. The null-guard that would have thrown `IllegalArgumentException` lives one layer deeper (`SerdeUtil.java:95`: `if (bytes == null || length <= 0)`), and is never reached.
+**2. Caller does not handle the `null`.** In `RegionStateZK.transitionNode`:
 
-## The exact logical conditions that produce the crash
+```java
+// RegionStateZK.java:670-673
+byte [] existingBytes =
+    ZKOps.getDataNoWatch(zkw, node, stat);        // returns null when znode is absent
+RegionStateRecord existingData =
+    RegionStateRecord.fromBytes(existingBytes);   // <-- no null check, called unconditionally
+```
 
-The path is taken iff both branches below are simultaneously true during `M_RS_BRINGUP_REGION`:
+Note the javadoc at `RegionStateZK.java:632-635` promises "*If the node does not exist … the method returns -1*", but the code never implements that branch — it doesn't check `existingBytes == null` (nor `stat` untouched) before calling `fromBytes`. That is the primary bug.
 
-- **Branch A — ZK read misses:** In `ZKOps.getDataNoWatch`, the `catch (KeeperException.NoNodeException e)` branch at `ZKOps.java:589` fires (znode `/hbase/unassigned/<encodedName>` does not exist at read time), causing the method to `return null` at line 592. This happens when the master has not yet created (or has already deleted) the unassigned znode for the region the RS is trying to open — a race between master OFFLINE-znode creation/cleanup and the RS bring-up handler.
+**3. `fromBytes` passes the `null` byte[] on:**
 
-- **Branch B — deserialization has no null guard on the wrapper overload:** In `SerdeUtil.java:73-76`, the two-argument `getWritable` immediately reads `bytes.length` without a null check, so the null returned from Branch A crashes here rather than being converted to the intended `IllegalArgumentException` in the four-argument overload (`SerdeUtil.java:95`).
+```java
+// RegionStateRecord.java:195-203
+public static RegionStateRecord fromBytes(byte [] bytes) {
+    try {
+      RegionStateRecord data = new RegionStateRecord();
+      SerdeUtil.getWritable(bytes, data);         // bytes == null → NPE inside
+      return data;
+    } ...
+}
+```
 
-Because `RegionStateRecord.fromBytes` (`RegionStateRecord.java:198`) rethrows any `IOException` as `RuntimeException` but does not handle `NullPointerException`, the NPE propagates up through `RegionStateZK.transitionNode` → `RegionBringupHandler.transitionZookeeperOfflineToOpening` → `RegionBringupHandler.process` → `TaskHandler.run`, killing the `M_RS_BRINGUP_REGION` task and preventing the region from ever being brought online — matching the reported symptom of region servers "repeatedly failing to bring regions online."
+**4. The NPE site — `SerdeUtil.getWritable(byte[], Writable)`:**
 
-## Fix location
+```java
+// SerdeUtil.java:73-76
+public static Writable getWritable(final byte [] bytes, final Writable w)
+throws IOException {
+    return getWritable(bytes, 0, bytes.length, w);   // <-- line 75: bytes.length dereferences null
+}
+```
 
-Either (or both):
+This is the two-arg overload. It dereferences `bytes.length` *before* delegating to the three-arg overload — even though the three-arg overload at `SerdeUtil.java:95-98` does have the guard:
 
-- `SerdeUtil.java:73-76` — null-check `bytes` before `bytes.length` in the two-arg overload (mirror the guard at line 95).
-- `RegionStateZK.java:670-673` — treat `existingBytes == null` (i.e., the unassigned znode is absent) as the documented "Unassigned node for this region does not exist" failure and `return -1` instead of feeding null into `RegionStateRecord.fromBytes`.
+```java
+if (bytes == null || length <=0) {
+    throw new IllegalArgumentException("Can't build a writable with empty bytes array");
+}
+```
 
-The most defensible fix is `RegionStateZK.transitionNode`, since its own Javadoc (`RegionStateZK.java:524-529`) already lists "Unassigned node for this region does not exist" as one of the three legitimate `-1` return conditions — it just forgot to actually check for it.
+The guard is unreachable when the caller uses the two-arg overload with `null`, because `bytes.length` throws NPE first.
+
+## Which branches dictate the failure
+
+The NPE-producing execution requires all of the following to be true on the region server thread `RS_REGION_BRINGUP-hbase-node-a,60021,1786971731434-0`:
+
+1. `RegionBringupHandler.process` reaches `transitionZookeeperOfflineToOpening(encodedName)` (RegionBringupHandler.java:90), i.e.:
+   - server not stopping (RegionBringupHandler.java:74),
+   - region not already online (RegionBringupHandler.java:82 → `region == null`).
+2. `RegionStateZK.transitionNode` reads the znode with `getDataNoWatch` (RegionStateZK.java:670-671).
+3. Inside `ZKOps.getDataNoWatch`, `zk.getData(...)` takes the `KeeperException.NoNodeException` catch branch (ZKOps.java:589-592) and returns `null` — the `/hbase/unassigned/<encoded>` znode is missing at read time. In this cluster the master had already cleared/never-created that placement record for this bring-up (a race between master assignment/cleanup and the region server picking up `M_RS_BRINGUP_REGION`).
+4. The caller *does not* branch on `existingBytes == null` (missing guard at RegionStateZK.java:672); it always calls `RegionStateRecord.fromBytes`.
+5. `SerdeUtil.getWritable(byte[], Writable)` (the two-arg overload) is entered with `bytes == null` and evaluates `bytes.length` → `NullPointerException` at SerdeUtil.java:75.
+
+## Fix location(s)
+
+Any one of these fixes the crash; the semantically correct fix is (a):
+
+- **(a) RegionStateZK.java:672** — honor the contract in the javadoc: if `existingBytes == null` (or `stat` shows the node absent), log the warning that "*the placement record does not exist*" and `return -1;` before calling `RegionStateRecord.fromBytes`. `transitionZookeeperOfflineToOpening` already treats `-1` as "someone stole the region" and returns cleanly (RegionBringupHandler.java:88-90, 303-308).
+- **(b) SerdeUtil.java:73-76** — defensively null-check `bytes` in the two-arg overload so it throws `IllegalArgumentException` (matching the three-arg overload at line 95) instead of NPE. This turns the crash into the checked `IOException`/`IllegalArgumentException` path that `fromBytes` wraps in `RuntimeException` — still not friendly, so (a) is the real fix.
+
+Summary: root cause is the missing "znode-absent" branch in `RegionStateZK.transitionNode` (RegionStateZK.java:670-673), triggered because the `/hbase/unassigned/<region>` znode had been deleted by the master before the region server's bring-up handler tried to read it; the crash surfaces at `SerdeUtil.java:75` where the two-arg `getWritable` dereferences `bytes.length` without first null-checking.

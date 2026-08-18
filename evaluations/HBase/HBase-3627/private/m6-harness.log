@@ -1,0 +1,42 @@
+=== M6 provenance (subject/endpoint evidence) ===
+date: 2026-08-18T01:09:21Z
+ANTHROPIC_BASE_URL=<unset>   ANTHROPIC_AUTH_TOKEN=<unset>   ANTHROPIC_API_KEY=<unset>
+credential kind: ['claudeAiOauth', 'mcpOAuth'] max
+/etc/hosts api entry: 2607:6bc0::10   api.anthropic.com
+gateway resolvable? 20.114.51.93    llm-gateway.yscope.io
+=== harness ===
+Network locked: egress restricted to api.anthropic.com:443.
+=== diagnosis run 1/5 (model=claude-opus-4-7 effort=high cmd=claude) ===
+=== diagnosis run 2/5 (model=claude-opus-4-7 effort=high cmd=claude) ===
+=== diagnosis run 3/5 (model=claude-opus-4-7 effort=high cmd=claude) ===
+=== diagnosis run 4/5 (model=claude-opus-4-7 effort=high cmd=claude) ===
+=== diagnosis run 5/5 (model=claude-opus-4-7 effort=high cmd=claude) ===
+Done. 5 diagnoses written under /bug/diagnosis
+=== iptables after lock ===
+-P INPUT DROP
+-P FORWARD DROP
+-P OUTPUT DROP
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -o lo -j ACCEPT
+-A OUTPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -d 160.79.104.10/32 -p tcp -m tcp --dport 443 -j ACCEPT
+
+=== notes (written by the orchestrating agent, not by the harness) ===
+* Subject/endpoint: Claude Opus 4.7 via the `ccs anthropic` ACCOUNT = the Claude subscription
+  login (claudeAiOauth, subscriptionType=max) straight to api.anthropic.com. The container
+  carried NO ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN / ANTHROPIC_API_KEY (see the header
+  above), so no `yscope-*` gateway profile was or could be used.
+* The iptables dump above is the state after the lock: default DROP on INPUT/FORWARD/OUTPUT
+  with a single ACCEPT to 160.79.104.10:443 (api.anthropic.com). llm-gateway.yscope.io
+  (20.114.51.93) resolves but is NOT in the allowlist, so egress to it is dropped.
+* Caveat inherited from the tracked harness: the lock is IPv4-only (iptables, not ip6tables);
+  the container has no IPv6 route, so this is theoretical here.
+* Command used (from the repo root, host side):
+    docker run --rm --name clods-diag-hb3627 --cap-add=NET_ADMIN \
+      --add-host api.anthropic.com:<ipv4> \
+      -v "$PWD/evaluations/HBase/HBase-3627:/bug" \
+      -v "<scratch copy of ~/.ccs/instances/anthropic/{.credentials.json,.claude.json}>:/root/.claude" \
+      -e CLAUDE_CONFIG_DIR=/root/.claude -e IS_SANDBOX=1 -e CLAUDE_PURITY_FLAG=--safe-mode \
+      --entrypoint bash clods-eval -lc '<provenance echoes>; bash /bug/private/run_diagnosis.prodlog.sh /bug; iptables -S'
+  The scratch credential copy was deleted after the batch.
